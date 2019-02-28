@@ -61,7 +61,7 @@ Add additional notes about how to deploy this on a live system
 
 ## Built With
 
-* vim
+* [vim](https://www.vim.org/)
 
 ## Contributing
 
@@ -71,7 +71,7 @@ You probably know way more about how this stuff works than I do.  Don't just sen
 
 "Success has many fathers, but failure is a bastard child."
 
-This isn't high school, it's all open book and copying from your neighbor is encouraged.  All the good bits I stole from someone else, all the errors are mine.
+This isn't high school, it's all open book and copying from your neighbor is encouraged.  All the good bits I stole from someone else, all the crap bits and errors are mine.
 
 ## Acknowledgments
 
@@ -83,3 +83,5 @@ This isn't high school, it's all open book and copying from your neighbor is enc
     * Odkrys
     * thelonelycoder
     * Xentrk
+
+* Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
