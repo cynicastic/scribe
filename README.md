@@ -1,5 +1,4 @@
-# - scribe -
-# Install Entware syslog-ng and logrotate for AsusWRT-Merlin
+# ~ scribe ~ Entware syslog-ng and logrotate installer for AsusWRT-Merlin
 
 Completing this README is obviously on my ToDo list ...
 
@@ -61,11 +60,11 @@ Add additional notes about how to deploy this on a live system
 
 ## Built With
 
-* [vim](https://www.vim.org/)
+* [vim](https://www.vim.org/) - because vi is always there, so I'm not lost on a clean install.
 
 ## Contributing
 
-You probably know way more about how this stuff works than I do.  Don't just send code, explain it to me.  Coding isn't my day job, be gentle.  :-)
+This has been a learning project for me, so I'm probably more married to my way of doing things than I should be.  Not to say suggestions aren't appreciated - they are and will be considered; but they are likely to be altered to my way of thinking about things if I add them, even if your way is clearly better.
 
 ## Authors
 
@@ -75,7 +74,7 @@ This isn't high school, it's all open book and copying from your neighbor is enc
 
 ## Acknowledgments
 
-* RMerlin, for enduring an endless stream of people who will not read the release notes (out of his control), yet is still dedicated to producing the awesomeness that is AsusWRT-Merlin in what used to be known as his "free" time.
+* RMerlin, for enduring an endless stream of people who will not read the release notes (out of his control), yet is still dedicated to producing the awesomeness that is AsusWRT-Merlin in what used to be known as his "free time".
 * The great coders of SNB Forums, in alphabetical order, for lack of a better system:
     * Adamm
     * Jack Yaz
@@ -85,3 +84,5 @@ This isn't high school, it's all open book and copying from your neighbor is enc
     * Xentrk
 
 * Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
+
+Are you really still reading this?  I'd have probably lost interest about halfway through.
