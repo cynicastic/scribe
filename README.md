@@ -1,4 +1,5 @@
-# scribe - Install Entware syslog-ng and logrotate for AsusWRT-Merlin
+# - scribe -
+# Install Entware syslog-ng and logrotate for AsusWRT-Merlin
 
 Completing this README is obviously on my ToDo list ...
 
@@ -76,9 +77,9 @@ This isn't high school, it's all open book and copying from your neighbor is enc
 
 * RMerlin, for enduring an endless stream of people who will not read the release notes (out of his control), yet is still dedicated to producing the awesomeness that is AsusWRT-Merlin in what used to be known as his "free" time.
 * The great coders of SNB Forums, in alphabetical order, for lack of a better system:
-* * Adamm
-* * Jack Yaz
-* * kvic
-* * Odkrys
-* * thelonelycoder
-* * Xentrk
+    * Adamm
+    * Jack Yaz
+    * kvic
+    * Odkrys
+    * thelonelycoder
+    * Xentrk
