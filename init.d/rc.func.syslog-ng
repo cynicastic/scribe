@@ -1,0 +1,35 @@
+#!/bin/sh
+#tof
+
+# separate killing syslogd and linking syslog.log;
+# symlink might get broken even if syslogd not running
+
+kill_syslogd (){
+    # kill any/all running syslogd
+    if [ ! "X$(pidof syslogd)" = "X" ]; then
+	killall syslogd
+    fi
+
+    # webGUI System Log = /tmp/syslog.log
+    if [ ! -L "/tmp/syslog.log" ]; then
+	cat /tmp/syslog.log >> /opt/var/log/messages
+	rm /tmp/syslog.log /tmp/syslog.log-1
+	ln -s /opt/var/log/messages /tmp/syslog.log
+    fi
+
+    # make /jffs/syslog.log and log-1 directories if not already
+    # prevents system log rotater from writting to jffs
+    if [ ! -d "/jffs/syslog.log" ]; then
+        rm /jffs/syslog.log
+        mkdir /jffs/syslog.log
+    fi
+
+    if [ ! -d "/jffs/syslog.log-1" ]; then
+        rm /jffs/syslog.log-1
+        mkdir /jffs/syslog.log-1
+    fi
+}
+
+PRECMD="kill_syslogd"
+
+#eof

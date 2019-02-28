@@ -1,0 +1,8 @@
+# global variable overrides from /opt/etc/logrotate.conf
+
+# compress, but not first rotation due to file handling
+compress
+delaycompress
+
+missingok # no error is log file is missing
+notifempty # don't rotate an empty logfile

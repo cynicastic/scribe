@@ -1,0 +1,21 @@
+# put syslog-ng's logging stats into /opt/var/log/syslog-ng.log
+
+destination d_syslogng { 
+	file("/opt/var/log/syslog-ng.log");
+};
+
+filter f_syslogng {
+	program("syslog-ng")
+and
+	message("Log statistics;");
+};
+
+log {
+	source(src);
+	source(kernel);
+	filter(f_syslogng);
+	destination(d_syslogng);
+	flags(final);
+};
+
+#eof

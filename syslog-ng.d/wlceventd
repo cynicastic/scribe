@@ -1,0 +1,21 @@
+# put wlceventd Assoc/ReAssoc/Disassoc messages into /opt/var/log/wlceventd.log
+
+destination d_wlceventd { 
+	file("/opt/var/log/wlceventd.log");
+};
+
+filter f_wlceventd {
+	program("WLCEVENTD")
+and
+	message("ssoc");
+};
+
+log {
+	source(src);
+	source(kernel);
+	filter(f_wlceventd);
+	destination(d_wlceventd);
+	flags(final);
+};
+
+#eof

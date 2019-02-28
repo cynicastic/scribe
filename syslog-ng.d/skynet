@@ -1,0 +1,36 @@
+# this MUST BE the file configured in Skynet as the syslog.log location
+# DO NOT use /tmp/syslog.log or /opt/var/log/messages here!
+destination d_skynet { 
+	file("/opt/var/log/skynet-0.log");
+};
+
+# logs everything from Skynet to /opt/var/log/skynet-0.log
+filter f_skynet {
+        program("Skynet");
+};
+
+# this logs f_skynet to d_skynet but allows it to pass to messages
+log {
+	source(src);
+	source(kernel);
+	filter(f_skynet);
+	destination(d_skynet);
+};
+
+# Skynet creates a lot of iptables-related log messages,
+#   put most of them into /opt/var/log/skynet-0.log
+filter f_blocked {
+	message("BLOCKED -") or
+	message("DROP IN=");
+};
+
+# this logs f_blocked to d_skynet and nowhere else
+log {
+	source(src);
+	source(kernel);
+	filter(f_blocked);
+	destination(d_skynet);
+	flags(final);
+};
+
+#eof

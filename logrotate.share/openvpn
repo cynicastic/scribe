@@ -1,0 +1,8 @@
+/opt/var/log/openvpn.log {
+    monthly
+    rotate 9
+    postrotate
+        /usr/bin/killall -HUP vpnserver1
+        /usr/bin/killall -HUP vpnserver2
+    endscript
+}
