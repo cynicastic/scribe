@@ -182,17 +182,13 @@ install(){
 
 # setup logrotate
     setup_lr(){
-    # don't overwrite existing logrotate cron job, respect user's choice to change logrotate run time
-    # assumes: 1) since entware is installed, post-mount exists and is properly executable
-    #          2) if logrotate cron job is active, then user has started it via script
-        if [ -z "$( cru l | grep $lr )" ]
-        then
-            printf "$ansi_blue adding logrotate cron job$ansi_white ..."
-            [ -z "$( grep $lr $postmount )" ] && echo -e '\ncru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
-            cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
-        else
-            printf "$ansi_yellow logrotate cron job already running, skipping cron job creation$ansi_white ..."
-        fi
+    # assumes: 1) since entware is required / installed, post-mount exists and is properly executable
+    #          2) if this is called, it is either new intsall or forced, so remove any existing
+        printf "$ansi_blue adding logrotate cron job$ansi_white ..."
+        sed -i '/cru a logrotate/d' $postmount
+        [ -n "$( cru l | grep $lr )" ] && cru d $lr
+        echo -e '\ncru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
+        cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
         finis
     }
 
