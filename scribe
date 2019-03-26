@@ -18,6 +18,9 @@
 #
 # Bad ideas and code are entirely mine
 #
+# install command:
+#   /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
+#
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
 # set -x
@@ -197,11 +200,8 @@ install(){
     setup_scribe(){
         printf "$ansi_white copying scribe script ..."
         cp -pf $scribe_dir/$scribe_name $scribe_script
-        if [ -d "/opt/bin" ] && [ ! -f "/opt/bin/$scribe_name" ] && [ -f "$scribe_script" ]
-        then
-            chmod 0755 $scribe_script
-            ln -s $scribe_script /opt/bin
-        fi
+        chmod 0755 $scribe_script
+        [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
         finis
     }
 
@@ -286,13 +286,12 @@ case $action in
         if [ ! -e $syslogngloc ]
 		then
 			install "$sng"
-            $syslogng_scriptloc start
 		elif force_install "$sng"
         then
             $syslogng_scriptloc stop
             install "$sng" "FORCE"
-            $syslogng_scriptloc start
         fi
+        [ -z "$( pidof $sng )" ] && $syslogng_scriptloc start
 
         if [ ! -e $logrotateloc ]
         then
