@@ -1,4 +1,4 @@
-# ~ scribe ~ Entware syslog-ng and logrotate installer for AsusWRT-Merlin
+# ~ scribe ~ Entware syslog-ng and logrotate installer for Asuswrt-Merlin
 
 Completing this README is obviously on my ToDo list ...
 

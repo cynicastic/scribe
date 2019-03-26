@@ -1,0 +1,376 @@
+#!/bin/sh
+#tof
+
+#                        _            
+#                     _ ( )           
+#   ___    ___  _ __ (_)| |_      __  
+# /',__) /'___)( '__)| || '_`\  /'__`\
+# \__, \( (___ | |   | || |_) )(  ___/
+# (____/`\____)(_)   (_)(_,__/'`\____)
+#                                    
+# Coded by cynicastic
+#
+# Version 1.x series is cli-driven
+# Version 2.x series will be menu-driven (cli will still work)
+#
+# Original interest in syslog-ng on Asuswrt-Merlin inspired by tomsk & kvic
+# Good ideas and code borrowed heavily from Adamm, Jack Yaz, thelonelycoder, & Xentrx
+#
+# Bad ideas and code are entirely mine
+#
+# shellcheck disable=SC2059
+# SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
+# set -x
+
+
+# scribe constants
+readonly scribe_ver="v0.3_1"
+readonly scribe_branch="master"
+readonly scribe_name="scribe"
+readonly scribe_author="cynicastic"
+readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/"
+readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
+readonly scribe_lock="$TMP/$scribe_name.lock"
+readonly scribe_script="/jffs/scripts/$scribe_name"
+
+# script constants
+readonly sng="syslog-ng"
+readonly lr="logrotate"
+readonly syslogng_scriptloc="/opt/etc/init.d/S01$sng"
+readonly syslogngloc="/opt/sbin/$sng"
+readonly logrotateloc="/opt/sbin/$lr"
+readonly syslogng_conf="/opt/etc/$sng.conf"
+readonly logrotate_conf="/opt/etc/$lr.conf"
+readonly syslogng_d="/opt/etc/$sng.d"
+readonly logrotate_d="/opt/etc/$lr.d"
+readonly syslogng_share="/opt/share/$sng"
+readonly logrotate_share="/opt/share/$lr"
+#
+readonly postmount="/jffs/scripts/post-mount"
+readonly init_d="/opt/etc/init.d"
+
+# color constants
+readonly ansi_red="\033[1;31m"
+readonly ansi_white="\033[1;37m"
+readonly ansi_green="\033[1;32m"
+readonly ansi_yellow="\033[1;33m"
+readonly ansi_blue="\033[1;34m"
+readonly ansi_bell="\007"
+readonly ansi_blink="\033[5m"
+readonly ansi_std="\033[m"
+readonly ansi_rev="\033[7m"
+readonly ansi_ul="\033[4m"
+
+# require Entware
+if [ ! -x "/opt/bin/opkg" ]; then printf "\n\n$ansi_red Entware is required but not installed - exiting! $ansi_std\n\n"; exit 1; fi
+
+# script-wide variables
+action=$1
+got_zip="no"
+[ "X$TMP" = "X" ] && TMP=/opt/tmp
+
+skynet_installed="no"
+[ -x /jffs/scripts/firewall ] && skynet_installed="yes"
+
+scribe_installed="$ansi_red Not Installed"
+[ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+
+
+###################
+#### functions ####
+###################
+
+alive(){ printf "     $ansi_green alive. $ansi_std\n"; }
+
+dead(){ printf "     $ansi_red dead. $ansi_std\n"; }
+
+finis (){ printf "$ansi_green done. $ansi_std\n"; }
+
+not_installed(){ printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_red NOT$ansi_white installed! $ansi_std\n"; }
+
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
+enter_to(){ printf "\n\nPress [Enter] to $1 ";read -r;echo; }
+
+logo(){
+    clear
+    printf "                            _             \n"
+    printf "                         _ ( )            \n"
+    printf "       ___    ___  _ __ (_)| |_      __   \n"
+    printf "     /',__) /'___)( '__)| || '_\`\\  /'__\`\\ \n"
+    printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
+    printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
+    printf "                                          \n"
+    printf "     %-10s       Coded by cynicastic \n" "$scribe_ver"
+}
+
+force_install(){
+    printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_white already installed!\n$ansi_yellow Forcing installation may overwrite modified configueration files!\n$ansi_white Do you want to force re-installation of $1 [y|n]? $ansi_std";
+    read -r reinstall
+    case "$reinstall" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+install(){
+
+###############################
+#### install sub-functions ####
+###############################
+
+# determine syslog-ng conf file version
+    sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
+
+# for pre-3.19 conf fiile, move syslog-ng.conf @include line to start of file or everything will be written to messages
+    sng_conf_fix(){
+        printf "$ansi_blue moving @include line in $syslogng_conf file$ansi_white ..."
+        sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
+        sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
+    }
+
+# configure Skynet to use $skynetlog
+    skynet_cfg(){
+        if [ "$skynet_installed" = "yes" ]
+        then
+            printf "$ansi_blue setting skynet log file location$ansi_white ..."
+            skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
+            sh /jffs/scripts/firewall settings syslog "$skynetlog"
+        else
+            mv $syslogng_d/syslog $syslogng_share/examples/
+            printf "$ansi_red Skynet NOT installed$ansi_white ..."
+        fi
+    }
+
+# print warning about no skynet
+    no_skynet(){
+        printf "\nSkynet$ansi_red NOT$ansi_std installed on this system!\n"
+        printf "If Skynet is installed at a later date, re-run this\n"
+        printf "script and force installation of syeslog-ng to log the\n"
+        printf "iptables messages used by Skynet to thier own logfile.\n"
+        enter_to continue
+    }
+
+# setup example files in /usr/share
+    setup_exp(){
+        [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share"
+        [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share"
+        cp -pu $scribe_dir/"$1".d/* $d_dir/
+        [ ! -d $share ] && mkdir $share
+        [ ! -d $share/examples ] && mkdir $share/examples
+        cp -pu $scribe_dir/"$1".share/* $share/examples/
+    }
+
+# setup syslog-ng
+    setup_sng(){
+        printf "$ansi_white setting up syslog-ng ..."
+        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
+    # add source script to kill syslogd 
+        cp -pu $scribe_dir/init.d/rc.func.syslog-ng $init_d/
+        sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $init_d/S01syslog-ng
+    # edit skynet config
+        skynet_cfg
+        finis
+    }
+
+# setup logrotate
+    setup_lr(){
+    # don't overwrite existing logrotate cron job, respect user's choice to change logrotate run time
+    # assumes: 1) since entware is installed, post-mount exists and is properly executable
+    #          2) if logrotate cron job is active, then user has started it via script
+        if [ -z "$( cru l | grep $lr )" ]
+        then
+            printf "$ansi_blue adding logrotate cron job$ansi_white ..."
+            [ -z "$( grep $lr $postmount )" ] && echo -e '\ncru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
+            cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
+        else
+            printf "$ansi_yellow logrotate cron job already running, skipping cron job creation$ansi_white ..."
+        fi
+        finis
+    }
+
+# setup scribe
+    setup_scribe(){
+        printf "$ansi_white copying scribe script ..."
+        cp -pf $scribe_dir/$scribe_name $scribe_script
+        if [ -d "/opt/bin" ] && [ ! -f "/opt/bin/$scribe_name" ] && [ -f "$scribe_script" ]
+        then
+            chmod 0755 $scribe_script
+            ln -s $scribe_script /opt/bin
+        fi
+        finis
+    }
+
+##############################
+#### install main routine ####
+##############################
+
+    if [ "$got_zip" = "no" ]
+    then
+        [ -e "$scribe_dir" ] && rm -rf $scribe_dir*
+        curl -L https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
+        unzip $TMP/$scribe_name.zip -d $TMP
+        opkg update
+        got_zip="yes"
+    fi
+
+    force=""
+    [ "X$2" = "XFORCE" ] && force="--force-reinstall"
+
+    printf "$ansi_white setting up $1 ..."
+    if [ "$1" = "$scribe_name" ]
+    then
+        setup_scribe
+    else
+        opkg install $force $1 
+        setup_exp $1
+        [ "$1" = "$sng" ] && setup_sng
+        [ "$1" = "$lr"  ] && setup_lr
+    fi
+}
+
+uninstall(){
+    printf "\n$ansi_red UNINSTALL not yet implemented! $ansi_std\n\n"
+    # N.B. requiring rounter reboot after uninstall is probably best way to ensure syslogd restarted
+}
+	
+check_sng_run(){
+	printf "\n$ansi_white Checking syslog-ng daemon... "
+    if [ -z "$( pidof $sng )" ]
+	then
+		dead
+        return 1
+	else
+		alive
+	fi
+}
+
+check_lr_run(){
+	printf "\n$ansi_white Checking logrotate cron job... "
+    if [ -z "$( cru l | grep $lr )" ]
+	then
+		dead
+        return 1
+	else
+		alive
+	fi
+}
+
+scribe_menu(){
+	printf "\n$ansi_yellow MENU not yet implemented! $ansi_std\n\n"
+}
+
+
+##############
+#### MAIN ####
+##############
+
+logo
+
+local_ver=$( ver_num "$scribe_ver" )
+installed_ver=$( ver_num "$scribe_installed" )
+
+if [ "X$action" = "X" ]
+then
+	scribe_menu
+fi
+
+case $action in
+
+# install scribe
+	install)
+        if [ ! -e $syslogngloc ]
+		then
+			install "$sng"
+            $syslogng_scriptloc start
+		elif force_install "$sng"
+        then
+            $syslogng_scriptloc stop
+            install "$sng" "FORCE"
+            $syslogng_scriptloc start
+        fi
+
+        if [ ! -e $logrotateloc ]
+        then
+            install "$lr"
+        elif force_install "$lr"
+        then
+            install "$lr" "FORCE"
+        fi
+
+        if [ ! -e $scribe_script ]
+        # TODO:if [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
+        then
+            install "$scribe_name"
+        elif force_install "$scribe_name"
+        then
+            install "$scribe_name" "FORCE"
+        fi
+
+        [ "$skynet_installed" = "no" ] && no_skynet
+        ;;
+
+# uninstall scribe
+	uninstall | remove)
+        if [ -e $syslogngloc ]
+        then
+            uninstall $sng
+        else
+            not_installed $sng
+        fi
+
+        if [ -e $logrotateloc ]
+        then
+            uninstall $lr
+        else
+            not_installed $lr
+        fi
+        ;;
+
+# show total combined config
+	show-config | config)
+		if [ -e $syslogngloc ]
+		then
+			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && cat /tmp/syslog-ng-complete.conf
+		else
+            not_installed $sng
+		fi
+		;;
+
+# check syntax
+    check-syntax | syntax)
+        if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi
+        ;;
+
+# verify syslog-ng is running and logrotate is listed in 'cru l'
+    status)
+		check_sng_run
+		check_lr_run
+        printf "\n$ansi_white scribe installed version:$ansi_green $scribe_installed $ansi_std\n\n"
+        # printf "\n$ansi_white scribe GitHub version:$ansi_green $scribe_github $ansi_std\n\n"
+		;;
+
+# restart (or start if not running) syslog-ng
+	restart)
+		if check_sng_run
+		then
+			printf "$ansi_yellow Restarting syslog-ng ... $ansi_std\n"
+			$syslogng_scriptloc restart
+		else
+			printf "$ansi_white syslog-ng$ansi_red NOT$ansi_white running! $ansi_yellow Starting syslog-ng ... $ansi_std\n"
+			$syslogng_scriptloc start
+		fi
+		;;
+
+# unrecognized command
+    *)
+	 	printf "$ansi_white Usage: $0 ( install | uninstall | show-config | check-syntax | status | restart )$ansi_std\n\n"
+		exit 1
+		;;
+esac
+
+#eof
