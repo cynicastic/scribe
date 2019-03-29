@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.3_1"
+readonly scribe_ver="v0.4_0"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -142,9 +142,9 @@ install(){
         then
             printf "$ansi_blue setting skynet log file location$ansi_white ..."
             skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
-            sh /jffs/scripts/firewall settings syslog "$skynetlog"
+            sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         else
-            mv $syslogng_d/syslog $syslogng_share/examples/
+            mv $syslogng_d/skynet $syslogng_share/examples/
             printf "$ansi_red Skynet NOT installed$ansi_white ..."
         fi
     }
@@ -183,12 +183,12 @@ install(){
 # setup logrotate
     setup_lr(){
     # assumes: 1) since entware is required / installed, post-mount exists and is properly executable
-    #          2) if this is called, it is either new intsall or forced, so remove any existing
+    #          2) if this is called, it is either new intsall or forced, so remove any existing first
         printf "$ansi_blue adding logrotate cron job$ansi_white ..."
         sed -i '/cru a logrotate/d' $postmount
         [ -n "$( cru l | grep $lr )" ] && cru d $lr
         echo -e '\ncru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
-        cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
+        cru a $lr "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
         finis
     }
 
@@ -230,7 +230,43 @@ install(){
 }
 
 uninstall(){
-    printf "\n$ansi_red UNINSTALL not yet implemented! $ansi_std\n\n"
+    
+    [ -n "$( pidof $sng )" ] && $syslogng_scriptloc stop
+    if [ -e $syslogngloc ]
+    then
+        sed -i '/rc.func.syslog-ng/d' $init_d/S01syslog-ng
+        rm $init_d/rc.func.syslog-ng
+        opkg remove "$sng"
+        rm -rf $syslogng_d
+        rm -rf $syslogng_share
+        rm $syslogng_conf
+        rm /tmp/syslog.log
+        [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
+    else
+        not_installed "$sng"
+    fi
+
+    if [ -e $logrotateloc ]
+    then
+        sed -i '/cru a logrotate/d' $postmount
+        [ -n "$( cru l | grep $lr )" ] && cru d $lr
+        opkg remove "$lr"
+        rm -rf $logrotate_d
+        rm -rf $logrotate_share
+        rm $logrotate_conf
+    else
+        not_installed "$lr"
+    fi
+
+    if [ -e $scribe_script ]
+    then
+        rm /opt/bin/$scribe_name
+        rm $scribe_script
+    else
+        not_installed "$scribe_name"
+    fi
+
+
     # N.B. requiring rounter reboot after uninstall is probably best way to ensure syslogd restarted
 }
 	
@@ -298,39 +334,54 @@ case $action in
         fi
 
         if [ ! -e $scribe_script ]
-        # TODO:if [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
+        # TODO: [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
         then
+            [ -e $scribe_script ] && printf "$ansi_white New version of $scribe_name found, updating ..."
             install "$scribe_name"
         elif force_install "$scribe_name"
         then
             install "$scribe_name" "FORCE"
         fi
 
+        rm $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
         ;;
 
 # uninstall scribe
 	uninstall | remove)
-        if [ -e $syslogngloc ]
-        then
-            uninstall $sng
-        else
-            not_installed $sng
-        fi
+        printf "\n\n$ansi_white"
+        printf "                *********************\n"
+        printf "                ***$ansi_red W*A*R*N*I*N*G$ansi_white ***\n"
+        printf "                *********************\n\n"
+        printf "    This will remove the $ansi_yellow $sng $ansi_white and $ansi_yellow $lr $ansi_white packages!!\n"
+        printf "    Ensure you have backed up any configuration files you wish\n"
+        printf "    to keep.  All configuration files in $ansi_yellow $syslogng_d $ansi_white \n"
+        printf "    and $ansi_yellow $logrotate_d $ansi_white will be deleted!\n\n"
+        printf "                *********************\n"
+        printf "                ***$ansi_red W*A*R*N*I*N*G$ansi_white ***\n"
+        printf "                *********************\n\n"
+        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $ansi_std";
+        read -r wipeit
+        case "$wipeit" in
+            YES)
+                uninstall
+                ;;
+            *)
+                printf "\n\n$ansi_white *** UNINSTALL ABORTED! ***$ansi_std\n\n"
+                ;;
+        esac
+        ;;
 
-        if [ -e $logrotateloc ]
-        then
-            uninstall $lr
-        else
-            not_installed $lr
-        fi
+# update scribe
+    update)
+        # TODO:if [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
         ;;
 
 # show total combined config
 	show-config | config)
 		if [ -e $syslogngloc ]
 		then
-			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && cat /tmp/syslog-ng-complete.conf
+			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && cat /tmp/syslog-ng-complete.conf | less
 		else
             not_installed $sng
 		fi
@@ -363,9 +414,10 @@ case $action in
 
 # unrecognized command
     *)
-	 	printf "$ansi_white Usage: $0 ( install | uninstall | show-config | check-syntax | status | restart )$ansi_std\n\n"
+	 	printf "$ansi_white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$ansi_std\n\n"
 		exit 1
 		;;
 esac
 
+printf "\n\n"
 #eof
