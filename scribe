@@ -133,9 +133,9 @@ force_install(){
     esac
 }
 
-sng_syntax (){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
+sng_syntax(){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
 
-dlt(){ [ -e $1 ] && rm $1 }
+dlt(){ [ -e "$1" ] && rm "$1"; }
 
 install(){
 
@@ -179,10 +179,10 @@ install(){
     setup_exp(){
         [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share"
         [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share"
-        cp -pu $scribe_dir/"$1".d/* $d_dir/
+        cp -pu "$scribe_dir"/"$1".d/* $d_dir/
         [ ! -d $share ] && mkdir $share
         [ ! -d $share/examples ] && mkdir $share/examples
-        cp -pu $scribe_dir/"$1".share/* $share/examples/
+        cp -pu "$scribe_dir"/"$1".share/* $share/examples/
     }
 
 # setup syslog-ng
@@ -190,7 +190,7 @@ install(){
         printf "$ansi_white setting up syslog-ng ..."
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
     # add source script to kill syslogd 
-        cp -pu $scribe_dir/init.d/rc.func.syslog-ng $init_d/
+        cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $init_d/S01syslog-ng
     # edit skynet config
         skynet_cfg
@@ -212,7 +212,7 @@ install(){
 # setup scribe
     setup_scribe(){
         printf "$ansi_white copying scribe script ..."
-        cp -pf $scribe_dir/$scribe_name $scribe_script
+        cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
         chmod 0755 $scribe_script
         [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
         finis
@@ -228,8 +228,8 @@ install(){
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
     printf "$ansi_white setting up $1 ..."
-    opkg install $force $1 
-    setup_exp $1
+    opkg install $force "$1" 
+    setup_exp "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
 }
@@ -302,7 +302,7 @@ menu_update(){
     then
         curl -fL --retry 3 "$scribe_repo" -o $scribe_script
     else
-        printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed $scribe_remote
+        printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" "$scribe_installed" "$scribe_remote"
         printf "\n$ansi_white Do you wish to force update [y|n]? $ansi_std"
         read -r forceit
         case "$forceit" in
@@ -328,7 +328,6 @@ scribe_menu(){
 
 logo
 
-local_ver=$( ver_num "$scribe_ver" )
 installed_ver=$( ver_num "$scribe_installed" )
 
 # save a spot for going to the menu (v.2 feature)
@@ -399,7 +398,7 @@ case $action in
 	show-config | config)
 		if [ -e $syslogngloc ]
 		then
-			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && cat /tmp/syslog-ng-complete.conf | less
+			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && less /tmp/syslog-ng-complete.conf
             sng_syntax
 		else
             not_installed $sng
