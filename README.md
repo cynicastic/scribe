@@ -10,10 +10,11 @@ scribe is a syslog-ng and logrotate installer for ASUS routers running Asuswrt-M
 2. Entware installed, preferably using [amtm](https://github.com/decoderman/amtm "amtm")
 3. jffs scripts enabled in the firmware; installing Entware should have taken care of this part
 
-* scribe includes handlers for the logs created by [skynet](https://github.com/Adamm00/IPSet_ASUS "skynet")
+* scribe includes handlers for the logs created by [skynet](https://github.com/Adamm00/IPSet_ASUS "skynet"); if you wish to use these handlers, it is advised to install skynet first.  If skynet is installed after scribe, you will have to re-run the installation and force installation.
 
 ### Installing
 
+SSH into the router and run:
 ```bash
 /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
 ```
@@ -24,13 +25,13 @@ This software was written by someone who very likely didn't know what they were 
 
 ## ToDo:
 
-1. Expand the README - [ ]
-2. Add a menu - [ ]
-3. Add md5 checksum for looking for new versions - [ ]
-4. Provide and ask to install a simplified syslog-ng.conf file - [ ]
-5. ... - [ ]
-6. ????? - [ ]
-7. Profit! - [ ]
+- [ ] Expand the README
+- [ ] Add a menu
+- [ ] Add md5 checksum when checking for new versions
+- [ ] Provide and ask to install a simplified syslog-ng.conf file
+- [ ] ...
+- [ ] ?????
+- [ ] Profit!
 
 ## Built With
 
