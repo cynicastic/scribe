@@ -27,11 +27,11 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.4_0"
+readonly scribe_ver="v0.4_1"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
-readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/"
+readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_lock="$TMP/$scribe_name.lock"
 readonly scribe_script="/jffs/scripts/$scribe_name"
@@ -108,7 +108,9 @@ logo(){
 }
 
 force_install(){
-    printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_white already installed!\n$ansi_yellow Forcing installation may overwrite modified configueration files!\n$ansi_white Do you want to force re-installation of $1 [y|n]? $ansi_std";
+    printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_white already installed!\n"
+    [ "$1" != "$scribe_name" ] && printf "$ansi_yellow Forcing installation may overwrite modified configueration files!\n"
+    printf "$ansi_white Do you want to force re-installation of $1 [y|n]? $ansi_std"
     read -r reinstall
     case "$reinstall" in
         [yY][eE][sS]|[yY])
@@ -208,7 +210,7 @@ install(){
     if [ "$got_zip" = "no" ]
     then
         [ -e "$scribe_dir" ] && rm -rf $scribe_dir*
-        curl -L https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
+        curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
         unzip $TMP/$scribe_name.zip -d $TMP
         opkg update
         got_zip="yes"
@@ -360,7 +362,7 @@ case $action in
         printf "                *********************\n"
         printf "                ***$ansi_red W*A*R*N*I*N*G$ansi_white ***\n"
         printf "                *********************\n\n"
-        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $ansi_std";
+        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $ansi_std"
         read -r wipeit
         case "$wipeit" in
             YES)
@@ -374,7 +376,26 @@ case $action in
 
 # update scribe
     update)
-        # TODO:if [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
+        curl -fsL --retry 3 $scribe_repo | grep -qF "scribe_ver" || { printf "ERROR - unable to contact remote server - stopping update!"; return 1; }
+        scribe_remote=$( curl -fsL --retry 3 $scribe_repo | grep -qF "scribe_ver" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+        remote_ver=$( ver_num "$scribe_remote" )
+        if [ "$installed_ver" -lt "$remote_ver" ]
+        then
+            curl -fL --retry 3 $scribe_repo -o $scribe_script
+        else
+            printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed, $scribe_remote
+            printf "\n$ansi_white Do you wish to force update [y|n]?$ansi_std"
+            read -r forceit
+            case "$forceit" in
+                [yY][eE][sS]|[yY])
+                    curl -fL --retry 3 $scribe_repo -o $scribe_script && printf "$scribe_name successfully updated.\n"
+                    chmod 0755 $scribe_script
+                    [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+                    ;;
+                *)
+                    printf "$scribe_name not updated!\n"
+            esac
+        fi
         ;;
 
 # show total combined config
