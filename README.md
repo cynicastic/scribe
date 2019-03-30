@@ -9,16 +9,14 @@ One Paragraph of project description goes here
 ### Prerequisites
 
 1. Asuswrt-Merlin running on a supported ASUS router
-2. Entware installed, preferably using [amtm](https://github.com/decoderman/amtm)
+2. Entware installed, preferably using [amtm](https://github.com/decoderman/amtm "amtm")
 3. jffs scripts enabled in the firmware; installing Entware should have taken care of this part
 
 ### Installing
 
-Install via:
-
-code(
+```bash
 /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
-)
+```
 
 ## WARNING
 
@@ -26,17 +24,17 @@ This software was written by someone who very likely didn't know what they were 
 
 ## ToDo:
 
-1. Complete the README [ ]
-2. Add a menu [ ]
-3. Add md5 checksum for looking for new versions [ ]
-4. Provide and ask to install a simplified syslog-ng.conf file [ ]
-5. ... [ ]
-6. ????? [ ]
-7. Profit! [ ]
+1. Complete the README -[ ]
+2. Add a menu -[ ]
+3. Add md5 checksum for looking for new versions -[ ]
+4. Provide and ask to install a simplified syslog-ng.conf file -[ ]
+5. ... -[ ]
+6. ????? -[ ]
+7. Profit! -[ ]
 
 ## Built With
 
-* [vim](https://www.vim.org/) - because vi is always there, so I'm not lost on a clean install.
+* [vim](https://www.vim.org/ "definitely NOT emacs") - because vi is always there, so I'm not lost on a clean install.
 
 ## Contributing
 
