@@ -19,7 +19,7 @@
 # Bad ideas and code are entirely mine
 #
 # install command:
-#   /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
+#   curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
 #
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
@@ -376,24 +376,24 @@ case $action in
 
 # update scribe
     update)
-        curl -fsL --retry 3 $scribe_repo | grep -qF "scribe_ver" || { printf "ERROR - unable to contact remote server - stopping update!"; return 1; }
-        scribe_remote=$( curl -fsL --retry 3 $scribe_repo | grep -qF "scribe_ver" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+        curl -fsN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n"; return 1; }
+        scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
         remote_ver=$( ver_num "$scribe_remote" )
         if [ "$installed_ver" -lt "$remote_ver" ]
         then
-            curl -fL --retry 3 $scribe_repo -o $scribe_script
+            curl -fL --retry 3 "$scribe_repo" -o $scribe_script
         else
-            printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed, $scribe_remote
-            printf "\n$ansi_white Do you wish to force update [y|n]?$ansi_std"
+            printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed $scribe_remote
+            printf "\n$ansi_white Do you wish to force update [y|n]? $ansi_std"
             read -r forceit
             case "$forceit" in
                 [yY][eE][sS]|[yY])
-                    curl -fL --retry 3 $scribe_repo -o $scribe_script && printf "$scribe_name successfully updated.\n"
+                    curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$ansi_white $scribe_name successfully updated.$ansi_std\n"
                     chmod 0755 $scribe_script
                     [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
                     ;;
                 *)
-                    printf "$scribe_name not updated!\n"
+                    printf "\n$ansi_white $scribe_name not updated!$ansi_std\n"
             esac
         fi
         ;;
