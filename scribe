@@ -205,7 +205,7 @@ install(){
         printf "$ansi_blue adding logrotate cron job$ansi_white ..."
         sed -i '/cru a logrotate/d' $postmount
         [ -n "$( cru l | grep $lr )" ] && cru d $lr
-        echo -e '\ncru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
+        echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
         cru a $lr "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
         finis
     }
