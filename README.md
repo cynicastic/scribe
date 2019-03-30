@@ -21,7 +21,7 @@ SSH into the router and run:
 
 ## *WARNING*
 
-This software was written by someone who very likely didn't know what they were doing.  There is a non-zero chance this software will not fucntion as intended, cause irreparable data loss or hardware damage, or accidentally trigger the annihilation of the earth.  End user accepts all these potential outcomes as the unavoidable consequences of existing.
+This software was written by someone who very likely didn't know what they were doing.  There is a non-zero chance this software will not fucntion as intended, cause irreparable data loss and/or hardware damage, or accidentally trigger the annihilation of the earth.  End user accepts all these potential outcomes as the unavoidable consequences of existing.
 
 ## ToDo:
 
@@ -65,4 +65,5 @@ This isn't high school, it's all open book and copying from your neighbor is enc
 
 * Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2 "don't reinvent the wheel")
 
+##### Seriously?
 Are you really still reading this?  I'd have probably lost interest about halfway through.
