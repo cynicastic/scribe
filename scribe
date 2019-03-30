@@ -300,6 +300,29 @@ check_lr_run(){
 	fi
 }
 
+menu_update(){
+    curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n\n"; return 1; }
+    scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+    remote_ver=$( ver_num "$scribe_remote" )
+    if [ "$installed_ver" -lt "$remote_ver" ]
+    then
+        curl -fL --retry 3 "$scribe_repo" -o $scribe_script
+    else
+        printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed $scribe_remote
+        printf "\n$ansi_white Do you wish to force update [y|n]? $ansi_std"
+        read -r forceit
+        case "$forceit" in
+            [yY][eE][sS]|[yY])
+                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$ansi_white $scribe_name successfully updated.$ansi_std\n"
+                chmod 0755 $scribe_script
+                [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+                ;;
+            *)
+                printf "\n$ansi_white $scribe_name not updated!$ansi_std\n"
+        esac
+    fi
+}
+
 scribe_menu(){
 	printf "\n$ansi_yellow menu not yet implemented $ansi_std\n\n"
 }
@@ -322,7 +345,7 @@ installed_ver=$( ver_num "$scribe_installed" )
 
 case $action in
 
-# install scribe
+    # install scribe - syslog-ng and logrotate, update scribe if newer available
 	install)
         if [ ! -e $syslogngloc ]
 		then
@@ -342,15 +365,7 @@ case $action in
             install "$lr" "FORCE"
         fi
 
-        if [ ! -e $scribe_script ]
-        # TODO: [ ! -e $scribe_script ] || # check /jffs/scripts version against GitHub version
-        then
-            [ -e $scribe_script ] && printf "$ansi_white New version of $scribe_name found, updating ..."
-            install "$scribe_name"
-        elif force_install "$scribe_name"
-        then
-            install "$scribe_name" "FORCE"
-        fi
+        menu_update
 
         rm $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
@@ -383,26 +398,7 @@ case $action in
 
 # update scribe
     update)
-        curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n\n"; return 1; }
-        scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-        remote_ver=$( ver_num "$scribe_remote" )
-        if [ "$installed_ver" -lt "$remote_ver" ]
-        then
-            curl -fL --retry 3 "$scribe_repo" -o $scribe_script
-        else
-            printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" $scribe_installed $scribe_remote
-            printf "\n$ansi_white Do you wish to force update [y|n]? $ansi_std"
-            read -r forceit
-            case "$forceit" in
-                [yY][eE][sS]|[yY])
-                    curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$ansi_white $scribe_name successfully updated.$ansi_std\n"
-                    chmod 0755 $scribe_script
-                    [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-                    ;;
-                *)
-                    printf "\n$ansi_white $scribe_name not updated!$ansi_std\n"
-            esac
-        fi
+        menu_update
         ;;
 
 # show total combined config
