@@ -376,7 +376,7 @@ case $action in
 
 # update scribe
     update)
-        curl -fsN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n"; return 1; }
+        curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n\n"; return 1; }
         scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
         remote_ver=$( ver_num "$scribe_remote" )
         if [ "$installed_ver" -lt "$remote_ver" ]
