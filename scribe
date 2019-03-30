@@ -110,7 +110,7 @@ logo(){
 getzip(){
     if [ "$got_zip" = "no" ]
     then
-        [ -e "$scribe_dir" ] && rm -rf $scribe_dir*
+        dldir "$scribe_dir"
         curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
         unzip $TMP/$scribe_name.zip -d $TMP
         opkg update
@@ -136,6 +136,7 @@ force_install(){
 sng_syntax(){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
 
 dlt(){ [ -e "$1" ] && rm "$1"; }
+dldir(){ [ -e "$1" ] && rm -rf "$1"; }
 
 install(){
 
@@ -242,8 +243,8 @@ uninstall(){
         sed -i '/rc.func.syslog-ng/d' $init_d/S01syslog-ng
         dlt $init_d/rc.func.syslog-ng
         opkg remove "$sng"
-        rm -rf $syslogng_d
-        rm -rf $syslogng_share
+        dldir $syslogng_d
+        dldir $syslogng_share
         dlt $syslogng_conf
         dlt /tmp/syslog.log
         [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
@@ -256,8 +257,8 @@ uninstall(){
         sed -i '/cru a logrotate/d' $postmount
         [ -n "$( cru l | grep $lr )" ] && cru d $lr
         opkg remove "$lr"
-        rm -rf $logrotate_d
-        rm -rf $logrotate_share
+        dldir $logrotate_d
+        dldir $logrotate_share
         dlt $logrotate_conf
     else
         not_installed "$lr"
