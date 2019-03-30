@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.4_2"
+readonly scribe_ver="v0.4_3"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -93,7 +93,7 @@ not_installed(){ printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_red NOT$ansi
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-enter_to(){ printf "\n\nPress [Enter] to $1 ";read -r;echo; }
+enter_to(){ printf "\n\n$ansi_white Press [Enter] to $1 $ansi_std";read -r;echo; }
 
 logo(){
     clear
@@ -105,6 +105,17 @@ logo(){
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "                                          \n"
     printf "     %-10s       Coded by cynicastic \n" "$scribe_ver"
+}
+
+getzip(){
+    if [ "$got_zip" = "no" ]
+    then
+        [ -e "$scribe_dir" ] && rm -rf $scribe_dir*
+        curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
+        unzip $TMP/$scribe_name.zip -d $TMP
+        opkg update
+        got_zip="yes"
+    fi
 }
 
 force_install(){
@@ -123,6 +134,8 @@ force_install(){
 }
 
 sng_syntax (){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
+
+dlt(){ [ -e $1 ] && rm $1 }
 
 install(){
 
@@ -209,47 +222,30 @@ install(){
 #### install main routine ####
 ##############################
 
-    if [ "$got_zip" = "no" ]
-    then
-        [ -e "$scribe_dir" ] && rm -rf $scribe_dir*
-        curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
-        unzip $TMP/$scribe_name.zip -d $TMP
-        opkg update
-        got_zip="yes"
-    fi
+    getzip
 
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
     printf "$ansi_white setting up $1 ..."
-    if [ "$1" = "$scribe_name" ]
-    then
-        setup_scribe
-    else
-        opkg install $force $1 
-        setup_exp $1
-        [ "$1" = "$sng" ] && setup_sng
-        [ "$1" = "$lr"  ] && setup_lr
-    fi
+    opkg install $force $1 
+    setup_exp $1
+    [ "$1" = "$sng" ] && setup_sng
+    [ "$1" = "$lr"  ] && setup_lr
 }
-
-###############################
-#### end of install script ####
-###############################
 
 
 uninstall(){
-    
     [ -n "$( pidof $sng )" ] && $syslogng_scriptloc stop
     if [ -e $syslogngloc ]
     then
         sed -i '/rc.func.syslog-ng/d' $init_d/S01syslog-ng
-        rm $init_d/rc.func.syslog-ng
+        dlt $init_d/rc.func.syslog-ng
         opkg remove "$sng"
         rm -rf $syslogng_d
         rm -rf $syslogng_share
-        rm $syslogng_conf
-        rm /tmp/syslog.log
+        dlt $syslogng_conf
+        dlt /tmp/syslog.log
         [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
     else
         not_installed "$sng"
@@ -262,20 +258,18 @@ uninstall(){
         opkg remove "$lr"
         rm -rf $logrotate_d
         rm -rf $logrotate_share
-        rm $logrotate_conf
+        dlt $logrotate_conf
     else
         not_installed "$lr"
     fi
 
-    if [ -e $scribe_script ]
-    then
-        rm /opt/bin/$scribe_name
-        rm $scribe_script
-    else
-        not_installed "$scribe_name"
-    fi
+    dlt /opt/bin/$scribe_name
+    dlt $scribe_script
 
-    # N.B. requiring rounter reboot after uninstall is probably best way to ensure syslogd restarted
+    printf "\n$ansi_white $sng, $lr, and $scribe_name have been removed from the system.\n"
+    printf " The router will now reboot to ensure the default syslogd is properly started.\n"
+    enter_to "reboot"
+    reboot; exit 0
 }
 	
 check_sng_run(){
@@ -345,7 +339,7 @@ installed_ver=$( ver_num "$scribe_installed" )
 
 case $action in
 
-    # install scribe - syslog-ng and logrotate, update scribe if newer available
+    # install syslog-ng and logrotate, update scribe if newer available
 	install)
         if [ ! -e $syslogngloc ]
 		then
@@ -367,7 +361,7 @@ case $action in
 
         menu_update
 
-        rm $TMP/$scribe_name.zip
+        dlt $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
         ;;
 
