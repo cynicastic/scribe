@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.4_1"
+readonly scribe_ver="v0.4_2"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -121,6 +121,8 @@ force_install(){
             ;;
     esac
 }
+
+sng_syntax (){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
 
 install(){
 
@@ -231,6 +233,11 @@ install(){
     fi
 }
 
+###############################
+#### end of install script ####
+###############################
+
+
 uninstall(){
     
     [ -n "$( pidof $sng )" ] && $syslogng_scriptloc stop
@@ -268,7 +275,6 @@ uninstall(){
         not_installed "$scribe_name"
     fi
 
-
     # N.B. requiring rounter reboot after uninstall is probably best way to ensure syslogd restarted
 }
 	
@@ -295,7 +301,7 @@ check_lr_run(){
 }
 
 scribe_menu(){
-	printf "\n$ansi_yellow MENU not yet implemented! $ansi_std\n\n"
+	printf "\n$ansi_yellow menu not yet implemented $ansi_std\n\n"
 }
 
 
@@ -308,10 +314,11 @@ logo
 local_ver=$( ver_num "$scribe_ver" )
 installed_ver=$( ver_num "$scribe_installed" )
 
-if [ "X$action" = "X" ]
-then
-	scribe_menu
-fi
+# save a spot for going to the menu (v.2 feature)
+# if [ "X$action" = "X" ]
+# then
+# 	scribe_menu
+# fi
 
 case $action in
 
@@ -403,6 +410,7 @@ case $action in
 		if [ -e $syslogngloc ]
 		then
 			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && cat /tmp/syslog-ng-complete.conf | less
+            sng_syntax
 		else
             not_installed $sng
 		fi
@@ -410,7 +418,7 @@ case $action in
 
 # check syntax
     check-syntax | syntax)
-        if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi
+        sng_syntax
         ;;
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
