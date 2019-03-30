@@ -6,55 +6,33 @@ One Paragraph of project description goes here
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
+1. Asuswrt-Merlin running on a supported ASUS router
+2. Entware installed, preferably using [amtm](https://github.com/decoderman/amtm)
+3. jffs scripts enabled in the firmware; installing Entware should have taken care of this part
 
 ### Installing
 
 Install via:
 
-```
+code(
 /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
-```
+)
 
-And repeat
+## WARNING
 
-```
-until finished
-```
+This software was written by someone who very likely didn't know what they were doing.  There is a non-zero chance this software will not fucntion as intended, cause irreparable data loss or hardware damage, or accidentally trigger the annihilation of the earth.  End user accepts all these potential outcomes as the unavoidable consequences of existing.
 
-End with an example of getting some data out of the system or using it for a little demo
+## ToDo:
 
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
+1. Complete the README [ ]
+2. Add a menu [ ]
+3. Add md5 checksum for looking for new versions [ ]
+4. Provide and ask to install a simplified syslog-ng.conf file [ ]
+5. ... [ ]
+6. ????? [ ]
+7. Profit! [ ]
 
 ## Built With
 
@@ -62,7 +40,11 @@ Add additional notes about how to deploy this on a live system
 
 ## Contributing
 
+#### Code:
 This has been a learning project for me, so I'm probably more married to my way of doing things than I should be.  Not to say suggestions aren't appreciated - they are and will be considered; but they are likely to be altered to my way of thinking about things if I add them, even if your way is clearly better.
+
+#### Money:
+Even if you think this is the best thing since sliced bread, please do not enquire about sending me money.  If I accepted money, I'll feel obligated to keep improving this, and I've got more than enough obligations in life at this point.  
 
 ## Authors
 
