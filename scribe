@@ -286,12 +286,12 @@ check_sng_run(){
 
 check_lr_run(){
 	printf "\n$ansi_white Checking logrotate cron job... "
-    if [ -z "$( cru l | grep $lr )" ]
+    if cru l | grep -q $lr
 	then
+		alive
+	else
 		dead
         return 1
-	else
-		alive
 	fi
 }
 
