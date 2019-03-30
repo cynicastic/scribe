@@ -1,8 +1,6 @@
 # ~ scribe ~ Entware syslog-ng and logrotate installer for Asuswrt-Merlin
 
-Completing this README is obviously on my ToDo list ...
-
-One Paragraph of project description goes here
+scribe is a syslog-ng and logrotate installer for ASUS routers running Asuswrt-Merlin
 
 ## Getting Started
 
@@ -11,6 +9,8 @@ One Paragraph of project description goes here
 1. Asuswrt-Merlin running on a supported ASUS router
 2. Entware installed, preferably using [amtm](https://github.com/decoderman/amtm "amtm")
 3. jffs scripts enabled in the firmware; installing Entware should have taken care of this part
+
+* scribe includes handlers for the logs created by [skynet](https://github.com/Adamm00/IPSet_ASUS "skynet")
 
 ### Installing
 
@@ -24,13 +24,13 @@ This software was written by someone who very likely didn't know what they were 
 
 ## ToDo:
 
-1. Complete the README -[ ]
-2. Add a menu -[ ]
-3. Add md5 checksum for looking for new versions -[ ]
-4. Provide and ask to install a simplified syslog-ng.conf file -[ ]
-5. ... -[ ]
-6. ????? -[ ]
-7. Profit! -[ ]
+1. Expand the README - [ ]
+2. Add a menu - [ ]
+3. Add md5 checksum for looking for new versions - [ ]
+4. Provide and ask to install a simplified syslog-ng.conf file - [ ]
+5. ... - [ ]
+6. ????? - [ ]
+7. Profit! - [ ]
 
 ## Built With
 
@@ -61,6 +61,6 @@ This isn't high school, it's all open book and copying from your neighbor is enc
     * thelonelycoder
     * Xentrk
 
-* Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
+* Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2 "don't reinvent the wheel")
 
 Are you really still reading this?  I'd have probably lost interest about halfway through.
