@@ -25,10 +25,11 @@ This software was written by someone who very likely didn't know what they were 
 
 ## ToDo:
 
-- [ ] Expand this README
-- [ ] Add a menu
-- [ ] Add md5 checksum when checking for new versions
-- [ ] Provide and ask to install a simplified syslog-ng.conf file
+- [ ] Expand this README (version 0.x)
+- [ ] Alpha and Beta testing (version 0.x)
+- [ ] Add md5 checksum when checking for new versions (version 1.x)
+- [ ] Provide and ask to install a simplified syslog-ng.conf file (version 1.x)
+- [ ] Add a menu (version 2.x)
 - [ ] ...
 - [ ] ?????
 - [ ] Profit!
