@@ -6,7 +6,7 @@
 
 ### Prerequisites
 
-1. **Asuswrt-Merlin** running on a supported ASUS router
+1. [Asuswrt-Merlin](https://asuswrt.lostrealm.ca/ "Pure Freaking Magic") running on a supported ASUS router
 2. **Entware** installed, preferably using [amtm](https://github.com/decoderman/amtm "amtm")
 3. jffs scripts enabled in the firmware; installing **Entware** should have taken care of this part
 
