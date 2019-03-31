@@ -369,6 +369,7 @@ case $action in
         then
             setup_scribe
         elif force_install "$scribe_name"
+        then
             setup_scribe
         fi
 
