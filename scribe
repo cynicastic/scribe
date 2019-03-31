@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_3"
+readonly scribe_ver="v0.5_4"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -237,6 +237,9 @@ uninstall(){
     then
         sed -i '/rc.func.syslog-ng/d' $init_d/S01syslog-ng
         dlt $init_d/rc.func.syslog-ng
+        dlt /tmp/syslog.log
+        dldir /jffs/syslog.log
+        dldir /jffs/syslog.log-1
         opkg remove "$sng"
         dldir $syslogng_d
         dldir $syslogng_share
