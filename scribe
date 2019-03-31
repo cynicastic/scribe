@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_1"
+readonly scribe_ver="v0.5_2"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -217,20 +217,9 @@ install(){
         finis
     }
 
-# setup scribe
-    setup_scribe(){
-        printf "$white setting up scribe ..."
-        cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
-        chmod 0755 $scribe_script
-        [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-        finis
-    }
-
 ##############################
 #### install main routine ####
 ##############################
-
-    getzip
 
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
@@ -240,7 +229,6 @@ install(){
     setup_exp "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
-    [ ! -f "/opt/bin/$scribe_name" ] && setup_scribe
 }
 
 
@@ -326,6 +314,14 @@ menu_update(){
     fi
 }
 
+setup_scribe(){
+    printf "$white setting up scribe ..."
+    cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
+    chmod 0755 $scribe_script
+    [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+    finis
+}
+
 scribe_menu(){
 	printf "\n$yellow menu not yet implemented $std\n\n"
 }
@@ -347,8 +343,10 @@ installed_ver=$( ver_num "$scribe_installed" )
 
 case $action in
 
-    # install syslog-ng and logrotate, update scribe if newer available
+# install syslog-ng, logrotate, & scribe script
 	install)
+        getzip
+
         if [ ! -e $syslogngloc ]
 		then
 			install "$sng"
@@ -357,7 +355,7 @@ case $action in
             $syslogng_scriptloc stop
             install "$sng" "FORCE"
         fi
-        [ -z "$( pidof $sng )" ] && $syslogng_scriptloc start
+        $syslogng_scriptloc start
 
         if [ ! -e $logrotateloc ]
         then
@@ -367,7 +365,12 @@ case $action in
             install "$lr" "FORCE"
         fi
 
-        # ToDo: ensure script is in /jffs/scripts
+        if [ ! -e "/opt/bin/$scribe_name" ]
+        then
+            setup_scribe
+        elif force_install "$scribe_name"
+            setup_scribe
+        fi
 
         dlt $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
@@ -441,7 +444,7 @@ case $action in
 
 # unrecognized command
     *)
-	 	printf "$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$std\n\n"
+	 	printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$std\n\n"
 		exit 1
 		;;
 esac
