@@ -59,11 +59,13 @@ This isn't high school, it's all open book and copying from your neighbor is enc
     * Adamm
     * Jack Yaz
     * kvic
+    * Martineau
     * Odkrys
     * thelonelycoder
     * Xentrk
+* I'm sure I missed someone, if it's you, I'm sorry, it wasn't intentional.  
 
 * Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2 "don't reinvent the wheel")
 
-##### Seriously?
+#### Seriously?
 Are you really still reading this?  I'd have probably lost interest about halfway through.
