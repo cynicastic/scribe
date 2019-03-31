@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_2"
+readonly scribe_ver="v0.5_3"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -174,15 +174,6 @@ install(){
         fi
     }
 
-# print warning about no skynet
-    no_skynet(){
-        printf "\nSkynet is$red NOT$std installed on this system!\n"
-        printf "If Skynet is installed at a later date, re-run this\n"
-        printf "script and force installation of syslog-ng to log the\n"
-        printf "iptables messages used by Skynet to thier own logfile.\n"
-        enter_to continue
-    }
-
 # setup example files in /usr/share
     setup_exp(){
         [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share"
@@ -231,6 +222,14 @@ install(){
     [ "$1" = "$lr"  ] && setup_lr
 }
 
+
+no_skynet(){
+    printf "\nSkynet is$red NOT$std installed on this system!\n"
+    printf "If Skynet is installed at a later date, re-run this\n"
+    printf "script and force installation of syslog-ng to log the\n"
+    printf "iptables messages used by Skynet to thier own logfile.\n"
+    enter_to continue
+}
 
 uninstall(){
     [ -n "$( pidof $sng )" ] && $syslogng_scriptloc stop
