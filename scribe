@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.4_3"
+readonly scribe_ver="v0.5_0"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -53,29 +53,36 @@ readonly postmount="/jffs/scripts/post-mount"
 readonly init_d="/opt/etc/init.d"
 
 # color constants
-readonly ansi_red="\033[1;31m"
-readonly ansi_white="\033[1;37m"
-readonly ansi_green="\033[1;32m"
-readonly ansi_yellow="\033[1;33m"
-readonly ansi_blue="\033[1;34m"
-readonly ansi_bell="\007"
-readonly ansi_blink="\033[5m"
-readonly ansi_std="\033[m"
-readonly ansi_rev="\033[7m"
-readonly ansi_ul="\033[4m"
+readonly red="\033[1;31m"
+readonly white="\033[1;37m"
+readonly green="\033[1;32m"
+readonly yellow="\033[1;33m"
+readonly blue="\033[1;34m"
+readonly std="\033[m"
+readonly u_l="\033[4m"
 
 # require Entware
-if [ ! -x "/opt/bin/opkg" ]; then printf "\n\n$ansi_red Entware is required but not installed - exiting! $ansi_std\n\n"; exit 1; fi
+if [ ! -x "/opt/bin/opkg" ]
+then
+    printf "\n\n$red Entware is required but not installed - exiting! $std\n\n"
+    exit 1
+fi
 
 # script-wide variables
 action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-skynet_installed="no"
-[ -x /jffs/scripts/firewall ] && skynet_installed="yes"
+# check if skynet is installed
+if grep -q skynetloc /jffs/scripts/firewall-start
+then
+    skynet_installed="yes"
+else
+    skynet_installed="no"
+fi
 
-scribe_installed="$ansi_red Not Installed"
+# get installed scribe version if installed
+scribe_installed="$red Not Installed"
 [ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
 
 
@@ -83,17 +90,17 @@ scribe_installed="$ansi_red Not Installed"
 #### functions ####
 ###################
 
-alive(){ printf "     $ansi_green alive. $ansi_std\n"; }
+alive(){ printf "     $green alive. $std\n"; }
 
-dead(){ printf "     $ansi_red dead. $ansi_std\n"; }
+dead(){ printf "     $red dead. $std\n"; }
 
-finis (){ printf "$ansi_green done. $ansi_std\n"; }
+finis (){ printf "$green done. $std\n"; }
 
-not_installed(){ printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_red NOT$ansi_white installed! $ansi_std\n"; }
+not_installed(){ printf "\n$white $u_l""$1""$std$red NOT$ansi_white installed! $ansi_std\n"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-enter_to(){ printf "\n\n$ansi_white Press [Enter] to $1 $ansi_std";read -r;echo; }
+enter_to(){ printf "\n\n$white Press [Enter] to $1 $std";read -r;echo; }
 
 logo(){
     clear
@@ -119,9 +126,9 @@ getzip(){
 }
 
 force_install(){
-    printf "\n$ansi_white $ansi_ul""$1""$ansi_std$ansi_white already installed!\n"
-    [ "$1" != "$scribe_name" ] && printf "$ansi_yellow Forcing installation may overwrite modified configueration files!\n"
-    printf "$ansi_white Do you want to force re-installation of $1 [y|n]? $ansi_std"
+    printf "\n$white $u_l""$1""$std$ansi_white already installed!\n"
+    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configueration files!\n"
+    printf "$white Do you want to force re-installation of $1 [y|n]? $std"
     read -r reinstall
     case "$reinstall" in
         [yY][eE][sS]|[yY])
@@ -133,7 +140,7 @@ force_install(){
     esac
 }
 
-sng_syntax(){ if syslog-ng -s;then printf "\n$ansi_white syslog-ng syntax check$ansi_green okay! $ansi_std\n\n";fi }
+sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
 
 dlt(){ [ -e "$1" ] && rm "$1"; }
 dldir(){ [ -e "$1" ] && rm -rf "$1"; }
@@ -149,7 +156,7 @@ install(){
 
 # for pre-3.19 conf fiile, move syslog-ng.conf @include line to start of file or everything will be written to messages
     sng_conf_fix(){
-        printf "$ansi_blue moving @include line in $syslogng_conf file$ansi_white ..."
+        printf "$blue moving @include line in $syslogng_conf file$white ..."
         sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
         sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
     }
@@ -158,20 +165,20 @@ install(){
     skynet_cfg(){
         if [ "$skynet_installed" = "yes" ]
         then
-            printf "$ansi_blue setting skynet log file location$ansi_white ..."
+            printf "$blue setting skynet log file location$white ..."
             skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
             sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         else
             mv $syslogng_d/skynet $syslogng_share/examples/
-            printf "$ansi_red Skynet NOT installed$ansi_white ..."
+            printf "$red Skynet NOT installed$white ..."
         fi
     }
 
 # print warning about no skynet
     no_skynet(){
-        printf "\nSkynet$ansi_red NOT$ansi_std installed on this system!\n"
+        printf "\nSkynet is$red NOT$std installed on this system!\n"
         printf "If Skynet is installed at a later date, re-run this\n"
-        printf "script and force installation of syeslog-ng to log the\n"
+        printf "script and force installation of syslog-ng to log the\n"
         printf "iptables messages used by Skynet to thier own logfile.\n"
         enter_to continue
     }
@@ -188,7 +195,7 @@ install(){
 
 # setup syslog-ng
     setup_sng(){
-        printf "$ansi_white setting up syslog-ng ..."
+        printf "$white setting up syslog-ng ..."
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
     # add source script to kill syslogd 
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
@@ -202,7 +209,7 @@ install(){
     setup_lr(){
     # assumes: 1) since entware is required / installed, post-mount exists and is properly executable
     #          2) if this is called, it is either new intsall or forced, so remove any existing first
-        printf "$ansi_blue adding logrotate cron job$ansi_white ..."
+        printf "$blue adding logrotate cron job$white ..."
         sed -i '/cru a logrotate/d' $postmount
         [ -n "$( cru l | grep $lr )" ] && cru d $lr
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
@@ -212,7 +219,7 @@ install(){
 
 # setup scribe
     setup_scribe(){
-        printf "$ansi_white copying scribe script ..."
+        printf "$white copying scribe script ..."
         cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
         chmod 0755 $scribe_script
         [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
@@ -228,11 +235,12 @@ install(){
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
-    printf "$ansi_white setting up $1 ..."
+    printf "$white setting up $1 ..."
     opkg install $force "$1" 
     setup_exp "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
+    [ ! -e "$scribe_script" ] && setup_scribe
 }
 
 
@@ -267,14 +275,14 @@ uninstall(){
     dlt /opt/bin/$scribe_name
     dlt $scribe_script
 
-    printf "\n$ansi_white $sng, $lr, and $scribe_name have been removed from the system.\n"
+    printf "\n$white $sng, $lr, and $scribe_name have been removed from the system.\n"
     printf " The router will now reboot to ensure the default syslogd is properly started.\n"
     enter_to "reboot"
     reboot; exit 0
 }
 	
 check_sng_run(){
-	printf "\n$ansi_white Checking syslog-ng daemon... "
+	printf "\n$white Checking syslog-ng daemon... "
     if [ -z "$( pidof $sng )" ]
 	then
 		dead
@@ -285,7 +293,7 @@ check_sng_run(){
 }
 
 check_lr_run(){
-	printf "\n$ansi_white Checking logrotate cron job... "
+	printf "\n$white Checking logrotate cron job... "
     if cru l | grep -q $lr
 	then
 		alive
@@ -296,30 +304,30 @@ check_lr_run(){
 }
 
 menu_update(){
-    curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$ansi_red ERROR - unable to contact remote server - stopping update!$ansi_std\n\n"; return 1; }
+    curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$red ERROR - unable to contact remote server - stopping update!$std\n\n"; return 1; }
     scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
     remote_ver=$( ver_num "$scribe_remote" )
     if [ "$installed_ver" -lt "$remote_ver" ]
     then
         curl -fL --retry 3 "$scribe_repo" -o $scribe_script
     else
-        printf "\n$ansi_white Installed version =$ansi_yellow %s$ansi_white, Remote version =$ansi_yellow %s" "$scribe_installed" "$scribe_remote"
-        printf "\n$ansi_white Do you wish to force update [y|n]? $ansi_std"
+        printf "\n$white Installed version =$yellow %s$ansi_white, Remote version =$ansi_yellow %s" "$scribe_installed" "$scribe_remote"
+        printf "\n$white Do you wish to force update [y|n]? $std"
         read -r forceit
         case "$forceit" in
             [yY][eE][sS]|[yY])
-                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$ansi_white $scribe_name successfully updated.$ansi_std\n"
+                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n"
                 chmod 0755 $scribe_script
                 [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
                 ;;
             *)
-                printf "\n$ansi_white $scribe_name not updated!$ansi_std\n"
+                printf "\n$white $scribe_name not updated!$std\n"
         esac
     fi
 }
 
 scribe_menu(){
-	printf "\n$ansi_yellow menu not yet implemented $ansi_std\n\n"
+	printf "\n$yellow menu not yet implemented $std\n\n"
 }
 
 
@@ -359,7 +367,7 @@ case $action in
             install "$lr" "FORCE"
         fi
 
-        menu_update
+        # ToDo: ensure script is in /jffs/scripts
 
         dlt $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
@@ -367,25 +375,25 @@ case $action in
 
 # uninstall scribe
 	uninstall | remove)
-        printf "\n\n$ansi_white"
+        printf "\n\n$white"
         printf "                *********************\n"
-        printf "                ***$ansi_red W*A*R*N*I*N*G$ansi_white ***\n"
+        printf "                ***$red W*A*R*N*I*N*G$white ***\n"
         printf "                *********************\n\n"
-        printf "    This will remove the $ansi_yellow $sng $ansi_white and $ansi_yellow $lr $ansi_white packages!!\n"
+        printf "    This will remove the $yellow $sng $white and $ansi_yellow $lr $ansi_white packages!!\n"
         printf "    Ensure you have backed up any configuration files you wish\n"
-        printf "    to keep.  All configuration files in $ansi_yellow $syslogng_d $ansi_white \n"
-        printf "    and $ansi_yellow $logrotate_d $ansi_white will be deleted!\n\n"
+        printf "    to keep.  All configuration files in $yellow $syslogng_d $white \n"
+        printf "    and $yellow $logrotate_d $white will be deleted!\n\n"
         printf "                *********************\n"
-        printf "                ***$ansi_red W*A*R*N*I*N*G$ansi_white ***\n"
+        printf "                ***$red W*A*R*N*I*N*G$white ***\n"
         printf "                *********************\n\n"
-        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $ansi_std"
+        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $std"
         read -r wipeit
         case "$wipeit" in
             YES)
                 uninstall
                 ;;
             *)
-                printf "\n\n$ansi_white *** UNINSTALL ABORTED! ***$ansi_std\n\n"
+                printf "\n\n$white *** UNINSTALL ABORTED! ***$std\n\n"
                 ;;
         esac
         ;;
@@ -415,25 +423,25 @@ case $action in
     status)
 		check_sng_run
 		check_lr_run
-        printf "\n$ansi_white scribe installed version:$ansi_green $scribe_installed $ansi_std\n\n"
-        # printf "\n$ansi_white scribe GitHub version:$ansi_green $scribe_github $ansi_std\n\n"
+        printf "\n$white scribe installed version:$green $scribe_installed $std\n\n"
+        # printf "\n$white scribe GitHub version:$green $scribe_github $std\n\n"
 		;;
 
 # restart (or start if not running) syslog-ng
 	restart)
 		if check_sng_run
 		then
-			printf "$ansi_yellow Restarting syslog-ng ... $ansi_std\n"
+			printf "$yellow Restarting syslog-ng ... $std\n"
 			$syslogng_scriptloc restart
 		else
-			printf "$ansi_white syslog-ng$ansi_red NOT$ansi_white running! $ansi_yellow Starting syslog-ng ... $ansi_std\n"
+			printf "$white syslog-ng$red NOT$ansi_white running! $yellow Starting syslog-ng ... $std\n"
 			$syslogng_scriptloc start
 		fi
 		;;
 
 # unrecognized command
     *)
-	 	printf "$ansi_white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$ansi_std\n\n"
+	 	printf "$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$std\n\n"
 		exit 1
 		;;
 esac
