@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_0"
+readonly scribe_ver="v0.5_1"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -219,7 +219,7 @@ install(){
 
 # setup scribe
     setup_scribe(){
-        printf "$white copying scribe script ..."
+        printf "$white setting up scribe ..."
         cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
         chmod 0755 $scribe_script
         [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
@@ -240,7 +240,7 @@ install(){
     setup_exp "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
-    [ ! -e "$scribe_script" ] && setup_scribe
+    [ ! -f "/opt/bin/$scribe_name" ] && setup_scribe
 }
 
 
