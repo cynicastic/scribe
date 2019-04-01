@@ -127,7 +127,7 @@ getzip(){
 
 force_install(){
     printf "\n$white $u_l""$1""$std$ansi_white already installed!\n"
-    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configueration files!\n"
+    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
     printf "$white Do you want to force re-installation of $1 [y|n]? $std"
     read -r reinstall
     case "$reinstall" in
@@ -154,7 +154,7 @@ install(){
 # determine syslog-ng conf file version
     sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
 
-# for pre-3.19 conf fiile, move syslog-ng.conf @include line to start of file or everything will be written to messages
+# for pre-3.19 conf file, move syslog-ng.conf @include line to start of file or everything will be written to messages
     sng_conf_fix(){
         printf "$blue moving @include line in $syslogng_conf file$white ..."
         sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
