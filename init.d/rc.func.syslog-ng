@@ -30,6 +30,7 @@ kill_syslogd (){
     fi
 }
 
+export TZ=$(cat /etc/TZ)
 PRECMD="kill_syslogd"
 
 #eof
