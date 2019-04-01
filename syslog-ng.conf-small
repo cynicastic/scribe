@@ -1,0 +1,59 @@
+#############################################################################
+# OpenWrt syslog-ng.conf specific file
+# which collects all local logs into a single file called /var/log/messages.
+# More details about these settings can be found here:
+# https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
+#
+# "small" version with `@include "scl.conf"` and call to default-network-drivers function (part of scl) removed
+#   log_msg_size increased to 16K to ensure even large messages are completely captured
+#   source net function to get udp log messages from local network commented out
+#   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
+
+@version: 3.19
+@include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
+
+options {
+    chain_hostnames(no); # Enable or disable the chained hostname format.
+    create_dirs(yes);
+    keep_hostname(yes); # Enable or disable hostname rewriting.
+    log_fifo_size(256); # The number of messages that the output queue can store.
+    log_msg_size(16384); # Maximum length of a message in bytes.
+    stats_freq(21600); # The period between two STATS messages (sent by syslog-ng, containing statistics about dropped logs) in seconds. (21,600 seconds = 6 hours)
+    flush_lines(0); # How many lines are flushed to a destination at a time.
+    use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
+};
+
+# syslog-ng gets messages from syslog-ng (internal) and from /dev/log
+
+source src {
+    internal();
+    unix-dgram("/dev/log");
+};
+
+# uncomment these three lines to get udp log messages from local network
+# must also uncomment `source(net);` below
+#source net {
+#    udp(ip(192.168.x.y) port(514));
+#};
+
+source kernel {
+    file("/proc/kmsg" program_override("kernel"));
+};
+
+destination messages {
+    file("/opt/var/log/messages");
+};
+
+# uncomment these three lines to send udp log messages to local network
+# must also uncomment `destination(log_server);` below
+#destination log_server {
+#    udp("192.168.x.y" port(514));
+#};
+
+log {
+    source(src);
+#    source(net); # uncomment this and `source net` function above to get udp log messages from local network
+    source(kernel);
+    destination(messages);
+#    destination(log_server); # uncomment this and `destination log_server` function above to send udp log messages to local network
+};
