@@ -6,31 +6,24 @@ destination d_skynet {
 
 # logs everything from Skynet to /opt/var/log/skynet-0.log
 filter f_skynet {
-        program("Skynet");
-};
-
-# this logs f_skynet to d_skynet but allows it to pass to messages
-log {
-	source(src);
-	source(kernel);
-	filter(f_skynet);
-	destination(d_skynet);
+    program("Skynet");
 };
 
 # Skynet creates a lot of iptables-related log messages,
 #   put most of them into /opt/var/log/skynet-0.log
-filter f_blocked {
-	message("BLOCKED -") or
-	message("DROP IN=");
+filter f_iptables {
+    message("BLOCKED -") or
+    message("DROP IN=");
 };
 
-# this logs f_blocked to d_skynet and nowhere else
+# final flag stops processing of messages matching the f_skynet and f_iptables filters
 log {
-	source(src);
-	source(kernel);
-	filter(f_blocked);
-	destination(d_skynet);
-	flags(final);
+    source(src);
+    source(kernel);
+    filter(f_skynet);
+    filter(f_iptables);
+    destination(d_skynet);
+    flags(final);
 };
 
 #eof

@@ -1,0 +1,19 @@
+# log all pixelserv-tls logs to /opt/var/log/pixelserv.log and stop processing pixelserv-tls logs
+
+destination d_pixelserv { 
+    file("/opt/var/log/pixelserv.log");
+};
+
+filter f_pixelserv {
+    program("pixelserv-tls");
+};
+
+log {
+    source(src);
+    source(kernel);
+    filter(f_pixelserv);
+    destination(d_pixelserv);
+    flags(final);
+};
+
+#eof
