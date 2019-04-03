@@ -6,7 +6,7 @@ destination d_skynet {
 
 # logs everything from Skynet to /opt/var/log/skynet-0.log
 filter f_skynet {
-    program("Skynet"); or
+    program("Skynet") or
     message("BLOCKED -") or
     message("DROP IN=");
 };
