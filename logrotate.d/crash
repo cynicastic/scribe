@@ -1,0 +1,5 @@
+/opt/var/log/crash {
+    minsize 4096k
+    daily
+    endscript
+}
