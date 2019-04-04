@@ -27,7 +27,7 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_4"
+readonly scribe_ver="v0.5_5"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -39,7 +39,8 @@ readonly scribe_script="/jffs/scripts/$scribe_name"
 # script constants
 readonly sng="syslog-ng"
 readonly lr="logrotate"
-readonly syslogng_scriptloc="/opt/etc/init.d/S01$sng"
+readonly init_d="/opt/etc/init.d"
+readonly S01sng_loc="$init_d/S01$sng"
 readonly syslogngloc="/opt/sbin/$sng"
 readonly logrotateloc="/opt/sbin/$lr"
 readonly syslogng_conf="/opt/etc/$sng.conf"
@@ -50,7 +51,6 @@ readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 #
 readonly postmount="/jffs/scripts/post-mount"
-readonly init_d="/opt/etc/init.d"
 
 # color constants
 readonly red="\033[1;31m"
@@ -190,7 +190,7 @@ install(){
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
     # add source script to kill syslogd 
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
-        sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $init_d/S01syslog-ng
+        sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
     # edit skynet config
         skynet_cfg
         finis
@@ -227,15 +227,15 @@ no_skynet(){
     printf "\nSkynet is$red NOT$std installed on this system!\n"
     printf "If Skynet is installed at a later date, re-run this\n"
     printf "script and force installation of syslog-ng to log the\n"
-    printf "iptables messages used by Skynet to thier own logfile.\n"
+    printf "iptables messages used by Skynet to their own logfile.\n"
     enter_to continue
 }
 
 uninstall(){
-    [ -n "$( pidof $sng )" ] && $syslogng_scriptloc stop
+    [ -n "$( pidof $sng )" ] && $S01sng_loc stop
     if [ -e $syslogngloc ]
     then
-        sed -i '/rc.func.syslog-ng/d' $init_d/S01syslog-ng
+        dlt $S01sng_log
         dlt $init_d/rc.func.syslog-ng
         dlt /tmp/syslog.log
         dldir /jffs/syslog.log
@@ -268,7 +268,7 @@ uninstall(){
     printf "\n$white $sng, $lr, and $scribe_name have been removed from the system.\n"
     printf " The router will now reboot to ensure the default syslogd is properly started.\n"
     enter_to "reboot"
-    reboot; exit 0
+    service reboot; exit 0
 }
 	
 check_sng_run(){
@@ -354,10 +354,10 @@ case $action in
 			install "$sng"
 		elif force_install "$sng"
         then
-            $syslogng_scriptloc stop
+            $S01sng_loc stop
             install "$sng" "FORCE"
         fi
-        $syslogng_scriptloc start
+        $S01sng_loc start
 
         if [ ! -e $logrotateloc ]
         then
@@ -438,10 +438,10 @@ case $action in
 		if check_sng_run
 		then
 			printf "$yellow Restarting syslog-ng ... $std\n"
-			$syslogng_scriptloc restart
+			$S01sng_loc restart
 		else
 			printf "$white syslog-ng$red NOT$ansi_white running! $yellow Starting syslog-ng ... $std\n"
-			$syslogng_scriptloc start
+			$S01sng_loc start
 		fi
 		;;
 
