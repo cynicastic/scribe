@@ -73,7 +73,7 @@ then
 fi
 
 # check if skynet is installed
-if grep -q skynetloc /jffs/scripts/firewall-start
+if grep -q "skynetloc" /jffs/scripts/firewall-start
 then
     skynet_installed="yes"
 else
@@ -340,7 +340,7 @@ gather_debug(){
     printf "\n### directory check:\n" >> $scribe_debug
     ls -ld /tmp/syslog* >> $scribe_debug
     ls -ld /jffs/syslog* >> $scribe_debug
-    if skynet_installed="yes"
+    if [ "$skynet_installed" = "yes" ]
     then
         printf "\n### Skynet log locations:\n" >> $scribe_debug
         skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
