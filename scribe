@@ -27,13 +27,16 @@
 
 
 # scribe constants
-readonly scribe_ver="v0.5_5"
+action=$1
+got_zip="no"
+[ "X$TMP" = "X" ] && TMP=/opt/tmp
+
+readonly scribe_ver="v0.6_0"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
-readonly scribe_lock="$TMP/$scribe_name.lock"
 readonly scribe_script="/jffs/scripts/$scribe_name"
 
 # script constants
@@ -44,6 +47,7 @@ readonly S01sng_loc="$init_d/S01$sng"
 readonly syslogngloc="/opt/sbin/$sng"
 readonly logrotateloc="/opt/sbin/$lr"
 readonly syslogng_conf="/opt/etc/$sng.conf"
+readonly sngconf_merged="$TMP/syslog-ng-complete.conf"
 readonly logrotate_conf="/opt/etc/$lr.conf"
 readonly syslogng_d="/opt/etc/$sng.d"
 readonly logrotate_d="/opt/etc/$lr.d"
@@ -67,11 +71,6 @@ then
     printf "\n\n$red Entware is required but not installed - exiting! $std\n\n"
     exit 1
 fi
-
-# script-wide variables
-action=$1
-got_zip="no"
-[ "X$TMP" = "X" ] && TMP=/opt/tmp
 
 # check if skynet is installed
 if grep -q skynetloc /jffs/scripts/firewall-start
@@ -142,7 +141,7 @@ force_install(){
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
 
-dlt(){ [ -e "$1" ] && rm "$1"; }
+dlt(){ [ -e "$1" ] && rm -f "$1"; }
 dldir(){ [ -e "$1" ] && rm -rf "$1"; }
 
 install(){
@@ -187,9 +186,11 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "$white setting up syslog-ng ..."
+        cp -pf "$scribe_dir"/"syslog-ng.conf-small" /opt/etc
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
     # add source script to kill syslogd 
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
+        chmod u=rw,go=r $S01sng_loc
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
     # edit skynet config
         skynet_cfg
@@ -324,6 +325,54 @@ setup_scribe(){
     finis
 }
 
+gather_debug(){
+    scribe_debug_name=$scribe_name"_debug.log"
+    scribe_debug=$TMP/$scribe_debug_name
+    printf "\n$white gathering debugging information ..."
+    printf "### Scribe Version: %s\n" $scribe_ver > $scribe_debug
+    [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
+    printf "### Router: %s (%s)\n" $model $(uname -m) >> $scribe_debug
+    printf "### Firmware Version: %s %s\n" $(uname -o) $(nvram get buildno) >> $scribe_debug
+    printf "\n### check running processes:\n" >> $scribe_debug
+    ps | grep "syslog" >> $scribe_debug
+    printf "\n### check crontab:\n" >> $scribe_debug
+    cru l | grep $lr >> $scribe_debug
+    printf "\n### directory check:\n" >> $scribe_debug
+    ls -ld /tmp/syslog* >> $scribe_debug
+    ls -ld /jffs/syslog* >> $scribe_debug
+    if skynet_installed="yes"
+    then
+        printf "\n### Skynet log locations:\n" >> $scribe_debug
+        skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
+        skynetcfg="${skynetloc}/skynet.cfg"
+        grep "syslog" $skynetcfg >> $scribe_debug
+    fi
+    # add additional output here, keep syslog-ng config at bottom
+    # printf "\n### \n" >> $scribe_debug
+
+    printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
+    if syslog-ng -s > /dev/null 2>&1
+    then
+        printf "syslog-ng syntax check okay!\n" >> $scribe_debug
+        printf "\n### syslog-ng config:\n" >> $scribe_debug
+	    $syslogngloc --preprocess-into=$sngconf_merged > /dev/null 2>&1
+        cat $sngconf_merged >> $scribe_debug
+
+    else
+        syslog-ng -s >> $scribe_debug 2>&1
+        printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE ABOVE ****\n" >> $scribe_debug
+    fi
+
+    printf "\n### end of output ###\n" >> $scribe_debug
+    printf " taring the output ..."
+    tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
+    finis
+
+    printf " Debug output stored in %s, please review this file\n" $scribe_debug
+    printf " to ensure you understand what information is being disclosed.\n\n"
+    printf " Tarball of debug output is %s.tar.gz, \n" $scribe_debug
+}
+
 scribe_menu(){
 	printf "\n$yellow menu not yet implemented $std\n\n"
 }
@@ -413,7 +462,7 @@ case $action in
 	show-config | config)
 		if [ -e $syslogngloc ]
 		then
-			$syslogngloc --preprocess-into=/tmp/syslog-ng-complete.conf && less /tmp/syslog-ng-complete.conf
+			$syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
             sng_syntax
 		else
             not_installed $sng
@@ -445,6 +494,11 @@ case $action in
 		fi
 		;;
 
+# generate debug tarball
+    debug)
+        gather_debug
+        ;;
+        
 # unrecognized command
     *)
 	 	printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$std\n\n"
