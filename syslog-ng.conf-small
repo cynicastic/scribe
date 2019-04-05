@@ -6,6 +6,7 @@
 #
 # "small" version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
 #   log_msg_size increased to 16K to ensure even large messages are completely captured
+#   stats_freq changed to every 6 hours
 #   source net function to get udp log messages from local network commented out
 #   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
 
