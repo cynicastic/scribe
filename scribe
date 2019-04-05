@@ -31,7 +31,7 @@ action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_1"
+readonly scribe_ver="v0.6_2"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -164,11 +164,11 @@ install(){
     skynet_cfg(){
         if [ "$skynet_installed" = "yes" ]
         then
+            mv $syslogng_share/examples/ $syslogng_d/skynet 
             printf "$blue setting skynet log file location$white ..."
             skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
             sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         else
-            mv $syslogng_d/skynet $syslogng_share/examples/
             printf "$red Skynet NOT installed$white ..."
         fi
     }
