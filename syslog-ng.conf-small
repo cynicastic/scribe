@@ -4,7 +4,7 @@
 # More details about these settings can be found here:
 # https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
 #
-# "small" version with `@include "scl.conf"` and call to default-network-drivers function (part of scl) removed
+# "small" version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
 #   log_msg_size increased to 16K to ensure even large messages are completely captured
 #   source net function to get udp log messages from local network commented out
 #   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
@@ -31,7 +31,7 @@ source src {
 };
 
 # uncomment these three lines to get udp log messages from local network
-# must also uncomment `source(net);` below
+# must also uncomment "source(net);" below
 #source net {
 #    udp(ip(192.168.x.y) port(514));
 #};
@@ -45,15 +45,15 @@ destination messages {
 };
 
 # uncomment these three lines to send udp log messages to local network
-# must also uncomment `destination(log_server);` below
+# must also uncomment "destination(log_server);" below
 #destination log_server {
 #    udp("192.168.x.y" port(514));
 #};
 
 log {
     source(src);
-#    source(net); # uncomment this and `source net` function above to get udp log messages from local network
+#    source(net); # uncomment this and "source net" function above to get udp log messages from local network
     source(kernel);
     destination(messages);
-#    destination(log_server); # uncomment this and `destination log_server` function above to send udp log messages to local network
+#    destination(log_server); # uncomment this and "destination log_server" function above to send udp log messages to local network
 };
