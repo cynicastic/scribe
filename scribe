@@ -31,7 +31,7 @@ action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_0"
+readonly scribe_ver="v0.6_1"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -95,11 +95,13 @@ dead(){ printf "     $red dead. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
 
-not_installed(){ printf "\n$white $u_l""$1""$std$red NOT$ansi_white installed! $ansi_std\n"; }
+not_installed(){ printf "\n$white $u_l""$1""$std$red NOT$white installed! $std\n"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
 enter_to(){ printf "\n\n$white Press [Enter] to $1 $std";read -r;echo; }
+
+dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
 logo(){
     clear
@@ -116,7 +118,7 @@ logo(){
 getzip(){
     if [ "$got_zip" = "no" ]
     then
-        dldir "$scribe_dir"
+        dlt "$scribe_dir"
         curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
         unzip $TMP/$scribe_name.zip -d $TMP
         opkg update
@@ -125,7 +127,7 @@ getzip(){
 }
 
 force_install(){
-    printf "\n$white $u_l""$1""$std$ansi_white already installed!\n"
+    printf "\n$white $u_l""$1""$std$white already installed!\n"
     [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
     printf "$white Do you want to force re-installation of $1 [y|n]? $std"
     read -r reinstall
@@ -141,8 +143,6 @@ force_install(){
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
 
-dlt(){ [ -e "$1" ] && rm -f "$1"; }
-dldir(){ [ -e "$1" ] && rm -rf "$1"; }
 
 install(){
 
@@ -186,11 +186,11 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "$white setting up syslog-ng ..."
-        cp -pf "$scribe_dir"/"syslog-ng.conf-small" /opt/etc
+        cp -pf "$scribe_dir/syslog-ng.conf-small" /opt/etc
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
     # add source script to kill syslogd 
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
-        chmod u=rw,go=r $S01sng_loc
+        chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
     # edit skynet config
         skynet_cfg
@@ -236,14 +236,14 @@ uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
     if [ -e $syslogngloc ]
     then
-        dlt $S01sng_log
+        dlt $S01sng_loc
         dlt $init_d/rc.func.syslog-ng
         dlt /tmp/syslog.log
-        dldir /jffs/syslog.log
-        dldir /jffs/syslog.log-1
+        dlt /jffs/syslog.log
+        dlt /jffs/syslog.log-1
         opkg remove "$sng"
-        dldir $syslogng_d
-        dldir $syslogng_share
+        dlt $syslogng_d
+        dlt $syslogng_share
         dlt $syslogng_conf
         dlt /tmp/syslog.log
         [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
@@ -256,8 +256,8 @@ uninstall(){
         sed -i '/cru a logrotate/d' $postmount
         [ -n "$( cru l | grep $lr )" ] && cru d $lr
         opkg remove "$lr"
-        dldir $logrotate_d
-        dldir $logrotate_share
+        dlt $logrotate_d
+        dlt $logrotate_share
         dlt $logrotate_conf
     else
         not_installed "$lr"
@@ -302,7 +302,7 @@ menu_update(){
     then
         curl -fL --retry 3 "$scribe_repo" -o $scribe_script
     else
-        printf "\n$white Installed version =$yellow %s$ansi_white, Remote version =$ansi_yellow %s" "$scribe_installed" "$scribe_remote"
+        printf "\n$white Installed version =$yellow %s$white, Remote version =$yellow %s" "$scribe_installed" "$scribe_remote"
         printf "\n$white Do you wish to force update [y|n]? $std"
         read -r forceit
         case "$forceit" in
@@ -331,8 +331,8 @@ gather_debug(){
     printf "\n$white gathering debugging information ..."
     printf "### Scribe Version: %s\n" $scribe_ver > $scribe_debug
     [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
-    printf "### Router: %s (%s)\n" $model $(uname -m) >> $scribe_debug
-    printf "### Firmware Version: %s %s\n" $(uname -o) $(nvram get buildno) >> $scribe_debug
+    printf "### Router: %s (%s)\n" "$model" $(uname -m) >> $scribe_debug
+    printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)" >> $scribe_debug
     printf "\n### check running processes:\n" >> $scribe_debug
     ps | grep "syslog" >> $scribe_debug
     printf "\n### check crontab:\n" >> $scribe_debug
@@ -345,7 +345,7 @@ gather_debug(){
         printf "\n### Skynet log locations:\n" >> $scribe_debug
         skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
         skynetcfg="${skynetloc}/skynet.cfg"
-        grep "syslog" $skynetcfg >> $scribe_debug
+        grep "syslog" "$skynetcfg" >> $scribe_debug
     fi
     # add additional output here, keep syslog-ng config at bottom
     # printf "\n### \n" >> $scribe_debug
@@ -434,7 +434,7 @@ case $action in
         printf "                *********************\n"
         printf "                ***$red W*A*R*N*I*N*G$white ***\n"
         printf "                *********************\n\n"
-        printf "    This will remove the $yellow $sng $white and $ansi_yellow $lr $ansi_white packages!!\n"
+        printf "    This will remove the $yellow $sng $white and $yellow $lr $white packages!!\n"
         printf "    Ensure you have backed up any configuration files you wish\n"
         printf "    to keep.  All configuration files in $yellow $syslogng_d $white \n"
         printf "    and $yellow $logrotate_d $white will be deleted!\n\n"
@@ -489,7 +489,7 @@ case $action in
 			printf "$yellow Restarting syslog-ng ... $std\n"
 			$S01sng_loc restart
 		else
-			printf "$white syslog-ng$red NOT$ansi_white running! $yellow Starting syslog-ng ... $std\n"
+			printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
 			$S01sng_loc start
 		fi
 		;;
