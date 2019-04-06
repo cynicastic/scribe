@@ -6,10 +6,7 @@
 
 kill_syslogd (){
     # kill any/all running syslogd
-    if [ ! "X$(pidof syslogd)" = "X" ]
-    then
-        killall syslogd
-    fi
+    [ -n "$(pidof syslogd)" ] && killall syslogd
 
     # webGUI System Log = /tmp/syslog.log
     # link to messages if not already a symlink
@@ -36,7 +33,7 @@ kill_syslogd (){
 }
 
 # export timezone if not already set
-[ "X$TZ" = "X" ] && export TZ=$(cat /etc/TZ)
+[ -z "$TZ" ] && export TZ=$(cat /etc/TZ)
 
 PRECMD="kill_syslogd"
 
