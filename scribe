@@ -30,7 +30,7 @@ action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_4"
+readonly scribe_ver="v0.6_5"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -180,16 +180,18 @@ install(){
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
-        printf "\n$white Do you wish to install smaller syslog-ng.conf [y|n]? [RECOMMENDED]\n"
-        printf " (default %s.conf will be backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
+        printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
+        printf "$std (default %s.conf will be backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
+        printf "$white [y|n]? "
         read -r use_small
         case "$use_small" in
             [yY][eE][sS]|[yY])
-                mv $syslogng_conf $syslogng_share-pkg
+                mv $syslogng_conf $syslogng_share/$sng.conf-pkg
                 mv $syslogng_conf-small $syslogng_conf
                 printf "\n %s.conf-small installed to %s. $std\n" "$sng" "$syslogng_conf"
                 ;;
             *)
+                mv $syslogng_conf-small $syslogng_share/$sng.conf-small
                 printf "\n %s.conf-small not installed, moved to %s. $std\n" "$sng" "$syslogng_share"
                 ;;
         esac
