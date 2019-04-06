@@ -345,6 +345,7 @@ gather_debug(){
 
     # everything between { } goes to $scribe_debug
     {
+        printf "### Scribe md5: %s\n" "$( md5sum $scribe_script )"
         printf "### Router: %s (%s)\n" "$model" "$(uname -m)"
         printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)"
         printf "\n### check running processes:\n"
