@@ -174,29 +174,27 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "$white setting up syslog-ng ..."
-        cp -pf "$scribe_dir/syslog-ng.conf-small" /opt/etc
-        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
+        cp -pf $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
+        cp -pf "$scribe_dir/$sng.conf-small" $syslogng_share/examples
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
         # TODO: needs to test if this is reinstall to handle the below correctly
         printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
-        printf "$std (default %s.conf will be backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
+        printf "$std (default %s.conf is backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
         printf "$white [y|n]? "
         read -r use_small
         case "$use_small" in
             [yY][eE][sS]|[yY])
-                mv $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
-                mv $syslogng_conf-small $syslogng_conf
+                cp -pf $syslogng_share/examples/$sng.conf-small $syslogng_conf
                 printf " %s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
                 ;;
             *)
-                mv $syslogng_conf-small $syslogng_share/examples/$sng.conf-small
-                printf " %s.conf-small not installed, moved to %s. $std\n\n" "$sng" "$syslogng_share/examples"
+                printf " %s.conf-small is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-small"
                 ;;
+        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
         esac
-
     }
 
 # setup logrotate
