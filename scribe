@@ -193,8 +193,8 @@ install(){
             *)
                 printf " %s.conf-small is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-small"
                 ;;
-        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
         esac
+        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
     }
 
 # setup logrotate
