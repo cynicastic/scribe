@@ -186,13 +186,13 @@ install(){
         read -r use_small
         case "$use_small" in
             [yY][eE][sS]|[yY])
-                mv $syslogng_conf $syslogng_share/$sng.conf-pkg
+                mv $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
                 mv $syslogng_conf-small $syslogng_conf
-                printf "\n %s.conf-small installed to %s. $std\n" "$sng" "$syslogng_conf"
+                printf "%s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
                 ;;
             *)
-                mv $syslogng_conf-small $syslogng_share/$sng.conf-small
-                printf "\n %s.conf-small not installed, moved to %s. $std\n" "$sng" "$syslogng_share"
+                mv $syslogng_conf-small $syslogng_share/examples/$sng.conf-small
+                printf "%s.conf-small not installed, moved to %s. $std\n\n" "$sng" "$syslogng_share/examples"
                 ;;
         esac
 
