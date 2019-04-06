@@ -23,7 +23,6 @@
 #
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
-# set -x
 
 
 # scribe constants
@@ -31,7 +30,7 @@ action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_3"
+readonly scribe_ver="v0.6_4"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -55,6 +54,7 @@ readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 #
 readonly postmount="/jffs/scripts/post-mount"
+readonly merlin="ASUSWRT-Merlin"
 
 # color constants
 readonly red="\033[1;31m"
@@ -66,9 +66,9 @@ readonly std="\033[m"
 readonly u_l="\033[4m"
 
 # require Entware
-if [ ! -x "/opt/bin/opkg" ]
+if [ ! -x "/opt/bin/opkg" ] || [ "$(uname -o)" != "$merlin" ]
 then
-    printf "\n\n$red Entware is required but not installed - exiting! $std\n\n"
+    printf "\n\n$red %s with Entware is required - exiting! $std\n\n" "$merlin"
     exit 1
 fi
 
@@ -151,29 +151,6 @@ install(){
 #### install sub-functions ####
 ###############################
 
-# determine syslog-ng conf file version
-    sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
-
-# for pre-3.19 conf file, move syslog-ng.conf @include line to start of file or everything will be written to messages
-    sng_conf_fix(){
-        printf "$blue moving @include line in $syslogng_conf file$white ..."
-        sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
-        sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
-    }
-
-# configure Skynet to use $skynetlog
-    skynet_cfg(){
-        if [ "$skynet_installed" = "yes" ]
-        then
-            mv $syslogng_share/examples/skynet $syslogng_d 
-            printf "$blue setting skynet log file location$white ..."
-            skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
-            sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
-        else
-            printf "$red Skynet NOT installed$white ..."
-        fi
-    }
-
 # setup example files in /usr/share
     setup_exp(){
         [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share"
@@ -184,29 +161,49 @@ install(){
         cp -pu "$scribe_dir"/"$1".share/* $share/examples/
     }
 
+# determine syslog-ng conf file version
+    sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
+
+# for pre-3.19 conf file, move syslog-ng.conf @include line to start of file or everything will be written to messages
+    sng_conf_fix(){
+        printf "$blue moving @include line in $syslogng_conf file$white ..."
+        sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
+        sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
+    }
+
 # setup syslog-ng
     setup_sng(){
         printf "$white setting up syslog-ng ..."
         cp -pf "$scribe_dir/syslog-ng.conf-small" /opt/etc
-        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix # fix pre-3.19 syslog-ng.conf file
-    # add source script to kill syslogd 
+        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
-    # edit skynet config
-        skynet_cfg
         finis
+        printf "\n$white Do you wish to install smaller syslog-ng.conf [y|n]? [RECOMMENDED]\n"
+        printf " (default %s.conf will be backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
+        read -r use_small
+        case "$use_small" in
+            [yY][eE][sS]|[yY])
+                mv $syslogng_conf $syslogng_share-pkg
+                mv $syslogng_conf-small $syslogng_conf
+                printf "\n %s.conf-small installed to %s. $std\n" "$sng" "$syslogng_conf"
+                ;;
+            *)
+                printf "\n %s.conf-small not installed, moved to %s. $std\n" "$sng" "$syslogng_share"
+                ;;
+        esac
+
     }
 
 # setup logrotate
     setup_lr(){
-    # assumes: 1) since entware is required / installed, post-mount exists and is properly executable
-    #          2) if this is called, it is either new intsall or forced, so remove any existing first
+    # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding logrotate cron job$white ..."
         sed -i '/cru a logrotate/d' $postmount
-        [ -n "$( cru l | grep $lr )" ] && cru d $lr
-        echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
-        cru a $lr "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
+        # respect user's logrotate cron job if it exists
+        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
+        [ -z "$( cru l | grep $lr )" ] && cru a $lr "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
         finis
     }
 
@@ -225,10 +222,27 @@ install(){
 }
 
 
+setup_scribe(){
+    printf "$white setting up %s ..." "$scribe_name"
+    cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
+    chmod 0755 $scribe_script
+    [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+    if [ "$skynet_installed" = "yes" ]
+    then
+        mv $syslogng_share/examples/skynet $syslogng_d 
+        printf "$blue setting skynet log file location$white ..."
+        skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
+        sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+    else
+        printf "$red Skynet NOT installed$white ..."
+    fi
+    finis
+}
+
 no_skynet(){
     printf "\nSkynet is$red NOT$std installed on this system!\n"
     printf "If Skynet is installed at a later date, re-run this\n"
-    printf "script and force installation of syslog-ng to log the\n"
+    printf "script and force installation of %s to log the\n" "$scribe_name"
     printf "iptables messages used by Skynet to their own logfile.\n"
     enter_to continue
 }
@@ -318,14 +332,6 @@ menu_update(){
     fi
 }
 
-setup_scribe(){
-    printf "$white setting up scribe ..."
-    cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
-    chmod 0755 $scribe_script
-    [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-    finis
-}
-
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
@@ -376,6 +382,7 @@ gather_debug(){
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
+    sed -i "s/$USER/[redcacted]/g" $scribe_debug
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
@@ -513,7 +520,7 @@ case $action in
         
 # unrecognized command
     *)
-	 	printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart )$std\n\n"
+	 	printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart | debug )$std\n\n"
 		exit 1
 		;;
 esac
