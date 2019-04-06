@@ -28,9 +28,9 @@
 # scribe constants
 action=$1
 got_zip="no"
-[ "X$TMP" = "X" ] && TMP=/opt/tmp
+[ -z "$TMP" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_5"
+readonly scribe_ver="v0.7_0 (Beta)"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -80,11 +80,6 @@ else
     skynet_installed="no"
 fi
 
-# get installed scribe version if installed
-scribe_installed="$red Not Installed"
-[ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-
-
 ###################
 #### functions ####
 ###################
@@ -113,7 +108,7 @@ logo(){
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
-    printf "    $green %-10s      $blue Coded by cynicastic $std\n\n" "$scribe_ver"
+    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_ver"
 }
 
 getzip(){
@@ -179,7 +174,6 @@ install(){
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
-        # TODO: needs to test if this is reinstall to handle the below correctly
         printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
         printf "$std (default %s.conf is backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
         printf "$white [y|n]? "
@@ -309,31 +303,44 @@ check_lr_run(){
 	fi
 }
 
-menu_update(){
-    get_scribe(){
-        curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n" || printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
-        chmod 0755 $scribe_script
-        [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-    }
+get_vers(){
+    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
+    [ -z "$scribe_github" ] && return 1
+    github_ver=$( ver_num "$scribe_github" )
+}
 
-    curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$red ERROR - unable to contact remote server - stopping update!$std\n\n"; return 1; }
-    scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-    remote_ver=$( ver_num "$scribe_remote" )
-    if [ "$installed_ver" -lt "$remote_ver" ]
+prt_vers(){
+    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
+    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+}
+
+menu_update(){
+    if [ "$installed_ver" -lt "$github_ver" ]
     then
-        get_scribe
+        printf "\n$white New version available!\n"
+        printf " Do you wish to upgrade [y|n] $std"
     else
-        printf "\n$white Installed version =$yellow %s$white, Remote version =$yellow %s" "$scribe_installed" "$scribe_remote"
-        printf "\n$white Do you wish to force update [y|n]? $std"
-        read -r forceit
-        case "$forceit" in
-            [yY][eE][sS]|[yY])
-                get_scribe
-                ;;
-            *)
-                printf "\n$white $scribe_name not updated!$std\n"
-        esac
+        printf "\n$white No new version available.\n"
+        printf " Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
+    
+    read -r instl
+    case "$instl" in
+        [yY][eE][sS]|[yY])
+            if curl -fL --retry 3 "$scribe_repo" -o $scribe_script
+            then
+                chmod 0755 $scribe_script
+                [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+                printf "\n$white $scribe_name successfully updated.$std\n"
+            else
+                printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
+                return 1
+            fi
+            ;;
+        *)
+            printf "\n$white $scribe_name not updated!$std\n"
+            ;;
+    esac
 }
 
 gather_debug(){
@@ -357,19 +364,15 @@ gather_debug(){
         ls -ld /jffs/syslog*
         printf "\n### top output:\n"
         top -b -n1 | head
+        printf "\n### init.d directory:\n"
+        ls -l /opt/etc/init.d
+        printf "\n### contents of S01syslog-ng\n"
+        cat /opt/etc/init.d/S01syslog-ng
+        printf "\n### /opt/var/log directory:\n"
+        ls -l /opt/var/log
+        printf "\n### installed packages:\n"
+        opkg list-installed
     } >> $scribe_debug
-
-    if [ "$skynet_installed" = "yes" ]
-    then
-        skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
-        skynetcfg="${skynetloc}/skynet.cfg"
-        {
-            printf "\n### Skynet log locations:\n"
-            grep "syslog" "$skynetcfg"
-        } >> $scribe_debug
-    else
-        printf "\n### Skynet not installed.\n"
-    fi
 
     printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
     if syslog-ng -s > /dev/null 2>&1
@@ -386,8 +389,20 @@ gather_debug(){
         printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE ABOVE ****\n" >> $scribe_debug
     fi
 
+    if [ "$skynet_installed" = "yes" ]
+    then
+        skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
+        skynetcfg="${skynetloc}/skynet.cfg"
+        {
+            printf "\n### Skynet log locations:\n"
+            grep "syslog" "$skynetcfg"
+        } >> $scribe_debug
+    else
+        printf "\n### Skynet not installed.\n"
+    fi
+
     printf "\n### end of output ###\n" >> $scribe_debug
-    sed -i "s/$USER/[redcacted]/g" $scribe_debug
+    sed -i "s/$USER/[redacted]/g" "$scribe_debug"
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
@@ -406,9 +421,12 @@ scribe_menu(){
 #### MAIN ####
 ##############
 
-logo
-
+# get installed scribe version if installed
+scribe_installed="$red Not Installed"
+[ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
 installed_ver=$( ver_num "$scribe_installed" )
+
+logo
 
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
@@ -479,6 +497,8 @@ case $action in
 
 # update scribe
     update)
+        get_vers
+        prt_vers
         menu_update
         ;;
 
@@ -502,9 +522,8 @@ case $action in
     status)
         check_sng_run
         check_lr_run
-        printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
-        scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-        printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+        get_vers
+        prt_vers
         ;;
 
 # restart (or start if not running) syslog-ng
