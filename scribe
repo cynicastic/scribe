@@ -31,7 +31,7 @@ action=$1
 got_zip="no"
 [ "X$TMP" = "X" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.6_2"
+readonly scribe_ver="v0.6_3"
 readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
@@ -101,6 +101,7 @@ ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $
 
 enter_to(){ printf "\n\n$white Press [Enter] to $1 $std";read -r;echo; }
 
+# Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
 logo(){
@@ -164,7 +165,7 @@ install(){
     skynet_cfg(){
         if [ "$skynet_installed" = "yes" ]
         then
-            mv $syslogng_share/examples/ $syslogng_d/skynet 
+            mv $syslogng_share/examples/skynet $syslogng_d 
             printf "$blue setting skynet log file location$white ..."
             skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
             sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
@@ -307,9 +308,9 @@ menu_update(){
         read -r forceit
         case "$forceit" in
             [yY][eE][sS]|[yY])
-                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n"
+                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n" || printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
                 chmod 0755 $scribe_script
-                [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+                [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
                 ;;
             *)
                 printf "\n$white $scribe_name not updated!$std\n"
@@ -321,42 +322,53 @@ setup_scribe(){
     printf "$white setting up scribe ..."
     cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
-    [ ! -f "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+    [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
     finis
 }
 
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
+    [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
     printf "\n$white gathering debugging information ..."
     printf "### Scribe Version: %s\n" $scribe_ver > $scribe_debug
-    [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
-    printf "### Router: %s (%s)\n" "$model" $(uname -m) >> $scribe_debug
-    printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)" >> $scribe_debug
-    printf "\n### check running processes:\n" >> $scribe_debug
-    ps | grep "syslog" >> $scribe_debug
-    printf "\n### check crontab:\n" >> $scribe_debug
-    cru l | grep $lr >> $scribe_debug
-    printf "\n### directory check:\n" >> $scribe_debug
-    ls -ld /tmp/syslog* >> $scribe_debug
-    ls -ld /jffs/syslog* >> $scribe_debug
+
+    # everything between { } goes to $scribe_debug
+    {
+        printf "### Router: %s (%s)\n" "$model" "$(uname -m)"
+        printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)"
+        printf "\n### check running processes:\n"
+        ps | grep "syslog"
+        printf "\n### check crontab:\n"
+        cru l | grep $lr
+        printf "\n### directory check:\n"
+        ls -ld /tmp/syslog*
+        ls -ld /jffs/syslog*
+        printf "\n### top output:\n"
+        top -b -n1 | head
+    } >> $scribe_debug
+
     if [ "$skynet_installed" = "yes" ]
     then
-        printf "\n### Skynet log locations:\n" >> $scribe_debug
         skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
         skynetcfg="${skynetloc}/skynet.cfg"
-        grep "syslog" "$skynetcfg" >> $scribe_debug
+        {
+            printf "\n### Skynet log locations:\n"
+            grep "syslog" "$skynetcfg"
+        } >> $scribe_debug
+    else
+        printf "\n### Skynet not installed.\n"
     fi
-    # add additional output here, keep syslog-ng config at bottom
-    # printf "\n### \n" >> $scribe_debug
 
     printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
     if syslog-ng -s > /dev/null 2>&1
     then
-        printf "syslog-ng syntax check okay!\n" >> $scribe_debug
-        printf "\n### syslog-ng config:\n" >> $scribe_debug
 	    $syslogngloc --preprocess-into=$sngconf_merged > /dev/null 2>&1
-        cat $sngconf_merged >> $scribe_debug
+        {
+            printf "syslog-ng syntax check okay!\n"
+            printf "\n### syslog-ng config:\n"
+            cat $sngconf_merged
+        } >> $scribe_debug
 
     else
         syslog-ng -s >> $scribe_debug 2>&1
