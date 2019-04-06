@@ -180,6 +180,7 @@ install(){
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
+        # TODO: needs to test if this is reinstall to handle the below correctly
         printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
         printf "$std (default %s.conf will be backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
         printf "$white [y|n]? "
@@ -188,11 +189,11 @@ install(){
             [yY][eE][sS]|[yY])
                 mv $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
                 mv $syslogng_conf-small $syslogng_conf
-                printf "%s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
+                printf " %s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
                 ;;
             *)
                 mv $syslogng_conf-small $syslogng_share/examples/$sng.conf-small
-                printf "%s.conf-small not installed, moved to %s. $std\n\n" "$sng" "$syslogng_share/examples"
+                printf " %s.conf-small not installed, moved to %s. $std\n\n" "$sng" "$syslogng_share/examples"
                 ;;
         esac
 
