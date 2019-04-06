@@ -6,31 +6,38 @@
 
 kill_syslogd (){
     # kill any/all running syslogd
-    if [ ! "X$(pidof syslogd)" = "X" ]; then
-	killall syslogd
+    if [ ! "X$(pidof syslogd)" = "X" ]
+    then
+        killall syslogd
     fi
 
     # webGUI System Log = /tmp/syslog.log
-    if [ ! -L "/tmp/syslog.log" ]; then
-	cat /tmp/syslog.log >> /opt/var/log/messages
-	rm -f /tmp/syslog.log /tmp/syslog.log-1
-	ln -s /opt/var/log/messages /tmp/syslog.log
+    # link to messages if not already a symlink
+    if [ ! -L "/tmp/syslog.log" ]
+    then
+        cat /tmp/syslog.log >> /opt/var/log/messages
+        rm -f /tmp/syslog.log /tmp/syslog.log-1
+        ln -s /opt/var/log/messages /tmp/syslog.log
     fi
 
     # make /jffs/syslog.log and log-1 directories if not already
     # prevents system log rotater from writting to jffs
-    if [ ! -d "/jffs/syslog.log" ]; then
+    if [ ! -d "/jffs/syslog.log" ]
+    then
         rm -f /jffs/syslog.log
         mkdir /jffs/syslog.log
     fi
 
-    if [ ! -d "/jffs/syslog.log-1" ]; then
+    if [ ! -d "/jffs/syslog.log-1" ]
+    then
         rm -f /jffs/syslog.log-1
         mkdir /jffs/syslog.log-1
     fi
 }
 
-export TZ=$(cat /etc/TZ)
+# export timezone if not already set
+[ "X$TZ" = "X" ] && export TZ=$(cat /etc/TZ)
+
 PRECMD="kill_syslogd"
 
 #eof
