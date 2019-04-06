@@ -175,7 +175,6 @@ install(){
     setup_sng(){
         printf "$white setting up syslog-ng ..."
         cp -pf $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
-        cp -pf "$scribe_dir/$sng.conf-small" $syslogng_share/examples
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
