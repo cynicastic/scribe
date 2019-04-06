@@ -89,9 +89,9 @@ scribe_installed="$red Not Installed"
 #### functions ####
 ###################
 
-alive(){ printf "     $green alive. $std\n"; }
+alive(){ printf "$green alive. $std\n"; }
 
-dead(){ printf "     $red dead. $std\n"; }
+dead(){ printf "$red dead. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
 
@@ -106,14 +106,14 @@ dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
 logo(){
     clear
-    printf "                            _             \n"
+    printf "$white                            _\n"
     printf "                         _ ( )            \n"
     printf "       ___    ___  _ __ (_)| |_      __   \n"
     printf "     /',__) /'___)( '__)| || '_\`\\  /'__\`\\ \n"
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
-    printf "                                          \n"
-    printf "     %-10s       Coded by cynicastic \n" "$scribe_ver"
+    printf "     %s and %s installation $std\n" "$sng" "$lr"
+    printf "    $green %-10s      $blue Coded by cynicastic $std\n\n" "$scribe_ver"
 }
 
 getzip(){
@@ -288,7 +288,7 @@ uninstall(){
 }
 	
 check_sng_run(){
-	printf "\n$white Checking syslog-ng daemon... "
+	printf "\n$white %33s" "Checking $sng daemon..."
     if [ -z "$( pidof $sng )" ]
 	then
 		dead
@@ -299,7 +299,7 @@ check_sng_run(){
 }
 
 check_lr_run(){
-	printf "\n$white Checking logrotate cron job... "
+	printf "\n$white %33s" "Checking $lr cron job..."
     if cru l | grep -q $lr
 	then
 		alive
@@ -310,21 +310,25 @@ check_lr_run(){
 }
 
 menu_update(){
+    get_scribe(){
+        curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n" || printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
+        chmod 0755 $scribe_script
+        [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+    }
+
     curl -fsLN --retry 3 "$scribe_repo" | grep -qF "scribe_ver=" || { printf "\n$red ERROR - unable to contact remote server - stopping update!$std\n\n"; return 1; }
     scribe_remote=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
     remote_ver=$( ver_num "$scribe_remote" )
     if [ "$installed_ver" -lt "$remote_ver" ]
     then
-        curl -fL --retry 3 "$scribe_repo" -o $scribe_script
+        get_scribe
     else
         printf "\n$white Installed version =$yellow %s$white, Remote version =$yellow %s" "$scribe_installed" "$scribe_remote"
         printf "\n$white Do you wish to force update [y|n]? $std"
         read -r forceit
         case "$forceit" in
             [yY][eE][sS]|[yY])
-                curl -fL --retry 3 "$scribe_repo" -o $scribe_script && printf "\n$white $scribe_name successfully updated.$std\n" || printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
-                chmod 0755 $scribe_script
-                [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+                get_scribe
                 ;;
             *)
                 printf "\n$white $scribe_name not updated!$std\n"
@@ -414,13 +418,13 @@ installed_ver=$( ver_num "$scribe_installed" )
 case $action in
 
 # install syslog-ng, logrotate, & scribe script
-	install)
+        install)
         getzip
 
         if [ ! -e $syslogngloc ]
-		then
-			install "$sng"
-		elif force_install "$sng"
+        then
+            install "$sng"
+        elif force_install "$sng"
         then
             $S01sng_loc stop
             install "$sng" "FORCE"
@@ -448,7 +452,7 @@ case $action in
         ;;
 
 # uninstall scribe
-	uninstall | remove)
+    uninstall | remove)
         printf "\n\n$white"
         printf "                *********************\n"
         printf "                ***$red W*A*R*N*I*N*G$white ***\n"
@@ -478,15 +482,15 @@ case $action in
         ;;
 
 # show total combined config
-	show-config | config)
-		if [ -e $syslogngloc ]
-		then
-			$syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
+    show-config | config)
+        if [ -e $syslogngloc ]
+        then
+            $syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
             sng_syntax
-		else
+        else
             not_installed $sng
-		fi
-		;;
+        fi
+        ;;
 
 # check syntax
     check-syntax | syntax)
@@ -495,23 +499,24 @@ case $action in
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
-		check_sng_run
-		check_lr_run
-        printf "\n$white scribe installed version:$green $scribe_installed $std\n\n"
-        # printf "\n$white scribe GitHub version:$green $scribe_github $std\n\n"
-		;;
+        check_sng_run
+        check_lr_run
+        printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
+        scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+        printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+        ;;
 
 # restart (or start if not running) syslog-ng
-	restart)
-		if check_sng_run
-		then
-			printf "$yellow Restarting syslog-ng ... $std\n"
-			$S01sng_loc restart
-		else
-			printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
-			$S01sng_loc start
-		fi
-		;;
+    restart)
+        if check_sng_run
+        then
+            printf "$yellow Restarting syslog-ng ... $std\n"
+            $S01sng_loc restart
+        else
+            printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
+            $S01sng_loc start
+        fi
+        ;;
 
 # generate debug tarball
     debug)
@@ -520,9 +525,9 @@ case $action in
         
 # unrecognized command
     *)
-	 	printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart | debug )$std\n\n"
-		exit 1
-		;;
+        printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart | debug )$std\n\n"
+        exit 1
+        ;;
 esac
 
 printf "\n\n"
