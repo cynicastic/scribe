@@ -1,5 +1,7 @@
 # global variable overrides from /opt/etc/logrotate.conf
 
+sharedscripts # if multiple logs run the same postrotate script, only run it once
+
 # compress, but not first rotation due to file handling
 compress
 delaycompress

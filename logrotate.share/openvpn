@@ -2,12 +2,6 @@
     monthly
     rotate 9
     postrotate
-        /usr/bin/killall -HUP vpnserver1
-        /usr/bin/killall -HUP vpnserver2
-        /usr/bin/killall -HUP vpnclient1
-        /usr/bin/killall -HUP vpnclient2
-        /usr/bin/killall -HUP vpnclient3
-        /usr/bin/killall -HUP vpnclient4
-        /usr/bin/killall -HUP vpnclient5
+        /usr/bin/killall -HUP syslog-ng
     endscript
 }
