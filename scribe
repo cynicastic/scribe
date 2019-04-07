@@ -30,9 +30,9 @@ action="$1"
 got_zip="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.7_1 (Beta)"
-readonly scribe_branch="master"
 readonly scribe_name="scribe"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v0.7_1 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -188,17 +188,18 @@ install(){
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
-        printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
+        printf "\n$white Do you wish to install non-scl syslog-ng.conf? [RECOMMENDED]\n"
+        printf "$blue (if you don't know what scl is, you probably want to say 'y' here)\n"
         printf "$std (default %s.conf is backed up to %s/%s.conf-opkg)" "$sng" "$syslogng_share" "$sng"
         printf "$white [y|n]? "
         read -r use_small
         case "$use_small" in
             [yY][eE][sS]|[yY])
-                cp -pf $syslogng_share/examples/$sng.conf-small $syslogng_conf
-                printf " %s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
+                cp -pf $syslogng_share/examples/$sng.conf-no_scl $syslogng_conf
+                printf " %s.conf-no_scl installed to %s. $std\n\n" "$sng" "$syslogng_conf"
                 ;;
             *)
-                printf " %s.conf-small is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-small"
+                printf " %s.conf-no_scl is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-no_scl"
                 ;;
         esac
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
