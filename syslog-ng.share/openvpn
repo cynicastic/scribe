@@ -11,7 +11,8 @@ filter f_openvpn {
     program("ovpn-client2") or
     program("ovpn-client3") or
     program("ovpn-client4") or
-    program("ovpn-client5");
+    program("ovpn-client5") or
+    program("openvpn-routing");
 };
 
 log {
