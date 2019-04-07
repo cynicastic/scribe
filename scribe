@@ -26,12 +26,12 @@
 
 
 # scribe constants
-action=$1
+action="$1"
 got_zip="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_ver="v0.7_1 (Beta)"
-readonly scribe_branch="gamma"
+readonly scribe_branch="master"
 readonly scribe_name="scribe"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -90,11 +90,11 @@ dead(){ printf "$red dead. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
 
-not_installed(){ printf "\n$white $u_l""$1""$std$red NOT$white installed! $std\n"; }
+not_installed(){ printf "\n$white $u_l$std$red NOT$white installed! $std\n" "$1"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-enter_to(){ printf "\n\n$white Press [Enter] to $1 $std";read -r;echo; }
+enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1";read -r;echo; }
 
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
@@ -132,25 +132,25 @@ getzip(){
 setup_expl(){
     [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share" && conf="$syslogng_conf"
     [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share" && conf="$logrotate_conf"
-    cp -pu "$scribe_dir/$1.d/*" $d_dir/
+    cp -pu $scribe_dir/"$1".d/* $d_dir/
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf "$scribe_dir/$1.share/*" $share/examples/
+    cp -pf $scribe_dir/"$1".share/* $share/examples/
 
-    if [ -e "/opt/etc/$1.conf-opkg" ]
+    if [ -e /opt/etc/"$1".conf-opkg ]
     then
-        cp -pf "/opt/etc/$1.conf-opkg" $share/examples
-        dlt "/opt/etc/$1.conf-opkg"
-    elif [ ! -e "$share/examples/$1.conf-opkg" ]
+        cp -pf /opt/etc/"$1".conf-opkg $share/examples
+        dlt /opt/etc/"$1".conf-opkg
+    elif [ ! -e $share/examples/"$1".conf-opkg ]
     then
-        cp -pf $conf "$share/examples/$1.conf-opkg"
+        cp -pf $conf $share/examples/"$1".conf-opkg
     fi
 }
 
 force_install(){
-    printf "\n$white $u_l$1$std$white already installed!\n"
+    printf "\n$white $u_l%s$std$white already installed!\n" "$1"
     [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
-    printf "$white Do you want to force re-installation of $1 [y|n]? $std"
+    printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
     read -r reinstall
     case "$reinstall" in
         [yY][eE][sS]|[yY])
@@ -222,7 +222,7 @@ install(){
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
-    printf "$white setting up $1 ..."
+    printf "$white setting up %s ..." "$1"
     opkg install $force "$1" 
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
