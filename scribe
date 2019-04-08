@@ -96,6 +96,20 @@ ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $
 
 enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1";read -r;echo; }
 
+# Check yes or no
+yes_no(){
+    read -r resp
+    case "$resp" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+
+}
+
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
@@ -151,15 +165,8 @@ force_install(){
     printf "\n$white $u_l%s$std$white already installed!\n" "$1"
     [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
     printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
-    read -r reinstall
-    case "$reinstall" in
-        [yY][eE][sS]|[yY])
-            true
-            ;;
-        *)
-            false
-            ;;
-    esac
+    yes_no
+    return $?
 }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
@@ -190,18 +197,14 @@ install(){
         finis
         printf "\n$white Do you wish to install non-scl syslog-ng.conf? [RECOMMENDED]\n"
         printf "$blue (if you don't know what scl is, you probably want to say 'y' here)\n"
-        printf "$std (default %s.conf is backed up to %s/%s.conf-opkg)" "$sng" "$syslogng_share" "$sng"
-        printf "$white [y|n]? "
-        read -r use_small
-        case "$use_small" in
-            [yY][eE][sS]|[yY])
-                cp -pf $syslogng_share/examples/$sng.conf-no_scl $syslogng_conf
-                printf " %s.conf-no_scl installed to %s. $std\n\n" "$sng" "$syslogng_conf"
-                ;;
-            *)
-                printf " %s.conf-no_scl is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-no_scl"
-                ;;
-        esac
+        printf "$std (default %s.conf is backed up to %s/%s.conf-opkg)$white [y|n]? " "$sng" "$syslogng_share" "$sng"
+        if yes_no
+        then
+            cp -pf $syslogng_share/examples/$sng.conf-no_scl $syslogng_conf
+            printf " %s.conf-no_scl installed to %s. $std\n\n" "$sng" "$syslogng_conf"
+        else
+            printf " %s.conf-no_scl is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-no_scl"
+        fi
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
     }
 
@@ -338,21 +341,21 @@ menu_update(){
         printf "\n$white New version available!\n"
         printf " Do you wish to upgrade [y|n] $std"
     else
-        [ "$installed_ver" -eq "$github_ver" ] && ver_status="(GitHub version equal to local)" || ver_status="(GitHub version LESS THAN local!)"
-        printf "\n$white No new version available.  %s\n" "$ver_status"
+        printf "\n$white No new version available. (GitHub version"
+        [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
+        printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
+    fi    
+    if yes_no
+    then
+        getzip
+        setup_scribe
+    else
+        printf "\n$white $scribe_name not updated!$std\n"
     fi
-    
-    read -r instl
-    case "$instl" in
-        [yY][eE][sS]|[yY])
-            getzip
-            setup_scribe
-            ;;
-        *)
-            printf "\n$white $scribe_name not updated!$std\n"
-            ;;
-    esac
+
+    printf "$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
+    if yes_no; then menu_filters; fi
 }
 
 menu_filters(){
