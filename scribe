@@ -354,7 +354,7 @@ menu_update(){
         printf "\n$white $scribe_name not updated!$std\n"
     fi
 
-    printf "$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
+    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
     if yes_no; then menu_filters; fi
 }
 
