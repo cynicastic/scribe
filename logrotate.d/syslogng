@@ -1,0 +1,5 @@
+/opt/var/log/syslog-ng.log {
+    postrotate
+        /usr/bin/killall -HUP syslog-ng
+    endscript
+}

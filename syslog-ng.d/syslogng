@@ -5,8 +5,7 @@ destination d_syslogng {
 };
 
 filter f_syslogng {
-	program("syslog-ng") and
-	message("Log statistics;");
+	program("syslog-ng")
 };
 
 log {
