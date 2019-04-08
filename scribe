@@ -26,13 +26,13 @@
 
 
 # scribe constants
-action=$1
+action="$1"
 got_zip="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
-readonly scribe_ver="v0.7_0 (Beta)"
-readonly scribe_branch="master"
 readonly scribe_name="scribe"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v0.7_1 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -90,11 +90,25 @@ dead(){ printf "$red dead. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
 
-not_installed(){ printf "\n$white $u_l""$1""$std$red NOT$white installed! $std\n"; }
+not_installed(){ printf "\n$white $u_l$std$red NOT$white installed! $std\n" "$1"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-enter_to(){ printf "\n\n$white Press [Enter] to $1 $std";read -r;echo; }
+enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1";read -r;echo; }
+
+# Check yes or no
+yes_no(){
+    read -r resp
+    case "$resp" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+
+}
 
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
@@ -115,26 +129,44 @@ getzip(){
     if [ "$got_zip" = "no" ]
     then
         dlt "$scribe_dir"
-        curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
-        unzip $TMP/$scribe_name.zip -d $TMP
-        opkg update
-        got_zip="yes"
+        if curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
+        then
+            unzip $TMP/$scribe_name.zip -d $TMP
+            opkg update
+            got_zip="yes"
+        else
+            printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
+            exit 1
+        fi
+    fi
+}
+
+# setup example files in /usr/share/$1/examples
+# install default file in /usr/etc/$1.d
+setup_expl(){
+    [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share" && conf="$syslogng_conf"
+    [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share" && conf="$logrotate_conf"
+    cp -pu $scribe_dir/"$1".d/* $d_dir/
+    [ ! -d $share ] && mkdir $share
+    [ ! -d $share/examples ] && mkdir $share/examples
+    cp -pf $scribe_dir/"$1".share/* $share/examples/
+
+    if [ -e /opt/etc/"$1".conf-opkg ]
+    then
+        cp -pf /opt/etc/"$1".conf-opkg $share/examples
+        dlt /opt/etc/"$1".conf-opkg
+    elif [ ! -e $share/examples/"$1".conf-opkg ]
+    then
+        cp -pf $conf $share/examples/"$1".conf-opkg
     fi
 }
 
 force_install(){
-    printf "\n$white $u_l""$1""$std$white already installed!\n"
+    printf "\n$white $u_l%s$std$white already installed!\n" "$1"
     [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
-    printf "$white Do you want to force re-installation of $1 [y|n]? $std"
-    read -r reinstall
-    case "$reinstall" in
-        [yY][eE][sS]|[yY])
-            true
-            ;;
-        *)
-            false
-            ;;
-    esac
+    printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
+    yes_no
+    return $?
 }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
@@ -145,16 +177,6 @@ install(){
 ###############################
 #### install sub-functions ####
 ###############################
-
-# setup example files in /usr/share
-    setup_exp(){
-        [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share"
-        [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share"
-        cp -pu "$scribe_dir"/"$1".d/* $d_dir/
-        [ ! -d $share ] && mkdir $share
-        [ ! -d $share/examples ] && mkdir $share/examples
-        cp -pu "$scribe_dir"/"$1".share/* $share/examples/
-    }
 
 # determine syslog-ng conf file version
     sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
@@ -169,30 +191,26 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "$white setting up syslog-ng ..."
-        cp -pf $syslogng_conf $syslogng_share/examples/$sng.conf-pkg
         cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
         chmod u=rw,go=r $init_d/rc.func.syslog-ng
         sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
         finis
-        printf "\n$white Do you wish to install smaller syslog-ng.conf? [RECOMMENDED]\n"
-        printf "$std (default %s.conf is backed up to %s/%s.conf-pkg)" "$sng" "$syslogng_share" "$sng"
-        printf "$white [y|n]? "
-        read -r use_small
-        case "$use_small" in
-            [yY][eE][sS]|[yY])
-                cp -pf $syslogng_share/examples/$sng.conf-small $syslogng_conf
-                printf " %s.conf-small installed to %s. $std\n\n" "$sng" "$syslogng_conf"
-                ;;
-            *)
-                printf " %s.conf-small is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-small"
-                ;;
-        esac
+        printf "\n$white Do you wish to install non-scl syslog-ng.conf? [RECOMMENDED]\n"
+        printf "$blue (if you don't know what scl is, you probably want to say 'y' here)\n"
+        printf "$std (default %s.conf is backed up to %s/%s.conf-opkg)$white [y|n]? " "$sng" "$syslogng_share" "$sng"
+        if yes_no
+        then
+            cp -pf $syslogng_share/examples/$sng.conf-no_scl $syslogng_conf
+            printf " %s.conf-no_scl installed to %s. $std\n\n" "$sng" "$syslogng_conf"
+        else
+            printf " %s.conf-no_scl is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-no_scl"
+        fi
         [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
     }
 
 # setup logrotate
     setup_lr(){
-    # assumes since entware is required / installed, post-mount exists and is properly executable
+        # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding logrotate cron job$white ..."
         sed -i '/cru a logrotate/d' $postmount
         # respect user's logrotate cron job if it exists
@@ -208,9 +226,9 @@ install(){
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
-    printf "$white setting up $1 ..."
+    printf "$white setting up %s ..." "$1"
     opkg install $force "$1" 
-    setup_exp "$1"
+    setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
 }
@@ -218,15 +236,18 @@ install(){
 
 setup_scribe(){
     printf "$white setting up %s ..." "$scribe_name"
-    cp -pf "$scribe_dir"/"$scribe_name" "$scribe_script"
+    cp -pf "$scribe_dir/$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
     if [ "$skynet_installed" = "yes" ]
     then
-        mv $syslogng_share/examples/skynet $syslogng_d 
-        printf "$blue setting skynet log file location$white ..."
-        skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
-        sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+        if [ ! -e "$syslogng_d/skynet" ]
+        then
+            cp -pu $syslogng_share/examples/skynet $syslogng_d 
+            printf "$blue setting skynet log file location$white ..."
+            skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
+            sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+        fi
     else
         printf "$red Skynet NOT installed$white ..."
     fi
@@ -320,27 +341,27 @@ menu_update(){
         printf "\n$white New version available!\n"
         printf " Do you wish to upgrade [y|n] $std"
     else
-        printf "\n$white No new version available.\n"
+        printf "\n$white No new version available. (GitHub version"
+        [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
+        printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
+    fi    
+    if yes_no
+    then
+        getzip
+        setup_scribe
+    else
+        printf "\n$white $scribe_name not updated!$std\n"
     fi
-    
-    read -r instl
-    case "$instl" in
-        [yY][eE][sS]|[yY])
-            if curl -fL --retry 3 "$scribe_repo" -o $scribe_script
-            then
-                chmod 0755 $scribe_script
-                [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-                printf "\n$white $scribe_name successfully updated.$std\n"
-            else
-                printf "\n$white $scribe_name$red FAILED$white to update!$std\n"
-                return 1
-            fi
-            ;;
-        *)
-            printf "\n$white $scribe_name not updated!$std\n"
-            ;;
-    esac
+
+    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
+    if yes_no; then menu_filters; fi
+}
+
+menu_filters(){
+    getzip
+    setup_expl "$sng"
+    setup_expl "$lr"
 }
 
 gather_debug(){
@@ -348,7 +369,7 @@ gather_debug(){
     scribe_debug=$TMP/$scribe_debug_name
     [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
     printf "\n$white gathering debugging information ..."
-    printf "### Scribe Version: %s\n" $scribe_ver > $scribe_debug
+    printf "### Scribe Version: %s\n" "$scribe_ver" > $scribe_debug
 
     # everything between { } goes to $scribe_debug
     {
@@ -364,6 +385,8 @@ gather_debug(){
         ls -ld /jffs/syslog*
         printf "\n### top output:\n"
         top -b -n1 | head
+        printf "\n### syslog references in top:\n"
+        top -b -n1 | grep syslog
         printf "\n### init.d directory:\n"
         ls -l /opt/etc/init.d
         printf "\n### contents of S01syslog-ng\n"
@@ -402,14 +425,15 @@ gather_debug(){
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
-    sed -i "s/$USER/[redacted]/g" "$scribe_debug"
+    redact=$(echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
+    sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
 
-    printf " Debug output stored in %s, please review this file\n" $scribe_debug
+    printf " Debug output stored in %s, please review this file\n" "$scribe_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
-    printf " Tarball of debug output is %s.tar.gz, \n" $scribe_debug
+    printf " Tarball of debug output is %s.tar.gz \n" "$scribe_debug"
 }
 
 scribe_menu(){
@@ -500,6 +524,11 @@ case $action in
         get_vers
         prt_vers
         menu_update
+        ;;
+
+# update syslog-ng and logrotate filters
+    update-filters | filters)
+        menu_filters
         ;;
 
 # show total combined config
