@@ -28,11 +28,12 @@
 # scribe constants
 action="$1"
 got_zip="no"
+[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.8_0 ($scribe_branch)"
+readonly scribe_ver="v0.8_1 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -336,6 +337,8 @@ prt_vers(){
 }
 
 menu_update(){
+    inst="no"
+    upd="no"
     if [ "$installed_ver" -lt "$github_ver" ]
     then
         printf "\n$white New version available!\n"
@@ -345,17 +348,22 @@ menu_update(){
         [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
         printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
-    fi    
-    if yes_no
+    fi
+    if yes_no; then inst="yes"; fi
+    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
+    if yes_no; then upd="yes"; fi
+
+    if [ "$inst" = "yes" ]
     then
         getzip
         setup_scribe
+        [ $upd = "yes" ] && scribe filters gotzip
+        exit 0
     else
         printf "\n$white $scribe_name not updated!$std\n"
     fi
 
-    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
-    if yes_no; then menu_filters; fi
+    [ "$inst" = "yes" ] && menu_filters
 }
 
 menu_filters(){
@@ -450,7 +458,7 @@ scribe_installed="$red Not Installed"
 [ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
 installed_ver=$( ver_num "$scribe_installed" )
 
-logo
+[ "$got_zip" != "yes" ] && logo
 
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
