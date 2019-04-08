@@ -357,13 +357,20 @@ menu_update(){
     then
         getzip
         setup_scribe
+        printf "\n$white $scribe_name updated!$std\n"
         [ $upd = "yes" ] && scribe filters gotzip
         exit 0
     else
-        printf "\n$white $scribe_name not updated!$std\n"
+        printf "\n$white $scribe_name$red not$white updated!$std\n"
     fi
 
-    [ "$inst" = "yes" ] && menu_filters
+    if [ "$upd" = "yes" ]
+    then
+        menu_filters
+        printf "\n$white %s and %s example and installed files updated!$std\n" "$sng" "$lr"
+    else
+        printf "\n$white %s and %s example and installed files$red not$white updated!$std\n" "$sng" "$lr"
+    fi
 }
 
 menu_filters(){
