@@ -31,8 +31,8 @@ got_zip="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
-readonly scribe_ver="v0.7_1 ($scribe_branch)"
+readonly scribe_branch="master"
+readonly scribe_ver="v0.8_0 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -574,7 +574,7 @@ case $action in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | update-filters | show-config | check-syntax | status | restart | debug )$std\n\n"
         exit 1
         ;;
 esac
