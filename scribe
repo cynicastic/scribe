@@ -33,7 +33,7 @@ got_zip="no"
 
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.8_1 ($scribe_branch)"
+readonly scribe_ver="v0.8_2 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
