@@ -142,6 +142,8 @@ getzip(){
     fi
 }
 
+sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
+
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
 setup_expl(){
@@ -170,7 +172,45 @@ force_install(){
     return $?
 }
 
-sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
+check_sng_run(){
+	printf "\n$white %33s" "Checking $sng daemon..."
+    if [ -z "$( pidof $sng )" ]
+	then
+		dead
+        return 1
+	else
+		alive
+	fi
+}
+
+check_lr_run(){
+	printf "\n$white %33s" "Checking $lr cron job..."
+    if cru l | grep -q $lr
+	then
+		alive
+	else
+		dead
+        return 1
+	fi
+}
+
+get_vers(){
+    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
+    [ -z "$scribe_github" ] && return 1
+    github_ver=$( ver_num "$scribe_github" )
+}
+
+prt_vers(){
+    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
+    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+}
+
+menu_status(){
+        check_sng_run
+        check_lr_run
+        get_vers
+        prt_vers
+}
 
 
 install(){
@@ -232,6 +272,7 @@ install(){
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
+    menu_status
 }
 
 
@@ -303,37 +344,11 @@ uninstall(){
     service reboot; exit 0
 }
 	
-check_sng_run(){
-	printf "\n$white %33s" "Checking $sng daemon..."
-    if [ -z "$( pidof $sng )" ]
-	then
-		dead
-        return 1
-	else
-		alive
-	fi
-}
-
-check_lr_run(){
-	printf "\n$white %33s" "Checking $lr cron job..."
-    if cru l | grep -q $lr
-	then
-		alive
-	else
-		dead
-        return 1
-	fi
-}
-
-get_vers(){
-    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
-    [ -z "$scribe_github" ] && return 1
-    github_ver=$( ver_num "$scribe_github" )
-}
-
-prt_vers(){
-    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
-    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+menu_filters(){
+    getzip
+    setup_expl "$sng"
+    setup_expl "$lr"
+    printf "\n$white %s and %s example and installed files updated!$std\n" "$sng" "$lr"
 }
 
 menu_update(){
@@ -360,7 +375,6 @@ menu_update(){
         printf "\n$white $scribe_name updated!$std\n"
         [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters gotzip
         exit 0
-        fi
     else
         printf "\n$white $scribe_name$red not$white updated!$std\n"
     fi
@@ -371,13 +385,6 @@ menu_update(){
     else
         printf "\n$white %s and %s example and installed files$red not$white updated!$std\n" "$sng" "$lr"
     fi
-}
-
-menu_filters(){
-    getzip
-    setup_expl "$sng"
-    setup_expl "$lr"
-    printf "\n$white %s and %s example and installed files updated!$std\n" "$sng" "$lr"
 }
 
 gather_debug(){
@@ -466,13 +473,13 @@ scribe_installed="$red Not Installed"
 [ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
 installed_ver=$( ver_num "$scribe_installed" )
 
-[ "$got_zip" != "yes" ] && logo
-
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
 # then
 # 	scribe_menu
 # fi
+
+[ "$got_zip" != "yes" ] && logo
 
 case $action in
 
@@ -565,10 +572,7 @@ case $action in
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
-        check_sng_run
-        check_lr_run
-        get_vers
-        prt_vers
+        menu_status
         ;;
 
 # restart (or start if not running) syslog-ng
@@ -581,6 +585,7 @@ case $action in
             printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
             $S01sng_loc start
         fi
+        menu_status
         ;;
 
 # generate debug tarball
