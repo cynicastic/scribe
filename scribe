@@ -348,7 +348,7 @@ menu_filters(){
     getzip
     setup_expl "$sng"
     setup_expl "$lr"
-    printf "\n$white %s and %s example and installed files updated!$std\n" "$sng" "$lr"
+    printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
 
 menu_update(){
@@ -365,7 +365,7 @@ menu_update(){
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
     if yes_no; then inst="yes"; fi
-    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
+    printf "\n$white Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
     if yes_no; then upd="yes"; fi
 
     if [ "$inst" = "yes" ]
@@ -383,7 +383,7 @@ menu_update(){
     then
         menu_filters
     else
-        printf "\n$white %s and %s example and installed files$red not$white updated!$std\n" "$sng" "$lr"
+        printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
     fi
 }
 
