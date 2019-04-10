@@ -35,7 +35,7 @@ kill_syslogd (){
 # export timezone if not already set
 [ -z "$TZ" ] && export TZ=$(cat /etc/TZ)
 
-RECMD="kill_syslogd"
+PRECMD="kill_syslogd"
 # enabling the below can be useful when having problems,
 # but fills up the logfile fast
 #ARGS="-v"
