@@ -28,11 +28,12 @@
 # scribe constants
 action="$1"
 got_zip="no"
+[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.7_1 ($scribe_branch)"
+readonly scribe_ver="v0.8_4 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -43,6 +44,7 @@ readonly sng="syslog-ng"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_loc="$init_d/S01$sng"
+readonly func_sng_loc="$init_d/rc.func.$sng"
 readonly syslogngloc="/opt/sbin/$sng"
 readonly logrotateloc="/opt/sbin/$lr"
 readonly syslogng_conf="/opt/etc/$sng.conf"
@@ -80,9 +82,8 @@ else
     skynet_installed="no"
 fi
 
-###################
+
 #### functions ####
-###################
 
 alive(){ printf "$green alive. $std\n"; }
 
@@ -128,7 +129,8 @@ logo(){
 getzip(){
     if [ "$got_zip" = "no" ]
     then
-        dlt "$scribe_dir"
+        dlt $scribe_dir
+        dlt $TMP/$scribe_name.zip
         if curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
         then
             unzip $TMP/$scribe_name.zip -d $TMP
@@ -140,6 +142,9 @@ getzip(){
         fi
     fi
 }
+
+sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
+sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -169,31 +174,67 @@ force_install(){
     return $?
 }
 
-sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi }
+check_sng_run(){
+	printf "\n$white %33s" "Checking $sng daemon..."
+    if [ -z "$( pidof $sng )" ]
+	then
+		dead
+        return 1
+	else
+		alive
+	fi
+}
+
+check_lr_run(){
+	printf "\n$white %33s" "Checking $lr cron job..."
+    if cru l | grep -q $lr
+	then
+		alive
+	else
+		dead
+        return 1
+	fi
+}
+
+get_vers(){
+    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
+    [ -z "$scribe_github" ] && return 1
+    github_ver=$( ver_num "$scribe_github" )
+}
+
+prt_vers(){
+    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
+    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+}
+
+menu_status(){
+        check_sng_run
+        check_lr_run
+        get_vers
+        prt_vers
+}
 
 
 install(){
 
-###############################
 #### install sub-functions ####
-###############################
 
 # determine syslog-ng conf file version
     sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
 
 # for pre-3.19 conf file, move syslog-ng.conf @include line to start of file or everything will be written to messages
     sng_conf_fix(){
-        printf "$blue moving @include line in $syslogng_conf file$white ..."
+        printf "$blue moving @include line in %s file$white ..." "$syslogng_conf"
         sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
         sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
     }
 
 # setup syslog-ng
     setup_sng(){
-        printf "$white setting up syslog-ng ..."
-        cp -pu "$scribe_dir"/init.d/rc.func.syslog-ng $init_d/
-        chmod u=rw,go=r $init_d/rc.func.syslog-ng
-        sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc
+        printf "\n$white setting up syslog-ng ..."
+        cp -pu $scribe_dir/init.d/$func_sng_loc $init_d/
+        chmod u=rw,go=r $init_d/$func_sng_loc
+        sed_func
         finis
         printf "\n$white Do you wish to install non-scl syslog-ng.conf? [RECOMMENDED]\n"
         printf "$blue (if you don't know what scl is, you probably want to say 'y' here)\n"
@@ -211,17 +252,14 @@ install(){
 # setup logrotate
     setup_lr(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
-        printf "$blue adding logrotate cron job$white ..."
-        sed -i '/cru a logrotate/d' $postmount
+        printf "$blue adding %s cron job$white ..." "$lr"
         # respect user's logrotate cron job if it exists
-        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" # added by scribe' >> $postmount
-        [ -z "$( cru l | grep $lr )" ] && cru a $lr "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf"
+        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily" # added by scribe' >> $postmount
+        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily"
         finis
     }
 
-##############################
 #### install main routine ####
-##############################
 
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
@@ -231,6 +269,7 @@ install(){
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
+    menu_status
 }
 
 
@@ -267,7 +306,7 @@ uninstall(){
     if [ -e $syslogngloc ]
     then
         dlt $S01sng_loc
-        dlt $init_d/rc.func.syslog-ng
+        dlt $init_d/$func_sng_loc
         dlt /tmp/syslog.log
         dlt /jffs/syslog.log
         dlt /jffs/syslog.log-1
@@ -302,40 +341,20 @@ uninstall(){
     service reboot; exit 0
 }
 	
-check_sng_run(){
-	printf "\n$white %33s" "Checking $sng daemon..."
-    if [ -z "$( pidof $sng )" ]
-	then
-		dead
-        return 1
-	else
-		alive
-	fi
-}
+menu_filters(){
+    getzip
+    setup_expl "$sng"
+    setup_expl "$lr"
+    if ! grep $func_sng_loc $S01sng_loc; then sed_func
 
-check_lr_run(){
-	printf "\n$white %33s" "Checking $lr cron job..."
-    if cru l | grep -q $lr
-	then
-		alive
-	else
-		dead
-        return 1
-	fi
-}
-
-get_vers(){
-    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
-    [ -z "$scribe_github" ] && return 1
-    github_ver=$( ver_num "$scribe_github" )
-}
-
-prt_vers(){
-    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
-    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+    printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
 
 menu_update(){
+    inst="no"
+    upd="no"
+    # ugly hack to harmonize filenames
+    [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && mv $syslogng_d/crashes $syslogng_d/crash
     if [ "$installed_ver" -lt "$github_ver" ]
     then
         printf "\n$white New version available!\n"
@@ -345,23 +364,28 @@ menu_update(){
         [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
         printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
-    fi    
-    if yes_no
+    fi
+    if yes_no; then inst="yes"; fi
+    printf "\n$white Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
+    if yes_no; then upd="yes"; fi
+
+    if [ "$inst" = "yes" ]
     then
         getzip
         setup_scribe
+        printf "\n$white $scribe_name updated!$std\n"
+        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters gotzip
+        exit 0
     else
-        printf "\n$white $scribe_name not updated!$std\n"
+        printf "\n$white $scribe_name$red not$white updated!$std\n"
     fi
 
-    printf "\n$white Do you want to update %s and %s example and installed (/opt/etc/*.d/) files? [y|n] $std" "$sng" "$lr"
-    if yes_no; then menu_filters; fi
-}
-
-menu_filters(){
-    getzip
-    setup_expl "$sng"
-    setup_expl "$lr"
+    if [ "$upd" = "yes" ]
+    then
+        menu_filters
+    else
+        printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
+    fi
 }
 
 gather_debug(){
@@ -450,13 +474,13 @@ scribe_installed="$red Not Installed"
 [ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
 installed_ver=$( ver_num "$scribe_installed" )
 
-logo
-
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
 # then
 # 	scribe_menu
 # fi
+
+[ "$got_zip" != "yes" ] && logo
 
 case $action in
 
@@ -490,8 +514,8 @@ case $action in
             setup_scribe
         fi
 
-        dlt $TMP/$scribe_name.zip
         [ "$skynet_installed" = "no" ] && no_skynet
+        # some logic here that if setup_scribe was run, then exit 0
         ;;
 
 # uninstall scribe
@@ -549,10 +573,7 @@ case $action in
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
-        check_sng_run
-        check_lr_run
-        get_vers
-        prt_vers
+        menu_status
         ;;
 
 # restart (or start if not running) syslog-ng
@@ -565,6 +586,7 @@ case $action in
             printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
             $S01sng_loc start
         fi
+        menu_status
         ;;
 
 # generate debug tarball
@@ -574,7 +596,7 @@ case $action in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | show-config | check-syntax | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | update-filters | show-config | check-syntax | status | restart | debug )$std\n\n"
         exit 1
         ;;
 esac
