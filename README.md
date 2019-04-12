@@ -21,14 +21,14 @@ SSH into the router and run:
 
 ## *WARNING*
 
-This software was written by someone who very likely didn't know what they were doing.  There is a non-zero chance this software will not fucntion as intended, cause irreparable data loss and/or hardware damage, or accidentally trigger the annihilation of the earth.  End user accepts all these potential outcomes as the unavoidable consequences of existing.
+This software was written by someone who very likely didn't know what they were doing.  There is a non-zero chance this software will not function as intended, cause irreparable data loss and/or hardware damage, or accidentally trigger the annihilation of the earth.  End user accepts all these potential outcomes as the unavoidable consequences of existing.
 
 ## ToDo:
 
 - [ ] Expand this README (version 0.x)
 - [ ] Alpha and Beta testing (version 0.x)
 - [ ] Add md5 checksum when checking for new versions (version 1.x)
-- [ ] Provide and ask to install a simplified syslog-ng.conf file (version 1.x)
+- [x] Provide and ask to install a simplified syslog-ng.conf file (version 1.x)
 - [ ] Add a menu (version 2.x)
 - [ ] ...
 - [ ] ?????
@@ -37,6 +37,7 @@ This software was written by someone who very likely didn't know what they were 
 ## Built With
 
 * [vim](https://www.vim.org/ "definitely NOT emacs") - because vi is always there, so I'm not lost on a clean install.
+* amix's [vimrc](https://github.com/amix/vimrc) - basic version.
 
 ## Contributing
 
@@ -63,6 +64,9 @@ This isn't high school, it's all open book and copying from your neighbor is enc
     * Odkrys
     * thelonelycoder
     * Xentrk
+
+* Alpha and Beta testing endured by Butterfly Bones, elorimer, and skeal.
+
 * I'm sure I missed someone, if it's you, I'm sorry, it wasn't intentional.  
 
 * Template used for thie README shamelessly stolen from [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2 "don't reinvent the wheel")
