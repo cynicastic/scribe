@@ -344,11 +344,11 @@ uninstall(){
 	
 menu_filters(){
     getzip
+    # ugly hack to harmonize filenames
+    [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_expl "$sng"
     setup_expl "$lr"
     if ! grep -q $func_sng_loc $S01sng_loc; then sed_func; fi
-    # ugly hack to harmonize filenames
-    [ -e $syslogng_d/crashes ] && [ -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $syslogng_d/crash )" ] && dlt $syslogng_d/crashes
 
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
