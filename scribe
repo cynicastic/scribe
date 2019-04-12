@@ -255,8 +255,8 @@ install(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding %s cron job$white ..." "$lr"
         # respect user's logrotate cron job if it exists
-        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily" # added by scribe' >> $postmount
-        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily"
+        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" >> /opt/tmp/logrotate.daily # added by scribe' >> $postmount
+        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" >> /opt/tmp/logrotate.daily
         finis
     }
 
@@ -343,6 +343,7 @@ uninstall(){
 }
 	
 menu_filters(){
+    set -x
     getzip
     setup_expl "$sng"
     setup_expl "$lr"
