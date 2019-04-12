@@ -144,6 +144,7 @@ getzip(){
 }
 
 sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
+
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
 
 # setup example files in /usr/share/$1/examples
@@ -345,7 +346,7 @@ menu_filters(){
     getzip
     setup_expl "$sng"
     setup_expl "$lr"
-    if ! grep $func_sng_loc $S01sng_loc; then sed_func
+    if ! grep $func_sng_loc $S01sng_loc; then sed_func; fi
 
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
