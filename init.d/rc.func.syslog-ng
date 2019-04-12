@@ -36,6 +36,8 @@ kill_syslogd (){
 [ -z "$TZ" ] && export TZ=$(cat /etc/TZ)
 
 PRECMD="kill_syslogd"
-ARGS="-v"
+# enabling the below can be useful when having problems,
+# but fills up the logfile fast
+#ARGS="-v"
 
 #eof

@@ -343,11 +343,10 @@ uninstall(){
 }
 	
 menu_filters(){
-    set -x
     getzip
     setup_expl "$sng"
     setup_expl "$lr"
-    if ! grep $func_sng_loc $S01sng_loc; then sed_func; fi
+    if ! grep -q $func_sng_loc $S01sng_loc; then sed_func; fi
 
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
