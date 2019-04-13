@@ -1,0 +1,21 @@
+# this filter is NOT compatible with the Skynet filter!
+destination d_firewall { 
+	file("/opt/var/log/fireall.log");
+};
+
+# log messages from firewall
+filter f_firewall {
+    message("ACCEPT IN=") or
+    message("DROP IN=");
+};
+
+# final flag stops processing of messages matching the f_firewall filter
+# only look to kernel for messages
+log {
+    source(kernel);
+    filter(f_firewall);
+    destination(d_firewall);
+    flags(final);
+};
+
+#eof
