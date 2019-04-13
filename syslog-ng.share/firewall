@@ -1,6 +1,6 @@
 # this filter is NOT compatible with the Skynet filter!
 destination d_firewall { 
-	file("/opt/var/log/fireall.log");
+    file("/opt/var/log/firewall.log");
 };
 
 # log messages from firewall

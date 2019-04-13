@@ -1,7 +1,7 @@
 # gather logrotate logs togetheer for unified log
 
 destination d_logrotate { 
-	file("/opt/var/log/logroate.log");
+    file("/opt/var/log/logroate.log");
 };
 
 source s_lr_status {
@@ -13,10 +13,10 @@ source s_lr_daily {
 };
 
 log {
-	source(s_lr_status);
-	source(s_lr_daily);
-	destination(d_logrotate);
-	flags(final);
+    source(s_lr_status);
+    source(s_lr_daily);
+    destination(d_logrotate);
+    flags(final);
 };
 
 #eof

@@ -1,4 +1,4 @@
-/opt/var/log/crash {
+/opt/var/log/crash.log {
     minsize 4096k
     daily
     postrotate
