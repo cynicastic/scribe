@@ -33,7 +33,7 @@ got_zip="no"
 
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
-readonly scribe_ver="v0.8_4 ($scribe_branch)"
+readonly scribe_ver="v0.9_0 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -149,22 +149,30 @@ sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
+# all files in examples and .d must be 644 or 600
 setup_expl(){
     [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share" && conf="$syslogng_conf"
     [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share" && conf="$logrotate_conf"
-    cp -pu $scribe_dir/"$1".d/* $d_dir/
+    opkg="$1.conf-opkg"
+    conf_opkg="$conf-opkg"
+
+    cp -pu $scribe_dir/$1.d/* $d_dir/
+    chmod 600 $d_dir/*
+
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf $scribe_dir/"$1".share/* $share/examples/
-
-    if [ -e /opt/etc/"$1".conf-opkg ]
+    cp -pf $scribe_dir/$1.share/* $share/examples/
+    
+    if [ -e $conf_opkg ]
     then
-        cp -pf /opt/etc/"$1".conf-opkg $share/examples
-        dlt /opt/etc/"$1".conf-opkg
-    elif [ ! -e $share/examples/"$1".conf-opkg ]
+        cp -pf $conf_opkg $share/examples
+        dlt $conf_opkg
+    elif [ ! -e $share/examples/$opkg ]
     then
-        cp -pf $conf $share/examples/"$1".conf-opkg
+        cp -pf $conf $share/examples/$opkg
     fi
+    
+    chmod 600 $share/examples/*
 }
 
 force_install(){
@@ -255,8 +263,8 @@ install(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding %s cron job$white ..." "$lr"
         # respect user's logrotate cron job if it exists
-        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" >> /opt/tmp/logrotate.daily # added by scribe' >> $postmount
-        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf" >> /opt/tmp/logrotate.daily
+        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
+        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
         finis
     }
 
