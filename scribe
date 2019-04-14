@@ -30,6 +30,8 @@
 # scribe constants
 action="$1"
 got_zip="no"
+[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes"
+[ -n "$3" ] && shift
 banner="yes"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
@@ -152,7 +154,7 @@ getzip(){
 
 sed_func(){
     sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
-    sed -i "/$scribe_script/d; -e '$a\/jffs/scripts/scribe kill_logger nologo & # added by scribe\'" $serviceevent
+    sed -i "$scribe_script/d; -e '$a\/jffs/scripts/scribe kill_logger nologo & # added by scribe\'" $serviceevent
 }
 
 sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
