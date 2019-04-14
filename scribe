@@ -34,7 +34,7 @@ got_zip="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
+readonly scribe_branch="master"
 readonly scribe_ver="v0.9_0 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -245,13 +245,14 @@ install(){
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
+            printf " backing up %s to %s ..." "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
             printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function \n"
-            printf " correctly on asuswrt due to a conflict with klogd. $blue A replacement syslog-ng.conf has been\n"
+            printf " correctly on asuswrt due to a conflict with klogd.$blue A replacement syslog-ng.conf has been\n"
             printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
-            printf " issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf file\n"
-            printf " provided by the package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
+            printf " issues with the syslog-ng.conf file provded by the package. The syslog-ng.conf file provided\n"
+            printf " by the Entware package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
             printf "\n Installation"
         fi
         finis
@@ -274,7 +275,7 @@ install(){
 
     printf "$white setting up %s ..." "$1"
     opkg install $force "$1" 
-    [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your packages and run scribe install again.$std\n\n" && exit 1
+    [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
