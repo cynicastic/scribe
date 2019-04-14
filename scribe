@@ -149,7 +149,7 @@ getzip(){
     fi
 }
 
-sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; }
+sed_func(){ sed -i "/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; }
 #sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
@@ -334,7 +334,7 @@ uninstall(){
     if [ -e $logrotateloc ]
     then
         sed -i '/cru a logrotate/d' $postmount
-        [ -n "$( cru l | grep $lr )" ] && cru d $lr
+        if cru l | grep $lr; then cru d $lr; fi
         opkg remove "$lr"
         dlt $logrotate_d
         dlt $logrotate_share
