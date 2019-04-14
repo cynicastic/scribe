@@ -46,7 +46,8 @@ readonly sng="syslog-ng"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_loc="$init_d/S01$sng"
-readonly func_sng_loc="$init_d/rc.func.$sng"
+readonly rcfunc_sng="rc.func.$sng"
+readonly rcfunc_loc="$init_d/$rcfunc_sng"
 readonly syslogngloc="/opt/sbin/$sng"
 readonly logrotateloc="/opt/sbin/$lr"
 readonly syslogng_conf="/opt/etc/$sng.conf"
@@ -148,7 +149,8 @@ getzip(){
     fi
 }
 
-sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
+sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; }
+#sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
 
@@ -239,20 +241,20 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "\n$white setting up syslog-ng ..."
-        cp -pu $scribe_dir/init.d/$func_sng_loc $init_d/
-        chmod u=rw,go=r $init_d/$func_sng_loc
+        cp -pu $scribe_dir/init.d/$rcfunc_sng $init_d/
+        chmod u=rw,go=r $rcfunc_loc
         sed_func
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
-            printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function\n"
-            printf "correctly on asuswrt due to a conflict with klogd.  A replacement syslog-ng.conf\n"
-            printf "is installed at %s that corrects this conflict and also\n" "$syslogng_conf"
-            printf "corrects other issues with the syslog-ng.conf file provded by the package.\n"
-            printf "The syslog-ng.conf file provided by the package has been moved to\n"
-            printf "%s/examples/%s.conf-opkg.\n\n Installation" "$syslogng_share" "$sng"
+            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not\n"
+            printf " function correctly on asuswrt due to a conflict with klogd.  A replacement\n"
+            printf " syslog-ng.conf has been installed at %s that corrects this conflict and also corrects\n" "$syslogng_conf"
+            printf " other issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf\n"
+            printf " file provided by the package has been moved to %s/examples/%s.conf-opkg.\n" "$syslogng_share" "$sng"
+            printf "\n\n Installation"
         fi
         finis
     }
@@ -315,7 +317,7 @@ uninstall(){
     if [ -e $syslogngloc ]
     then
         dlt $S01sng_loc
-        dlt $init_d/$func_sng_loc
+        dlt $rcfunc_loc
         dlt /tmp/syslog.log
         dlt /jffs/syslog.log
         dlt /jffs/syslog.log-1
@@ -356,7 +358,7 @@ menu_filters(){
     [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_expl "$sng"
     setup_expl "$lr"
-    if ! grep -q $func_sng_loc $S01sng_loc; then sed_func; fi
+    if ! grep -q $rcfunc_loc $S01sng_loc; then sed_func; fi
 
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
