@@ -30,7 +30,8 @@
 # scribe constants
 action="$1"
 got_zip="no"
-[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes"
+banner="yes"
+[ -n "$2" ] && [ "$2" = "nologo" ] && banner="no"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
@@ -58,6 +59,7 @@ readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 #
+readonly serviceevent="/jffs/scriipts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
 readonly merlin="ASUSWRT-Merlin"
 
@@ -148,9 +150,12 @@ getzip(){
     fi
 }
 
-sed_func(){ sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; }
+sed_func(){
+    sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
+    sed -i "/$scribe_script/d; -e '$a\/jffs/scripts/scribe kill_logger nologo & # added by scribe\'" $serviceevent
+}
 
-sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
+sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -386,7 +391,7 @@ menu_update(){
         getzip
         setup_scribe
         printf "\n$white $scribe_name updated!$std\n"
-        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters gotzip
+        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters nologo
         exit 0
     else
         printf "\n$white $scribe_name$red not$white updated!$std\n"
@@ -492,7 +497,7 @@ installed_ver=$( ver_num "$scribe_installed" )
 # 	scribe_menu
 # fi
 
-[ "$got_zip" != "yes" ] && logo
+[ "$banner" != "no" ] && logo
 
 case $action in
 
@@ -605,6 +610,20 @@ case $action in
 # generate debug tarball
     debug)
         gather_debug
+        ;;
+
+# kill syslogd & klogd - only available via cli
+    kill_logger)
+        # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
+        . $rcfunc_loc
+        count=60
+        while [ $count -gt 0 ]
+        do
+            sleep 1 # give them a moment to start up
+            if ps | grep -q klogd && ps | grep -q syslogd; then kill_logger; exit 0; fi
+            count=$(( count - 1 ))
+        done
+        logger -t "$scribe_name" "FAILED to kill klogd and/or syslogd!"
         ;;
         
 # unrecognized command
