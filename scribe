@@ -149,7 +149,7 @@ getzip(){
     fi
 }
 
-sed_func(){ sed -i "/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; }
+sed_func(){ sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; }
 #sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
@@ -250,11 +250,11 @@ install(){
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
             printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not\n"
-            printf " function correctly on asuswrt due to a conflict with klogd.  A replacement\n"
-            printf " syslog-ng.conf has been installed at %s that corrects this conflict and also corrects\n" "$syslogng_conf"
+            printf " function correctly on asuswrt due to a conflict with klogd.  A replacement syslog-ng.conf\n"
+            printf " has been installed at %s that corrects this conflict and also corrects\n" "$syslogng_conf"
             printf " other issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf\n"
             printf " file provided by the package has been moved to %s/examples/%s.conf-opkg.\n" "$syslogng_share" "$sng"
-            printf "\n\n Installation"
+            printf "\n Installation"
         fi
         finis
     }
@@ -265,7 +265,7 @@ install(){
         printf "$blue adding %s cron job$white ..." "$lr"
         # respect user's logrotate cron job if it exists
         [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
-        [ -z "$( cru l | grep $lr )" ] && cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
+        if ! cru l | grep -q $lr; then cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"; fi
         finis
     }
 
@@ -334,7 +334,7 @@ uninstall(){
     if [ -e $logrotateloc ]
     then
         sed -i '/cru a logrotate/d' $postmount
-        if cru l | grep $lr; then cru d $lr; fi
+        if cru l | grep -q $lr; then cru d $lr; fi
         opkg remove "$lr"
         dlt $logrotate_d
         dlt $logrotate_share
