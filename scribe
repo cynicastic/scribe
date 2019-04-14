@@ -21,6 +21,8 @@
 # install command:
 #   curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
 #
+# shellcheck disable=SC2009
+# SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
 
@@ -114,6 +116,9 @@ yes_no(){
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
+# get md5sum of file
+md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; }
+
 logo(){
     clear
     printf "$white                            _\n"
@@ -156,20 +161,20 @@ setup_expl(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    cp -pu $scribe_dir/$1.d/* $d_dir/
+    cp -pu $scribe_dir/"$1".d/* $d_dir/
     chmod 600 $d_dir/*
 
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf $scribe_dir/$1.share/* $share/examples/
+    cp -pf $scribe_dir/"$1".share/* $share/examples/
     
     if [ -e $conf_opkg ]
     then
         cp -pf $conf_opkg $share/examples
         dlt $conf_opkg
-    elif [ ! -e $share/examples/$opkg ]
+    elif [ ! -e $share/examples/"$opkg" ]
     then
-        cp -pf $conf $share/examples/$opkg
+        cp -pf $conf $share/examples/"$opkg"
     fi
     
     chmod 600 $share/examples/*
@@ -231,31 +236,25 @@ install(){
 # determine syslog-ng conf file version
     sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
 
-# for pre-3.19 conf file, move syslog-ng.conf @include line to start of file or everything will be written to messages
-    sng_conf_fix(){
-        printf "$blue moving @include line in %s file$white ..." "$syslogng_conf"
-        sed -i '/# put any customization/d; /syslog-ng.d/d' $syslogng_conf
-        sed -i '3 i # put any customization files in this directory\n@include \"/opt/etc/syslog-ng.d/\" # moved by scribe\n' $syslogng_conf
-    }
-
 # setup syslog-ng
     setup_sng(){
         printf "\n$white setting up syslog-ng ..."
         cp -pu $scribe_dir/init.d/$func_sng_loc $init_d/
         chmod u=rw,go=r $init_d/$func_sng_loc
         sed_func
-        finis
-        printf "\n$white Do you wish to install non-scl syslog-ng.conf? [RECOMMENDED]\n"
-        printf "$blue (if you don't know what scl is, you probably want to say 'y' here)\n"
-        printf "$std (default %s.conf is backed up to %s/%s.conf-opkg)$white [y|n]? " "$sng" "$syslogng_share" "$sng"
-        if yes_no
+
+        if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
-            cp -pf $syslogng_share/examples/$sng.conf-no_scl $syslogng_conf
-            printf " %s.conf-no_scl installed to %s. $std\n\n" "$sng" "$syslogng_conf"
-        else
-            printf " %s.conf-no_scl is saved as %s. $std\n\n" "$sng" "$syslogng_share/examples/$sng.conf-no_scl"
+            cp -pf $syslogng_conf $syslogng_conf-prev
+            cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
+            printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function\n"
+            printf "correctly on asuswrt due to a conflict with klogd.  A replacement syslog-ng.conf\n"
+            printf "is installed at %s that corrects this conflict and also\n" "$syslogng_conf"
+            printf "corrects other issues with the syslog-ng.conf file provded by the package.\n"
+            printf "The syslog-ng.conf file provided by the package has been moved to\n"
+            printf "%s/examples/%s.conf-opkg.\n\n Installation" "$syslogng_share" "$sng"
         fi
-        [ "$(sng_conf_ver)" -lt "3019" ] && sng_conf_fix
+        finis
     }
 
 # setup logrotate
@@ -275,6 +274,7 @@ install(){
 
     printf "$white setting up %s ..." "$1"
     opkg install $force "$1" 
+    [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your packages and run scribe install again.$std\n\n" && exit 1
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
@@ -553,6 +553,7 @@ case $action in
         ;;
 
 # update scribe
+
     update)
         get_vers
         prt_vers
