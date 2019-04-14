@@ -1,11 +1,12 @@
 #!/bin/sh
 #tof
 
-# separate killing syslogd and linking syslog.log;
-# symlink might get broken even if syslogd not running
+# separate killing klogd/syslogd and linking syslog.log;
+# symlink might get broken even if klogd/syslogd not running
 
-kill_syslogd (){
-    # kill any/all running syslogd
+kill_logger (){
+    # kill any/all running klogd and/or syslogd
+    [ -n "$(pidof klogd)" ] && killall klogd
     [ -n "$(pidof syslogd)" ] && killall syslogd
 
     # webGUI System Log = /tmp/syslog.log
@@ -35,7 +36,7 @@ kill_syslogd (){
 # export timezone if not already set
 [ -z "$TZ" ] && export TZ=$(cat /etc/TZ)
 
-PRECMD="kill_syslogd"
+PRECMD="kill_logger"
 # enabling the below can be useful when having problems,
 # but fills up the logfile fast
 #ARGS="-v"
