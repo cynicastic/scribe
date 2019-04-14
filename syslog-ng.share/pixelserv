@@ -10,7 +10,6 @@ filter f_pixelserv {
 
 log {
     source(src);
-    source(kernel);
     filter(f_pixelserv);
     destination(d_pixelserv);
     flags(final);

@@ -11,7 +11,6 @@ filter f_wlceventd {
 
 log {
     source(src);
-    source(kernel);
     filter(f_wlceventd);
     destination(d_wlceventd);
     flags(final);

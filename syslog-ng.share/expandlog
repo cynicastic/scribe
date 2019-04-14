@@ -58,7 +58,6 @@ destination d_expandlog {
 
 log {
     source(src);
-    source(kernel);
     destination(d_expandlog);
 };
 

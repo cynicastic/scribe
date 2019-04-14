@@ -14,7 +14,6 @@ filter f_skynet {
 # final flag stops processing of messages matching the f_skynet filter
 log {
     source(src);
-    source(kernel);
     filter(f_skynet);
     destination(d_skynet);
     flags(final);

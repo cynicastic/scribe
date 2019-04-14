@@ -10,7 +10,6 @@ filter f_syslogng {
 
 log {
     source(src);
-    source(kernel);
     filter(f_syslogng);
     destination(d_syslogng);
     flags(final);

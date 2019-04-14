@@ -12,7 +12,7 @@ filter f_firewall {
 # final flag stops processing of messages matching the f_firewall filter
 # only look to kernel for messages
 log {
-    source(kernel);
+    source(src);
     filter(f_firewall);
     destination(d_firewall);
     flags(final);
