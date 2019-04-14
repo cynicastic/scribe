@@ -24,7 +24,7 @@
 # shellcheck disable=SC2009
 # SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt
 # shellcheck disable=SC2059
-# SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo"
+# SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I try to only embed the ansi color escapes in printf strings
 
 
 # scribe constants
@@ -111,7 +111,6 @@ yes_no(){
             false
             ;;
     esac
-
 }
 
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
@@ -150,7 +149,6 @@ getzip(){
 }
 
 sed_func(){ sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; }
-#sed_func(){ sed -i '/rc.func.syslog-ng/d; \~/opt/etc/init.d/rc.func~i . /opt/etc/init.d/rc.func.syslog-ng # added by scribe\n' $S01sng_loc; }
 
 sng_syntax(){ if syslog-ng -s;then printf "\n$white syslog-ng syntax check$green okay! $std\n\n";fi; }
 
@@ -249,12 +247,12 @@ install(){
         then
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
-            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not\n"
-            printf " function correctly on asuswrt due to a conflict with klogd.  A replacement syslog-ng.conf\n"
-            printf " has been installed at %s that corrects this conflict and also corrects\n" "$syslogng_conf"
-            printf " other issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf\n"
-            printf " file provided by the package has been moved to %s/examples/%s.conf-opkg.\n" "$syslogng_share" "$sng"
-            printf "\n Installation"
+            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function \n"
+            printf " correctly on asuswrt due to a conflict with klogd. $blue A replacement syslog-ng.conf has been\n"
+            printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
+            printf " issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf file\n"
+            printf " provided by the package has been moved to$u_l %s/examples/%s.conf-opkg.$std\n" "$syslogng_share" "$sng"
+            printf "\n$white Installation"
         fi
         finis
     }
