@@ -251,8 +251,8 @@ install(){
             printf " correctly on asuswrt due to a conflict with klogd. $blue A replacement syslog-ng.conf has been\n"
             printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
             printf " issues with the syslog-ng.conf file provded by the package.  The syslog-ng.conf file\n"
-            printf " provided by the package has been moved to$u_l %s/examples/%s.conf-opkg.$std\n" "$syslogng_share" "$sng"
-            printf "\n$white Installation"
+            printf " provided by the package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
+            printf "\n Installation"
         fi
         finis
     }
