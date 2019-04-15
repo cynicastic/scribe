@@ -1,65 +1,64 @@
 # print a huge log telling everything about the incomming log
 
 template t_expandlog {
-	template("================================================
-	PROGRAM=$PROGRAM#
-	PID=$PID#
-	BSDTAG=$BSDTAG#
-	TAG=$TAG#
-	TAGS=$TAGS#
-	FACILITY=$FACILITY#
-	FACILITY_NUM=$FACILITY_NUM#
-	LEVEL=$LEVEL#
-	LEVEL_NUM=$LEVEL_NUM#
-	PRI=$PRI#
-	PRIORITY=$PRIORITY#
-	FULLHOST=$FULLHOST#
-	FULLHOST_FROM=$FULLHOST_FROM#
-	HOST=$HOST#
-	HOST_FROM=$HOST_FROM#
-	LOGHOST=$LOGHOST#
-	MSGHDR=$MSGHDR#
-	MSGID=$MSGID#
-	MSGONLY=$MSGONLY#
-	MSG=$MSG#
-	MESSAGE=$MESSAGE#
-	SOURCE=$SOURCE#
-	SOURCEIP=$SOURCEIP#
-	SOURCE_IP=$SOURCE_IP#
-	SEQNUM=$SEQNUM#
-	UNIXTIME=$UNIXTIME#
-	FULLDATE=$FULLDATE#
-	ISODATE=$ISODATE#
-	DATE=$DATE#
-	STAMP=$STAMP#
-	TZ=$TZ#
-	TZOFFSET=$TZOFFSET#
-	SEC=$SEC#
-	MIN=$MIN#
-	HOUR=$HOUR#
-	HOUR12=$HOUR12#
-	DAY=$DAY#
-	WEEK=$WEEK#
-	WEEK_DAY=$WEEK_DAY#
-	WEEK_DAY_ABBREV=$WEEK_DAY_ABBREV#
-	WEEK_DAY_NAME=$WEEK_DAY_NAME#
-	MONTH=$MONTH#
-	MONTH_ABBREV=$MONTH_ABBREV#
-	MONTH_NAME=$MONTH_NAME#
-	MONTH_WEEK=$MONTH_WEEK#
-	YEAR=$YEAR#
-	YEAR_DAY=$YEAR_DAY#\n\n");
-	template_escape(no);
+    template("================================================
+    PROGRAM=$PROGRAM#
+    PID=$PID#
+    BSDTAG=$BSDTAG#
+    TAG=$TAG#
+    TAGS=$TAGS#
+    FACILITY=$FACILITY#
+    FACILITY_NUM=$FACILITY_NUM#
+    LEVEL=$LEVEL#
+    LEVEL_NUM=$LEVEL_NUM#
+    PRI=$PRI#
+    PRIORITY=$PRIORITY#
+    FULLHOST=$FULLHOST#
+    FULLHOST_FROM=$FULLHOST_FROM#
+    HOST=$HOST#
+    HOST_FROM=$HOST_FROM#
+    LOGHOST=$LOGHOST#
+    MSGHDR=$MSGHDR#
+    MSGID=$MSGID#
+    MSGONLY=$MSGONLY#
+    MSG=$MSG#
+    MESSAGE=$MESSAGE#
+    SOURCE=$SOURCE#
+    SOURCEIP=$SOURCEIP#
+    SOURCE_IP=$SOURCE_IP#
+    SEQNUM=$SEQNUM#
+    UNIXTIME=$UNIXTIME#
+    FULLDATE=$FULLDATE#
+    ISODATE=$ISODATE#
+    DATE=$DATE#
+    STAMP=$STAMP#
+    TZ=$TZ#
+    TZOFFSET=$TZOFFSET#
+    SEC=$SEC#
+    MIN=$MIN#
+    HOUR=$HOUR#
+    HOUR12=$HOUR12#
+    DAY=$DAY#
+    WEEK=$WEEK#
+    WEEK_DAY=$WEEK_DAY#
+    WEEK_DAY_ABBREV=$WEEK_DAY_ABBREV#
+    WEEK_DAY_NAME=$WEEK_DAY_NAME#
+    MONTH=$MONTH#
+    MONTH_ABBREV=$MONTH_ABBREV#
+    MONTH_NAME=$MONTH_NAME#
+    MONTH_WEEK=$MONTH_WEEK#
+    YEAR=$YEAR#
+    YEAR_DAY=$YEAR_DAY#\n\n");
+    template_escape(no);
 };
 
 destination d_expandlog { 
-	file("/opt/var/log/expanded-syslog.log" template(t_expandlog));
+    file("/opt/var/log/expanded-syslog.log" template(t_expandlog));
 };
 
 log {
-	source(src);
-	source(kernel);
-	destination(d_expandlog);
+    source(src);
+    destination(d_expandlog);
 };
 
 #eof

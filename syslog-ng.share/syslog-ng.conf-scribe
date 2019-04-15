@@ -4,7 +4,8 @@
 # More details about these settings can be found here:
 # https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
 #
-# "small" version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
+# non-scl version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
+#   "source kernel" removed - this conflicts with the linux klogd (see https://www.syslog-ng.com/syslog-ng-faq/)
 #   log_msg_size increased to 16K to ensure even large messages are completely captured
 #   stats_freq changed to every 6 hours
 #   source net function to get udp log messages from local network commented out
@@ -24,11 +25,11 @@ options {
     use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
 };
 
-# syslog-ng gets messages from syslog-ng (internal) and from /dev/log
+# syslog-ng gets messages from the system and syslog-ng (internal)
 
 source src {
     internal();
-    unix-dgram("/dev/log");
+    unix-dgram("/dev/log" so_rcvbuf(65536) flags(syslog-protocol));
 };
 
 # uncomment these three lines to get udp log messages from local network
@@ -37,10 +38,6 @@ source src {
 #    udp(ip(192.168.x.y) port(514));
 #};
 
-source kernel {
-    file("/proc/kmsg" program_override("kernel"));
-};
-
 destination messages {
     file("/opt/var/log/messages");
 };
@@ -48,13 +45,12 @@ destination messages {
 # uncomment these three lines to send udp log messages to local network
 # must also uncomment "destination(log_server);" below
 #destination log_server {
-#    udp("192.168.x.y" port(514));
+#    udp("10.29.3.3" port(514));
 #};
 
 log {
     source(src);
 #    source(net); # uncomment this and "source net" function above to get udp log messages from local network
-    source(kernel);
     destination(messages);
 #    destination(log_server); # uncomment this and "destination log_server" function above to send udp log messages to local network
 };

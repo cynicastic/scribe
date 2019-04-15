@@ -17,7 +17,6 @@ filter f_openvpn {
 
 log {
     source(src);
-    source(kernel);
     filter(f_openvpn);
     destination(d_openvpn);
     flags(final);

@@ -1,6 +1,4 @@
-/opt/var/log/crash.log {
-    minsize 4096k
-    daily
+/opt/var/log/firewall.log {
     postrotate
         /usr/bin/killall -HUP syslog-ng
     endscript

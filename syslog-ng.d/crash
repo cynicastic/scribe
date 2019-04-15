@@ -25,7 +25,6 @@ filter f_crash {
 
 log {
     source(src);
-    source(kernel);
     filter(f_crash);
     destination(d_crash);
     flags(final);
