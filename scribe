@@ -30,10 +30,9 @@
 # scribe constants
 action="$1"
 got_zip="no"
-[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes"
-[ -n "$3" ] && shift
+[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
 banner="yes"
-[ -n "$2" ] && [ "$2" = "nologo" ] && banner="no"
+[ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
@@ -155,7 +154,7 @@ getzip(){
 sed_sng(){
     # shellcheck disable=SC2016
     if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i '\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; fi
-    if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo & # added by scribe" >> $srvc_event; fi
+    if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event; fi
 }
 
 lr_cron(){
@@ -621,6 +620,7 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill_logger)
+        [ "$2" != "logger" ] && exit 0
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
