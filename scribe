@@ -61,7 +61,7 @@ readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 #
-readonly serviceevent="/jffs/scripts/service-event"
+readonly srvc_event="/jffs/scripts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
 readonly merlin="ASUSWRT-Merlin"
 
@@ -153,7 +153,7 @@ getzip(){
 
 sed_sng(){
     if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i '\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; fi
-    if ! grep -q $scribe_name $serviceevent; then echo "$scribe_script kill_logger nologo & # added by scribe" >> $serviceevent; fi
+    if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo & # added by scribe" >> $srvc_event; fi
 }
 
 lr_cron(){
@@ -324,6 +324,7 @@ uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
     if [ -e $syslogngloc ]
     then
+        sed -i '/$scribe_name/d' $srvc_event
         dlt $S01sng_loc
         dlt $rcfunc_loc
         dlt /tmp/syslog.log
@@ -341,7 +342,7 @@ uninstall(){
 
     if [ -e $logrotateloc ]
     then
-        sed -i '/cru a logrotate/d' $postmount
+        sed -i '/cru a $lr/d' $postmount
         if cru l | grep -q $lr; then cru d $lr; fi
         opkg remove "$lr"
         dlt $logrotate_d
