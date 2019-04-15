@@ -117,6 +117,7 @@ yes_no(){
 }
 
 # Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
+# shellcheck disable=SC2015
 dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
 # get md5sum of file
@@ -152,6 +153,7 @@ getzip(){
 }
 
 sed_sng(){
+    # shellcheck disable=SC2016
     if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i '\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; fi
     if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo & # added by scribe" >> $srvc_event; fi
 }
@@ -396,7 +398,7 @@ menu_update(){
         getzip
         setup_scribe
         printf "\n$white $scribe_name updated!$std\n"
-        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters nologo
+        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters gotzip nologo
         exit 0
     else
         printf "\n$white $scribe_name$red not$white updated!$std\n"
@@ -619,6 +621,7 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill_logger)
+        # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
         count=60
