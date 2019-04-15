@@ -152,7 +152,6 @@ getzip(){
 }
 
 sed_sng(){
-    # shellcheck disable=SC2016
     if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; fi
     if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event; fi
 }
