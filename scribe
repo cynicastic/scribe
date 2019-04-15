@@ -61,7 +61,7 @@ readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 #
-readonly serviceevent="/jffs/scriipts/service-event"
+readonly serviceevent="/jffs/scripts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
 readonly merlin="ASUSWRT-Merlin"
 
@@ -72,7 +72,6 @@ readonly green="\033[1;32m"
 readonly yellow="\033[1;33m"
 readonly blue="\033[1;34m"
 readonly std="\033[m"
-readonly u_l="\033[4m"
 
 # require Entware
 if [ ! -x "/opt/bin/opkg" ] || [ "$(uname -o)" != "$merlin" ]
@@ -98,7 +97,7 @@ dead(){ printf "$red dead. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
 
-not_installed(){ printf "\n$white $u_l$std$red NOT$white installed! $std\n" "$1"; }
+not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
@@ -152,12 +151,16 @@ getzip(){
     fi
 }
 
-sed_func(){
-    sed -i "/$rcfunc_sng/d; \~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
-    sed -i "$scribe_script/d; -e '$a\/jffs/scripts/scribe kill_logger nologo & # added by scribe\'" $serviceevent
+sed_sng(){
+    if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i '\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n' $S01sng_loc; fi
+    if ! grep -q $scribe_name $serviceevent; then echo "$scribe_script kill_logger nologo & # added by scribe" >> $serviceevent; fi
 }
 
-sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
+lr_cron(){
+    # respect user's logrotate cron job if it exists
+    if ! grep -q $lr $postmount; then echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount; fi
+    if ! cru l | grep -q $lr; then cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"; fi
+}
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -188,12 +191,14 @@ setup_expl(){
 }
 
 force_install(){
-    printf "\n$white $u_l%s$std$white already installed!\n" "$1"
+    printf "\n$blue %s$white already installed!\n" "$1"
     [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
     printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
     yes_no
     return $?
 }
+
+sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
 
 check_sng_run(){
 	printf "\n$white %33s" "Checking $sng daemon..."
@@ -248,7 +253,7 @@ install(){
         printf "\n$white setting up syslog-ng ..."
         cp -pu $scribe_dir/init.d/$rcfunc_sng $init_d/
         chmod u=rw,go=r $rcfunc_loc
-        sed_func
+        sed_sng
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
@@ -269,9 +274,7 @@ install(){
     setup_lr(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding %s cron job$white ..." "$lr"
-        # respect user's logrotate cron job if it exists
-        [ "X$( grep $lr $postmount )" = "X" ] && echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
-        if ! cru l | grep -q $lr; then cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"; fi
+        lr_cron
         finis
     }
 
@@ -288,7 +291,6 @@ install(){
     [ "$1" = "$lr"  ] && setup_lr
     menu_status
 }
-
 
 setup_scribe(){
     printf "$white setting up %s ..." "$scribe_name"
@@ -366,7 +368,7 @@ menu_filters(){
     [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_expl "$sng"
     setup_expl "$lr"
-    if ! grep -q $rcfunc_loc $S01sng_loc; then sed_func; fi
+    if ! grep -q $rcfunc_loc $S01sng_loc; then sed_sng; lr_cron; fi
 
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
