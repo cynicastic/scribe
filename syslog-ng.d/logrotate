@@ -1,7 +1,7 @@
-# gather logrotate logs togetheer for unified log
+# gather logrotate logs together for unified log
 
 destination d_logrotate { 
-    file("/opt/var/log/logroate.log");
+    file("/opt/var/log/logrotate.log");
 };
 
 source s_lr_status {
