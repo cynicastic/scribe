@@ -36,8 +36,8 @@ banner="yes"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v0.9_1 ($scribe_branch)"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v0.9_2 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -320,8 +320,20 @@ no_skynet(){
     enter_to continue
 }
 
+menu_restart(){
+    if check_sng_run
+    then
+        printf "$yellow Restarting syslog-ng ... $std\n"
+        $S01sng_loc restart
+    else
+        printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
+        $S01sng_loc start
+    fi
+}
+
 uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
+    service start logger
     if [ -e $syslogngloc ]
     then
         sed -i "/$scribe_name/d" $srvc_event
@@ -518,7 +530,7 @@ case $action in
             $S01sng_loc stop
             install "$sng" "FORCE"
         fi
-        $S01sng_loc start
+        menu_restart
 
         if [ ! -e $logrotateloc ]
         then
@@ -601,14 +613,7 @@ case $action in
 
 # restart (or start if not running) syslog-ng
     restart)
-        if check_sng_run
-        then
-            printf "$yellow Restarting syslog-ng ... $std\n"
-            $S01sng_loc restart
-        else
-            printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
-            $S01sng_loc start
-        fi
+        menu_restart
         menu_status
         ;;
 
