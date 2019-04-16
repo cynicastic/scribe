@@ -26,10 +26,9 @@ options {
 };
 
 # syslog-ng gets messages from the system and syslog-ng (internal)
-
 source src {
+    system();
     internal();
-    unix-dgram("/dev/log" so_rcvbuf(65536) flags(syslog-protocol));
 };
 
 # uncomment these three lines to get udp log messages from local network
@@ -45,7 +44,7 @@ destination messages {
 # uncomment these three lines to send udp log messages to local network
 # must also uncomment "destination(log_server);" below
 #destination log_server {
-#    udp("10.29.3.3" port(514));
+#    udp("192.168.x.y" port(514));
 #};
 
 log {
