@@ -157,17 +157,17 @@ sed_sng(){
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
-        printf "$white %s updated ... $std" "$S01sng_loc"
+        printf "$white %s updated ...$std" "$S01sng_loc"
     else
-        printf "$blue %s okay $white... $std" "$S01sng_loc"
+        printf "$blue %s okay $white...$std" "$S01sng_loc"
     fi
 
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
-        printf "$white %s updated ... $std" "$srvc_event"
+        printf "$white %s updated ...$std" "$srvc_event"
     else
-        printf "$blue %s okay $white... $std" "$srvc_event"
+        printf "$blue %s okay $white...$std" "$srvc_event"
     fi
 }
 
@@ -176,17 +176,17 @@ lr_cron(){
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
-        printf "$white %s updated ... $std" "$postmount"
+        printf "$white %s updated ...$std" "$postmount"
     else
-        printf "$blue %s okay $white... $std" "$postmount"
+        printf "$blue %s okay $white...$std" "$postmount"
     fi
 
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
-        printf "$white cron job updated ... $std"
+        printf "$white cron job updated ...$std"
     else
-        printf "$blue cron job okay $white... $std"
+        printf "$blue cron job okay $white...$std"
     fi
 }
 
@@ -315,7 +315,7 @@ install(){
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
-            printf " backing up %s to %s ..." "$syslogng_conf" "$syslogng_conf-prev"
+            printf "$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
             printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function \n"
@@ -503,6 +503,7 @@ menu_update(){
         menu_filters
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
+        check_sed
     fi
 }
 
