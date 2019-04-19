@@ -353,7 +353,7 @@ menu_restart(){
 
 uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
-    service start logger
+    service start_logger
     if [ -e $syslogngloc ]
     then
         sed -i "/$scribe_name/d" $srvc_event
