@@ -310,7 +310,7 @@ install(){
 }
 
 setup_scribe(){
-    printf "$white setting up %s ..." "$scribe_name"
+    printf "\n$white setting up %s ... " "$scribe_name"
     cp -pf "$scribe_dir/$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
@@ -350,6 +350,7 @@ menu_restart(){
 
 uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
+    printf "\n$white starting system klogd and syslogd ... $std"
     service start_logger
     if [ -e $syslogngloc ]
     then
