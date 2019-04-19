@@ -230,6 +230,7 @@ force_install(){
 
 sng_syntax(){
     printf "\n$white %s syntax check ...$std" "$sng"
+    sed_sng
     if syslog-ng -s
         then
             printf "$green okay! $std\n\n"
@@ -682,7 +683,6 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill_logger)
-        set -x
         [ "$2" != "logger" ] && exit 0
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
