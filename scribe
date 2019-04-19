@@ -185,6 +185,11 @@ lr_cron(){
     fi
 }
 
+check_sng_run(){
+	printf "\n$white %33s" "Checking $sng daemon..."
+    if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
+}
+
 check_sed(){ printf "\n$white checking system hooks ...$std"; sed_sng; lr_cron; finis; }
 
 # setup example files in /usr/share/$1/examples
@@ -240,16 +245,6 @@ show_config(){
     fi
 }
 
-check_sng_run(){
-	printf "\n$white %33s" "Checking $sng daemon..."
-    if [ -z "$( pidof $sng )" ]; then dead; return 1; else alive; fi
-}
-
-check_lr_run(){
-	printf "\n$white %33s" "Checking $lr cron job..."
-    if cru l | grep -q $lr; then alive; else dead; return 1; fi
-}
-
 run_logrotate(){
     printf "$white running %s ..." "$lr" 
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
@@ -270,7 +265,6 @@ prt_vers(){
 
 menu_status(){
         check_sng_run
-        check_lr_run
         check_sed
         get_vers
         prt_vers
