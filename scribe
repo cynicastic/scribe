@@ -293,7 +293,6 @@ install(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "$blue adding %s cron job$white ..." "$lr"
         lr_cron
-        finis
     }
 
 #### install main routine ####
@@ -301,7 +300,7 @@ install(){
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
 
-    printf "$white setting up %s ..." "$1"
+    printf "\n$white setting up %s ... " "$1"
     opkg install $force "$1" 
     [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
     setup_expl "$1"
@@ -310,7 +309,7 @@ install(){
 }
 
 setup_scribe(){
-    printf "\n$white setting up %s ... " "$scribe_name"
+    printf "\n$white setting up %s ..." "$scribe_name"
     cp -pf "$scribe_dir/$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
