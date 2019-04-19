@@ -89,6 +89,8 @@ alive(){ printf "$green alive. $std\n"; }
 
 dead(){ printf "$red dead. $std\n"; }
 
+updated(){ printf "$yellow updated. $std\n"; }
+
 finis (){ printf "$green done. $std\n"; }
 
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
@@ -149,48 +151,51 @@ getzip(){
 }
 
 sed_sng(){
+	printf "\n$white %33s" "Checking %s ..." "$S01sng_loc"
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
-        printf "$white %s updated ...$std" "$S01sng_loc"
+        updated
     else
-        printf "$blue %s okay $white...$std" "$S01sng_loc"
+        alive
     fi
 
+	printf "\n$white %33s" "Checking %s ..." "$srvc_event"
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
-        printf "$white %s updated ...$std" "$srvc_event"
+        updated
     else
-        printf "$blue %s okay $white...$std" "$srvc_event"
+        alive
     fi
 }
 
 lr_cron(){
-    # respect user's logrotate cron job if it exists
+	printf "\n$white %33s" "Checking %s ..." "$postmount"
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
-        printf "$white %s updated ...$std" "$postmount"
+        updated
     else
-        printf "$blue %s okay $white...$std" "$postmount"
+        alive
     fi
 
+	printf "\n$white %33s" "Checking if cron job running..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
-        printf "$white cron job updated ...$std"
+        updated
     else
-        printf "$blue cron job okay $white...$std"
+        alive
     fi
 }
 
 check_sng_run(){
-	printf "\n$white %33s" "Checking $sng daemon..."
+	printf "\n$white %33s" "Checking %s daemon..." "$sng"
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
-check_sed(){ printf "\n$white checking system hooks ...$std"; sed_sng; lr_cron; finis; }
+check_sed(){ sed_sng; lr_cron; }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -438,8 +443,8 @@ menu_filters(){
     [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_expl "$sng"
     setup_expl "$lr"
-    check_sed
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
+    check_sed
 }
 
 menu_update(){
