@@ -80,12 +80,7 @@ then
 fi
 
 # check if skynet is installed
-if grep -q "skynetloc" /jffs/scripts/firewall-start
-then
-    skynet_installed="yes"
-else
-    skynet_installed="no"
-fi
+if grep -q "skynetloc" /jffs/scripts/firewall-start; then skynet_installed="yes"; else skynet_installed="no"; fi
 
 
 #### functions ####
@@ -231,12 +226,7 @@ force_install(){
 sng_syntax(){
     printf "\n$white %s syntax check ...$std" "$sng"
     sed_sng
-    if syslog-ng -s
-        then
-            printf "$green okay! $std\n\n"
-        else
-            printf "$red FAILED! $std\n\n"
-        fi
+    if syslog-ng -s; then printf "$green okay! $std\n\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
 show_config(){
@@ -252,24 +242,12 @@ show_config(){
 
 check_sng_run(){
 	printf "\n$white %33s" "Checking $sng daemon..."
-    if [ -z "$( pidof $sng )" ]
-	then
-		dead
-        return 1
-	else
-		alive
-	fi
+    if [ -z "$( pidof $sng )" ]; then dead; return 1; else alive; fi
 }
 
 check_lr_run(){
 	printf "\n$white %33s" "Checking $lr cron job..."
-    if cru l | grep -q $lr
-	then
-		alive
-	else
-		dead
-        return 1
-	fi
+    if cru l | grep -q $lr; then alive; else dead; return 1; fi
 }
 
 run_logrotate(){
@@ -492,7 +470,7 @@ menu_update(){
         getzip
         setup_scribe
         printf "\n$white $scribe_name updated!$std\n"
-        [ $upd = "yes" ] && sh /jffs/scripts/"$scribe_name" filters gotzip nologo
+        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else check_sed; fi
         exit 0
     else
         printf "\n$white $scribe_name$red not$white updated!$std\n"
