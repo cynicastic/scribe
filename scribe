@@ -162,7 +162,7 @@ sed_sng(){
         present
     fi
 
-    printf "\n$white %42s" "Checking $(basename $srvc_event) ..."
+    printf "\n$white %33s" "Checking $(basename $srvc_event) ..."
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
@@ -173,7 +173,7 @@ sed_sng(){
 }
 
 lr_cron(){
-    printf "\n$white %42s" "Checking $(basename $postmount) ..."
+    printf "\n$white %33s" "Checking $(basename $postmount) ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
@@ -182,13 +182,13 @@ lr_cron(){
         present
     fi
 
-	printf "\n$white %33s" "Checking %s cron job ..." "$lr"
+	printf "\n\n$white %33s" "Checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
         updated
     else
-        present
+        alive
     fi
 }
 
