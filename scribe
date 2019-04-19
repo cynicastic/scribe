@@ -235,8 +235,9 @@ check_lr_run(){
 
 run_logrotate(){
     printf "$white Running %s ..." "$lr" 
-    /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1; fi
+    /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
     printf " Check the output below for errors $std\n\n"
+    tail /opt/tmp/logrotate.daily
 }
 
 get_vers(){
