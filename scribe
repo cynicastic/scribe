@@ -352,6 +352,7 @@ uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
     printf "\n$white starting system klogd and syslogd ... $std"
     service start_logger
+    printf "\n"
     if [ -e $syslogngloc ]
     then
         sed -i "/$scribe_name/d" $srvc_event
@@ -374,6 +375,7 @@ uninstall(){
     then
         sed -i "/cru a $lr/d" $postmount
         if cru l | grep -q $lr; then cru d $lr; fi
+        printf "\n"
         opkg remove "$lr"
         dlt $logrotate_d
         dlt $logrotate_share
