@@ -471,6 +471,7 @@ menu_update(){
         setup_scribe
         printf "\n$white $scribe_name updated!$std\n"
         if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else check_sed; fi
+        printf "\n\n"
         exit 0
     else
         printf "\n$white $scribe_name$red not$white updated!$std\n"
