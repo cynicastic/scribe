@@ -197,7 +197,7 @@ check_sng(){
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
-check_sed(){ printf "\n$yellow Checking scripts for necessary scribe hooks:\n"; sed_sng; lr_cron; }
+check_sed(){ printf "\n$yellow Checking scripts for necessary scribe hooks:\n"; sed_sng; lr_cron; check_sng; }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -272,7 +272,6 @@ prt_vers(){
 
 menu_status(){
         check_sed
-        check_sng
         get_vers
         prt_vers
 }
