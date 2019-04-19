@@ -100,7 +100,7 @@ not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1";read -r;echo; }
+enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
 
 # Check yes or no
 yes_no(){
@@ -200,6 +200,17 @@ force_install(){
 
 sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
 
+show_config(){
+    if [ -e $syslogngloc ]
+    then
+        $syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
+        true
+    else
+        not_installed $sng
+        false
+    fi
+}
+
 check_sng_run(){
 	printf "\n$white %33s" "Checking $sng daemon..."
     if [ -z "$( pidof $sng )" ]
@@ -220,6 +231,12 @@ check_lr_run(){
 		dead
         return 1
 	fi
+}
+
+run_logrotate(){
+    printf "$white Running %s ..." "$lr" 
+    /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1; fi
+    printf " Check the output below for errors $std\n\n"
 }
 
 get_vers(){
@@ -320,15 +337,18 @@ no_skynet(){
     enter_to continue
 }
 
+sng_start(){ printf "$yellow Starting %s ... $std\n" "$sng"; $S01sng_loc start; }
+
 menu_restart(){
     if check_sng_run
     then
-        printf "$yellow Restarting syslog-ng ... $std\n"
+        printf "$yellow Restarting ... $std\n" "$sng"
         $S01sng_loc restart
+        return 0
     else
-        printf "$white syslog-ng$red NOT$white running! $yellow Starting syslog-ng ... $std\n"
-        $S01sng_loc start
+        printf "$white %s$red NOT$white running! " "$sng"
     fi
+    sng_start
 }
 
 uninstall(){
@@ -374,7 +394,31 @@ uninstall(){
     enter_to "reboot"
     service reboot; exit 0
 }
-	
+
+menu_uninstall(){
+    printf "\n\n$white"
+    printf "                *********************\n"
+    printf "                ***$red W*A*R*N*I*N*G$white ***\n"
+    printf "                *********************\n\n"
+    printf "    This will remove the $yellow $sng $white and $yellow $lr $white packages!!\n"
+    printf "    Ensure you have backed up any configuration files you wish\n"
+    printf "    to keep.  All configuration files in $yellow $syslogng_d $white \n"
+    printf "    and $yellow $logrotate_d $white will be deleted!\n\n"
+    printf "                *********************\n"
+    printf "                ***$red W*A*R*N*I*N*G$white ***\n"
+    printf "                *********************\n\n"
+    printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $std"
+    read -r wipeit
+    case "$wipeit" in
+        YES)
+            uninstall
+            ;;
+        *)
+            printf "\n\n$white *** UNINSTALL ABORTED! ***$std\n\n"
+            ;;
+    esac
+}
+
 menu_filters(){
     getzip
     # ugly hack to harmonize filenames
@@ -443,8 +487,8 @@ gather_debug(){
         ls -ld /jffs/syslog*
         printf "\n### top output:\n"
         top -b -n1 | head
-        printf "\n### syslog references in top:\n"
-        top -b -n1 | grep syslog
+        printf "\n### *log references in top:\n"
+        top -b -n1 | grep log
         printf "\n### init.d directory:\n"
         ls -l /opt/etc/init.d
         printf "\n### contents of S01syslog-ng\n"
@@ -530,7 +574,7 @@ case $action in
             $S01sng_loc stop
             install "$sng" "FORCE"
         fi
-        menu_restart
+        sng_start
 
         if [ ! -e $logrotateloc ]
         then
@@ -539,6 +583,7 @@ case $action in
         then
             install "$lr" "FORCE"
         fi
+        run_logrotate
 
         if [ ! -e "/opt/bin/$scribe_name" ]
         then
@@ -549,32 +594,11 @@ case $action in
         fi
 
         [ "$skynet_installed" = "no" ] && no_skynet
-        # some logic here that if setup_scribe was run, then exit 0
         ;;
 
 # uninstall scribe
     uninstall | remove)
-        printf "\n\n$white"
-        printf "                *********************\n"
-        printf "                ***$red W*A*R*N*I*N*G$white ***\n"
-        printf "                *********************\n\n"
-        printf "    This will remove the $yellow $sng $white and $yellow $lr $white packages!!\n"
-        printf "    Ensure you have backed up any configuration files you wish\n"
-        printf "    to keep.  All configuration files in $yellow $syslogng_d $white \n"
-        printf "    and $yellow $logrotate_d $white will be deleted!\n\n"
-        printf "                *********************\n"
-        printf "                ***$red W*A*R*N*I*N*G$white ***\n"
-        printf "                *********************\n\n"
-        printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $std"
-        read -r wipeit
-        case "$wipeit" in
-            YES)
-                uninstall
-                ;;
-            *)
-                printf "\n\n$white *** UNINSTALL ABORTED! ***$std\n\n"
-                ;;
-        esac
+        menu_uninstall
         ;;
 
 # update scribe
@@ -592,13 +616,7 @@ case $action in
 
 # show total combined config
     show-config | config)
-        if [ -e $syslogngloc ]
-        then
-            $syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
-            sng_syntax
-        else
-            not_installed $sng
-        fi
+        if show_config; then sng_syntax; fi
         ;;
 
 # check syntax
@@ -631,7 +649,7 @@ case $action in
         count=60
         while [ $count -gt 0 ]
         do
-            sleep 1 # give them a moment to start up
+            sleep 1 # give them a moment to start up, assumes both are started
             if ps | grep -q klogd && ps | grep -q syslogd; then kill_logger; exit 0; fi
             count=$(( count - 1 ))
         done
