@@ -89,6 +89,8 @@ alive(){ printf "$green alive. $std\n"; }
 
 dead(){ printf "$red dead. $std\n"; }
 
+present(){ printf "$green present. $std\n"; }
+
 updated(){ printf "$yellow updated. $std\n"; }
 
 finis (){ printf "$green done. $std\n"; }
@@ -151,42 +153,42 @@ getzip(){
 }
 
 sed_sng(){
-	printf "\n$white %42s" "Checking $S01sng_loc ..."
+    printf "\n$white %33s" "Checking $(basename $S01sng_loc) ..."
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
         updated
     else
-        alive
+        present
     fi
 
-	printf "\n$white %42s" "Checking $srvc_event ..."
+    printf "\n$white %42s" "Checking $(basename $srvc_event) ..."
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
         updated
     else
-        alive
+        present
     fi
 }
 
 lr_cron(){
-	printf "\n$white %42s" "Checking $postmount ..."
+    printf "\n$white %42s" "Checking $(basename $postmount) ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
         updated
     else
-        alive
+        present
     fi
 
-	printf "\n$white %42s" "Checking if cron job running ..."
+	printf "\n$white %33s" "Checking %s cron job ..." "$lr"
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
         updated
     else
-        alive
+        present
     fi
 }
 
@@ -195,7 +197,7 @@ check_sng(){
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
-check_sed(){ sed_sng; lr_cron; }
+check_sed(){ printf "\n$yellow Checking scripts for necessary scribe hooks:\n"; sed_sng; lr_cron; }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
