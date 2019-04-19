@@ -236,8 +236,8 @@ check_lr_run(){
 run_logrotate(){
     printf "$white Running %s ..." "$lr" 
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
-    printf " Check the output below for errors $std\n\n"
-    tail /opt/tmp/logrotate.daily
+    printf " Check the output below for errors (blank = no errors) $std\n\n"
+    tail -v /opt/tmp/logrotate.daily
 }
 
 get_vers(){
@@ -307,7 +307,6 @@ install(){
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
-    menu_status
 }
 
 setup_scribe(){
@@ -338,18 +337,15 @@ no_skynet(){
     enter_to continue
 }
 
-sng_start(){ printf "$yellow Starting %s ... $std\n" "$sng"; $S01sng_loc start; }
-
 menu_restart(){
     if check_sng_run
     then
-        printf "$yellow Restarting ... $std\n" "$sng"
+        printf "$yellow Restarting %s... $std\n" "$sng"
         $S01sng_loc restart
-        return 0
     else
-        printf "$white %s$red NOT$white running! " "$sng"
+        printf "$white %s$red NOT$white running! $yellow Starting %s ... $std\n" "$sng"
+        $S01sng_loc start
     fi
-    sng_start
 }
 
 uninstall(){
@@ -575,7 +571,7 @@ case $action in
             $S01sng_loc stop
             install "$sng" "FORCE"
         fi
-        sng_start
+        $S01sng_loc start
 
         if [ ! -e $logrotateloc ]
         then
@@ -595,6 +591,7 @@ case $action in
         fi
 
         [ "$skynet_installed" = "no" ] && no_skynet
+        menu_status
         ;;
 
 # uninstall scribe
