@@ -151,7 +151,7 @@ getzip(){
 }
 
 sed_sng(){
-	printf "\n$white %33s" "Checking $S01sng_loc ..."
+	printf "\n$white %45s" "Checking $S01sng_loc ..."
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
@@ -160,7 +160,7 @@ sed_sng(){
         alive
     fi
 
-	printf "\n$white %33s" "Checking $srvc_event ..."
+	printf "\n$white %45s" "Checking $srvc_event ..."
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
@@ -171,7 +171,7 @@ sed_sng(){
 }
 
 lr_cron(){
-	printf "\n$white %33s" "Checking $postmount ..."
+	printf "\n$white %45s" "Checking $postmount ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
@@ -180,7 +180,7 @@ lr_cron(){
         alive
     fi
 
-	printf "\n$white %33s" "Checking if cron job running ..."
+	printf "\n$white %45s" "Checking if cron job running ..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
@@ -191,7 +191,7 @@ lr_cron(){
 }
 
 check_sng_run(){
-	printf "\n$white %33s" "Checking %s daemon ..." "$sng"
+	printf "\n$white %33s" "Checking $sng daemon ..."
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
