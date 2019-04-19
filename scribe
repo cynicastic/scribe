@@ -234,9 +234,9 @@ check_lr_run(){
 }
 
 run_logrotate(){
-    printf "$white Running %s ..." "$lr" 
+    printf "$white running %s ..." "$lr" 
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
-    printf " Check the output below for errors (blank = no errors) $std\n\n"
+    printf "\n check the output below for errors (blank = no errors) $std\n\n"
     tail -v /opt/tmp/logrotate.daily
 }
 
@@ -283,7 +283,7 @@ install(){
             printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
             printf " issues with the syslog-ng.conf file provded by the package. The syslog-ng.conf file provided\n"
             printf " by the Entware package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
-            printf "\n Installation"
+            printf "\n %s installation ... " "$sng"
         fi
         finis
     }
@@ -291,7 +291,7 @@ install(){
 # setup logrotate
     setup_lr(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
-        printf "$blue adding %s cron job$white ..." "$lr"
+        printf "\n$blue adding %s cron job$white ..." "$lr"
         lr_cron
     }
 
@@ -388,8 +388,9 @@ uninstall(){
     dlt /opt/bin/$scribe_name
     dlt $scribe_script
 
-    printf "\n$white $sng, $lr, and $scribe_name have been removed from the system.\n"
-    printf " The router will now reboot to ensure the default syslogd is properly started.\n"
+    printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
+    printf " It is recommended to reboot the router at this time.  If you do not wish to reboot\n"
+    printf " the router now, press ctrl-C now to exit.\n"
     enter_to "reboot"
     service reboot; exit 0
 }
