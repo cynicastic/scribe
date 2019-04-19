@@ -139,8 +139,10 @@ getzip(){
     then
         dlt $scribe_dir
         dlt $TMP/$scribe_name.zip
+        printf "\n$white fetching %s from GitHub %s branch ...$std\n" "$scribe_name" "$scribe_branch"
         if curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
         then
+            printf "\n$white unzipping %s ...$std\n" "$scribe_name"
             unzip $TMP/$scribe_name.zip -d $TMP
             opkg update
             got_zip="yes"
@@ -152,15 +154,43 @@ getzip(){
 }
 
 sed_sng(){
-    if ! grep -q $rcfunc_sng $S01sng_loc; then sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc; fi
-    if ! grep -q $scribe_name $srvc_event; then echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event; fi
+    if ! grep -q $rcfunc_sng $S01sng_loc
+    then
+        sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
+        printf "$white %s updated ... $std" "$S01sng_loc"
+    else
+        printf "$blue %s okay $white... $std" "$S01sng_loc"
+    fi
+
+    if ! grep -q $scribe_name $srvc_event
+    then
+        echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
+        printf "$white %s updated ... $std" "$srvc_event"
+    else
+        printf "$blue %s okay $white... $std" "$srvc_event"
+    fi
 }
 
 lr_cron(){
     # respect user's logrotate cron job if it exists
-    if ! grep -q $lr $postmount; then echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount; fi
-    if ! cru l | grep -q $lr; then cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"; fi
+    if ! grep -q $lr $postmount
+    then
+        echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
+        printf "$white %s updated ... $std" "$postmount"
+    else
+        printf "$blue %s okay $white... $std" "$postmount"
+    fi
+
+    if ! cru l | grep -q $lr
+    then
+        cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
+        printf "$white cron job updated ... $std"
+    else
+        printf "$blue cron job okay $white... $std"
+    fi
 }
+
+check_sed(){ printf "\n$white checking system hooks ...$std"; sed_sng; lr_cron; finis; }
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -198,7 +228,15 @@ force_install(){
     return $?
 }
 
-sng_syntax(){ if syslog-ng -s; then printf "\n$white syslog-ng syntax check$green okay! $std\n\n"; fi }
+sng_syntax(){
+    printf "\n$white %s syntax check ...$std" "$sng"
+    if syslog-ng -s
+        then
+            printf "$green okay! $std\n\n"
+        else
+            printf "$red FAILED! $std\n\n"
+        fi
+}
 
 show_config(){
     if [ -e $syslogngloc ]
@@ -254,6 +292,7 @@ prt_vers(){
 menu_status(){
         check_sng_run
         check_lr_run
+        check_sed
         get_vers
         prt_vers
 }
@@ -293,6 +332,7 @@ install(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
         printf "\n$blue adding %s cron job$white ..." "$lr"
         lr_cron
+        finis
     }
 
 #### install main routine ####
@@ -425,8 +465,7 @@ menu_filters(){
     [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_expl "$sng"
     setup_expl "$lr"
-    if ! grep -q $rcfunc_loc $S01sng_loc; then sed_sng; lr_cron; fi
-
+    check_sed
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
 }
 
@@ -643,6 +682,7 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill_logger)
+        set -x
         [ "$2" != "logger" ] && exit 0
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
