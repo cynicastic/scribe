@@ -27,7 +27,7 @@
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I try to only embed the ansi color escapes in printf strings
 
 
-# scribe constants
+# parse parameters
 action="$1"
 got_zip="no"
 [ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
@@ -35,15 +35,26 @@ banner="yes"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
+
+# scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.9_2 ($scribe_branch)"
+readonly scribe_ver="v0.9_3 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_script="/jffs/scripts/$scribe_name"
 
-# script constants
+# router details
+readonly merlin="ASUSWRT-Merlin"
+readonly fwreqd="384.11"
+fwname="$( uname -o )"
+fwvers="$( nvram get buildno )"
+model="$( nvram get odmpid )"
+[ -z "$model" ] && model="$( nvram get productid )"
+arch="$( uname -m )"
+
+# miscellaneous constants
 readonly sng="syslog-ng"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
@@ -59,10 +70,8 @@ readonly syslogng_d="/opt/etc/$sng.d"
 readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
-#
 readonly srvc_event="/jffs/scripts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
-readonly merlin="ASUSWRT-Merlin"
 
 # color constants
 readonly red="\033[1;31m"
@@ -73,7 +82,7 @@ readonly blue="\033[1;34m"
 readonly std="\033[m"
 
 # require Entware
-if [ ! -x "/opt/bin/opkg" ] || [ "$(uname -o)" != "$merlin" ]
+if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ]
 then
     printf "\n\n$red %s with Entware is required - exiting! $std\n\n" "$merlin"
     exit 1
@@ -153,7 +162,7 @@ getzip(){
 }
 
 sed_sng(){
-    printf "\n$white %33s" "Checking $(basename $S01sng_loc) ..."
+    printf "\n$white %33s" "Checking $( basename $S01sng_loc ) ..."
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
@@ -162,7 +171,7 @@ sed_sng(){
         present
     fi
 
-    printf "\n$white %33s" "Checking $(basename $srvc_event) ..."
+    printf "\n$white %33s" "Checking $( basename $srvc_event ) ..."
     if ! grep -q $scribe_name $srvc_event
     then
         echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
@@ -173,7 +182,7 @@ sed_sng(){
 }
 
 lr_cron(){
-    printf "\n$white %33s" "Checking $(basename $postmount) ..."
+    printf "\n$white %33s" "Checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
@@ -321,7 +330,7 @@ install(){
 
     printf "\n$white setting up %s ... " "$1"
     opkg install $force "$1" 
-    [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
+    [ "$1" = "$sng" ] && [ "$( sng_conf_ver )" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
     setup_expl "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
@@ -489,15 +498,14 @@ menu_update(){
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
-    [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
     printf "\n$white gathering debugging information ..."
     printf "### Scribe Version: %s\n" "$scribe_ver" > $scribe_debug
 
     # everything between { } goes to $scribe_debug
     {
         printf "### Scribe md5: %s\n" "$( md5sum $scribe_script )"
-        printf "### Router: %s (%s)\n" "$model" "$(uname -m)"
-        printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)"
+        printf "### Router: %s (%s)\n" "$model" "$arch"
+        printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n### check running processes:\n"
         ps | grep "syslog"
         printf "\n### check crontab:\n"
@@ -536,7 +544,7 @@ gather_debug(){
 
     if [ "$skynet_installed" = "yes" ]
     then
-        skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
+        skynetloc="$( grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
             printf "\n### Skynet log locations:\n"
@@ -547,7 +555,7 @@ gather_debug(){
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
-    redact=$(echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
+    redact=$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
     sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
@@ -663,18 +671,14 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill_logger)
-        [ "$2" != "logger" ] && exit 0
-        # shellcheck disable=SC1091
-        # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
-        . $rcfunc_loc
-        count=60
+        [ "$2" != "logger" ] && [ "$2" != "time" ] && exit 0
+        count=120
         while [ $count -gt 0 ]
         do
-            sleep 1 # give them a moment to start up, assumes both are started
-            if ps | grep -q klogd && ps | grep -q syslogd; then kill_logger; exit 0; fi
+            sleep 1 # give them a moment to start up, ensure both are started
+            [ -n "$( pidof klogd )" ] && [ -n "$( pidof syslogd )" ] && $S01sng_loc restart && count=6
             count=$(( count - 1 ))
         done
-        logger -t "$scribe_name" "FAILED to kill klogd and/or syslogd!"
         ;;
         
 # unrecognized command
