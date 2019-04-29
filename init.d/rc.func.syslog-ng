@@ -14,6 +14,7 @@ kill_logger (){
     then 
         mv /opt/var/log/messages /opt/var/log/messages.tmp0
         cat /opt/var/log/messages.tmp0 >> /opt/var/log/messages
+        rm -f /opt/var/log/messages.tmp0
         killall -HUP syslog-ng
     fi
 
