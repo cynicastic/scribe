@@ -192,7 +192,7 @@ lr_cron(){
         present
     fi
 
-	printf "\n\n$white %33s" "Checking $lr cron job ..."
+	printf "\n$white %33s" "Checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
@@ -203,7 +203,7 @@ lr_cron(){
 }
 
 copy_rcfunc(){
-    printf " copying %s to %s ..." "$rcfunc_sng" "$init_d"
+    printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
     cp -pf $scribe_dir/init.d/$rcfunc_sng $init_d/
     chmod 644 $rcfunc_loc
 }
@@ -302,7 +302,7 @@ install(){
 
 # setup syslog-ng
     setup_sng(){
-        printf "\n$white setting up syslog-ng ..."
+        printf "\n$blue setting up syslog-ng ..."
         copy_rcfunc
         sed_sng
 
