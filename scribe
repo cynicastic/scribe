@@ -39,7 +39,7 @@ banner="yes"
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.9_3 ($scribe_branch)"
+readonly scribe_ver="v0.10_0 ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -172,9 +172,10 @@ sed_sng(){
     fi
 
     printf "\n$white %33s" "Checking $( basename $srvc_event ) ..."
+    sed -i "/kill_logger/d" $srvc_event
     if ! grep -q $scribe_name $srvc_event
     then
-        echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
+        echo "$scribe_script kill-logger nologo \"\$2\" & # added by scribe" >> $srvc_event
         updated
     else
         present
@@ -245,9 +246,9 @@ force_install(){
 }
 
 sng_syntax(){
-    printf "\n$white %s syntax check ...$std" "$sng"
+    printf "\n$white %33s" "$sng syntax check ..."
+    if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
     sed_sng
-    if syslog-ng -s; then printf "$green okay! $std\n\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
 show_config(){
@@ -305,10 +306,9 @@ install(){
             printf "$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
-            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function \n"
-            printf " correctly on asuswrt due to a conflict with klogd.$blue A replacement syslog-ng.conf has been\n"
-            printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
-            printf " issues with the syslog-ng.conf file provded by the package. The syslog-ng.conf file provided\n"
+            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
+            printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
+            printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$syslogng_conf"
             printf " by the Entware package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
             printf "\n %s installation ..." "$sng"
         fi
@@ -670,20 +670,26 @@ case $action in
         ;;
 
 # kill syslogd & klogd - only available via cli
-    kill_logger)
+    kill-logger)
         [ "$2" != "logger" ] && [ "$2" != "time" ] && exit 0
+        # load kill_logger() function
+        # shellcheck disable=SC1091
+        # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
+        . $rcfunc_loc
         count=120
+        found=false
         while [ $count -gt 0 ]
         do
-            sleep 1 # give them a moment to start up, ensure both are started
-            [ -n "$( pidof klogd )" ] && [ -n "$( pidof syslogd )" ] && $S01sng_loc restart && count=6
+            sleep 1 # give them a moment to start up, drop count to 6 in case lag between starting
+            { [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]; } && kill_logger && found=true && count=6
             count=$(( count - 1 ))
         done
+        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
         ;;
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | update-filters | show-config | check-syntax | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | check-syntax | status | restart | debug )$std\n"
         exit 1
         ;;
 esac
