@@ -75,10 +75,12 @@ readonly postmount="/jffs/scripts/post-mount"
 
 # color constants
 readonly red="\033[1;31m"
-readonly white="\033[1;37m"
 readonly green="\033[1;32m"
 readonly yellow="\033[1;33m"
 readonly blue="\033[1;34m"
+readonly magenta="\033[1;35m"
+readonly cyan="\033[1;36m"
+readonly white="\033[1;37m"
 readonly std="\033[m"
 
 # require Entware
@@ -332,8 +334,7 @@ install(){
 
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
-
-    printf "\n$white setting up %s ... " "$1"
+    printf "\n$cyan"
     opkg install $force "$1" 
     [ "$1" = "$sng" ] && [ "$( sng_conf_ver )" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
     setup_exmpls "$1"
