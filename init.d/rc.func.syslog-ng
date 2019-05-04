@@ -17,16 +17,10 @@ kill_logger (){
 
     # make /jffs/syslog.log and log-1 directories if not already
     # prevents system log saver from writing to jffs
-    if [ ! -d "/jffs/syslog.log" ]
+    if [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
     then
-        rm -f /jffs/syslog.log
-        mkdir /jffs/syslog.log
-    fi
-
-    if [ ! -d "/jffs/syslog.log-1" ]
-    then
-        rm -f /jffs/syslog.log-1
-        mkdir /jffs/syslog.log-1
+        rm -rf /jffs/syslog.log /jffs/syslog.log-1
+        mkdir /jffs/syslog.log /jffs/syslog.log-1
     fi
 }
 
