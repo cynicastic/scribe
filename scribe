@@ -202,6 +202,12 @@ lr_cron(){
     fi
 }
 
+copy_rcfunc(){
+    printf " copying %s to %s ..." "$rcfunc_sng" "$init_d"
+    cp -pf $scribe_dir/init.d/$rcfunc_sng $init_d/
+    chmod 644 $rcfunc_loc
+}
+
 check_sng(){
 	printf "\n$white %33s" "Checking $sng daemon ..."
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
@@ -281,9 +287,9 @@ prt_vers(){
 }
 
 menu_status(){
-        check_sed
-        get_vers
-        prt_vers
+    check_sed
+    get_vers
+    prt_vers
 }
 
 
@@ -297,6 +303,7 @@ install(){
 # setup syslog-ng
     setup_sng(){
         printf "\n$white setting up syslog-ng ..."
+        copy_rcfunc
         sed_sng
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
@@ -351,9 +358,6 @@ setup_scribe(){
     else
         printf "$red Skynet NOT installed$white ..."
     fi
-    printf " copying %s to %s ..." "$rcfunc_sng" "$init_d"
-    cp -pf $scribe_dir/init.d/$rcfunc_sng $init_d/
-    chmod 644 $rcfunc_loc
     finis
 }
 
@@ -480,6 +484,7 @@ menu_update(){
     then
         getzip
         setup_scribe
+        copy_rcfunc
         printf "\n$white $scribe_name updated!$std\n"
         if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else check_sed; fi
         printf "\n\n"
