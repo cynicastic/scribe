@@ -329,7 +329,7 @@ install(){
     printf "\n$white setting up %s ... " "$1"
     opkg install $force "$1" 
     [ "$1" = "$sng" ] && [ "$( sng_conf_ver )" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
-    setup_exmpls"$1"
+    setup_exmpls "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
 }
@@ -691,7 +691,7 @@ case $action in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | check-syntax | status | restart | debug )$std\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | check-syntax | status | restart | debug )$std\n\n"
         exit 1
         ;;
 esac
