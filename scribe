@@ -306,21 +306,21 @@ install(){
 
 # setup syslog-ng
     setup_sng(){
-        printf "\n$blue setting up syslog-ng ...\n $std"
+        printf "\n$magenta setting up syslog-ng ...\n $std"
         copy_rcfunc
         sed_sng
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
-            printf "\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
+            printf "\n\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
             finis
-            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
+            printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
             printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
             printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$syslogng_conf"
             printf " by the Entware package has been moved to $blue%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
-            printf "\n %s installation ..." "$sng"
+            printf "\n %33s" "$sng installation ..."
         fi
         finis
     }
@@ -328,7 +328,7 @@ install(){
 # setup logrotate
     setup_lr(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
-        printf "\n$blue adding %s cron job$white ..." "$lr"
+        printf "\n$magenta adding %s cron job ..." "$lr"
         lr_cron
     }
 
