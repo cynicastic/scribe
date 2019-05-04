@@ -5,7 +5,7 @@
 # https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
 #
 # non-scl version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
-#   "source kernel" removed - this conflicts with the linux klogd (see https://www.syslog-ng.com/syslog-ng-faq/)
+#   moved sourcing /proc/kmsg from "source kernel" to "source src" and added directives to /proc/kmsg and /dev/log sourcing
 #   log_msg_size increased to 16K to ensure even large messages are completely captured
 #   stats_freq changed to every 6 hours
 #   source net function to get udp log messages from local network commented out
@@ -25,9 +25,12 @@ options {
     use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
 };
 
-# syslog-ng gets messages from the system and syslog-ng (internal)
+# syslog-ng gets messages from the system, kernel, and syslog-ng (internal)
+# DO NOT use system() source; causes issues on HND routers
+# so_rcvbuf = maximum number of messages per second * 1024
 source src {
-    system();
+    unix-dgram("/dev/log" so_rcvbuf(65536) flags(syslog-protocol));
+    file("/proc/kmsg" program_override("kernel") flags(kernel));
     internal();
 };
 
