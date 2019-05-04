@@ -384,8 +384,9 @@ menu_restart(){
 }
 
 uninstall(){
+    echo
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
-    printf "\n$white starting system klogd and syslogd ... "
+    printf "\n$white starting system klogd and syslogd ... $green"
     service start_logger
     if [ -e $syslogngloc ]
     then
