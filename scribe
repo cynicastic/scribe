@@ -39,7 +39,8 @@ banner="yes"
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v0.10_1 ($scribe_branch)"
+readonly scribe_ver="0.10_2"
+readonly scribe_long="v$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
@@ -47,7 +48,7 @@ readonly scribe_script="/jffs/scripts/$scribe_name"
 
 # router details
 readonly merlin="ASUSWRT-Merlin"
-readonly fwreqd="384.11"
+readonly fwreqd="380.68"
 fwname="$( uname -o )"
 fwvers="$( nvram get buildno )"
 model="$( nvram get odmpid )"
@@ -56,6 +57,7 @@ arch="$( uname -m )"
 
 # miscellaneous constants
 readonly sng="syslog-ng"
+readonly sngreqd="3.19"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_loc="$init_d/S01$sng"
@@ -83,10 +85,12 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
 # require Entware
-if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ]
+if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
 then
-    printf "\n\n$red %s with Entware is required - exiting! $std\n\n" "$merlin"
+    printf "\n\n$red %s version %s or later with Entware is required - exiting! $std\n\n" "$merlin" "$fwreqd"
     exit 1
 fi
 
@@ -107,8 +111,6 @@ updated(){ printf "$yellow updated. $std\n"; }
 finis (){ printf "$green done. $std\n"; }
 
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
-
-ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
 enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
 
@@ -141,7 +143,7 @@ logo(){
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
-    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_ver"
+    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_long"
 }
 
 getzip(){
@@ -164,7 +166,7 @@ getzip(){
 }
 
 sed_sng(){
-    printf "\n$white %33s" "Checking $( basename $S01sng_loc ) ..."
+    printf "\n$white %34s" "checking $( basename $S01sng_loc ) ..."
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
@@ -173,7 +175,7 @@ sed_sng(){
         present
     fi
 
-    printf "\n$white %33s" "Checking $( basename $srvc_event ) ..."
+    printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
     sed -i "/kill_logger/d" $srvc_event
     if ! grep -q $scribe_name $srvc_event
     then
@@ -185,7 +187,7 @@ sed_sng(){
 }
 
 lr_cron(){
-    printf "\n$white %33s" "Checking $( basename $postmount ) ..."
+    printf "\n$white %34s" "checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
@@ -194,7 +196,7 @@ lr_cron(){
         present
     fi
 
-	printf "\n$white %33s" "Checking $lr cron job ..."
+	printf "\n$white %34s" "checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
@@ -212,11 +214,16 @@ copy_rcfunc(){
 }
 
 check_sng(){
-	printf "\n$white %33s" "Checking $sng daemon ..."
+	printf "\n$white %34s" "checking $sng daemon ..."
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
-check_sed(){ printf "\n$yellow Checking scripts for necessary scribe hooks:\n"; sed_sng; lr_cron; check_sng; }
+check_sed(){
+    printf "\n$magenta checking configuration files for necessary %s hooks ...\n" "$scribe_name"
+    sed_sng
+    lr_cron
+    check_sng
+}
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
@@ -255,7 +262,7 @@ force_install(){
 }
 
 sng_syntax(){
-    printf "\n$white %33s" "$sng syntax check ..."
+    printf "\n$white %34s" "$sng syntax check ..."
     if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
     sed_sng
 }
@@ -272,22 +279,22 @@ show_config(){
 }
 
 run_logrotate(){
-    printf "\n$white running %s ..." "$lr" 
+    printf "\n$white %34s" "running $lr ..."
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
     finis
-    printf "\n check the output below for errors $std\n\n"
+    printf "\n$magenta check the output below for errors $cyan\n\n"
     tail -v /opt/tmp/logrotate.daily
 }
 
 get_vers(){
-    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
-    [ -z "$scribe_github" ] && return 1
-    github_ver=$( ver_num "$scribe_github" )
+    github_ver=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+    [ -z "$github_ver" ] && printf "\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n" "$scribe_name" && exit 1
+    github_long="v$github_ver ($scribe_branch)"
 }
 
 prt_vers(){
-    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
-    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+    printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
+    printf "$white %34s$green %s $std\n\n" "scribe GitHub version:" "$github_long"
 }
 
 menu_status(){
@@ -299,10 +306,18 @@ menu_status(){
 
 install(){
 
-#### install sub-functions ####
-
 # determine syslog-ng conf file version
-    sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
+    sng_conf(){
+        sngvers="$( grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }'; )"
+        if [ "$( ver_num "$sngvers" )" -lt "$( ver_num "$sngreqd" )" ]
+        then
+            printf "\n$red %s version %s or higher required!\n" "$sng" "$sngreqd"
+            printf "Please update your Entware packages and run scribe install again.$cyan\n\n"
+            opkg remove "$sng"
+            printf "$std\n\n"
+            exit 1
+        fi
+    }
 
 # setup syslog-ng
     setup_sng(){
@@ -312,7 +327,7 @@ install(){
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
-            printf "\n\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
+            printf "\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
             finis
@@ -320,7 +335,7 @@ install(){
             printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
             printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$syslogng_conf"
             printf " by the Entware package has been moved to $blue%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
-            printf "\n %33s" "$sng installation ..."
+            printf "\n %34s" "$sng installation ..."
         fi
         finis
     }
@@ -333,12 +348,11 @@ install(){
     }
 
 #### install main routine ####
-
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
     printf "\n$cyan"
     opkg install $force "$1" 
-    [ "$1" = "$sng" ] && [ "$( sng_conf_ver )" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
+    [ "$1" = "$sng" ] && sng_conf
     setup_exmpls "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
@@ -459,8 +473,6 @@ menu_uninstall(){
 
 menu_filters(){
     getzip
-    # ugly hack to harmonize filenames
-    [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
     setup_exmpls "$sng"
     setup_exmpls "$lr"
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
@@ -470,13 +482,13 @@ menu_filters(){
 menu_update(){
     inst="no"
     upd="no"
-    if [ "$installed_ver" -lt "$github_ver" ]
+    if [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]
     then
         printf "\n$white New version available!\n"
         printf " Do you wish to upgrade [y|n] $std"
     else
         printf "\n$white No new version available. (GitHub version"
-        [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
+        [ "$( ver_num "$github_ver" )" -eq "$( ver_num "$scribe_ver" )" ] && printf " equal to " || printf "$red LESS THAN$white "
         printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
@@ -510,11 +522,13 @@ gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
     printf "\n$white gathering debugging information ..."
-    printf "### Scribe Version: %s\n" "$scribe_ver" > $scribe_debug
+    get_vers
 
     # everything between { } goes to $scribe_debug
     {
-        printf "### Scribe md5: %s\n" "$( md5sum $scribe_script )"
+        printf "### Scribe Version: %s\n" "$scribe_long"
+        printf "### Local Scribe md5: %s\n" "$( md5sum $scribe_script )"
+        printf "### GitHub Version: %s\n" "$github_long"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n### check running processes:\n"
@@ -585,11 +599,6 @@ scribe_menu(){
 ##############
 #### MAIN ####
 ##############
-
-# get installed scribe version if installed
-scribe_installed="$red Not Installed"
-[ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-installed_ver=$( ver_num "$scribe_installed" )
 
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
