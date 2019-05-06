@@ -1,40 +1,31 @@
 #!/bin/sh
 #tof
 
-# separate killing klogd/syslogd and linking syslog.log;
-# symlink might get broken even if klogd/syslogd not running
-
 kill_logger (){
     # kill any/all running klogd and/or syslogd
-    [ -n "$(pidof klogd)" ] && killall klogd
-    [ -n "$(pidof syslogd)" ] && killall syslogd
+    [ -n "$( pidof klogd )" ] && killall klogd
+    [ -n "$( pidof syslogd )" ] && killall syslogd
 
     # webGUI System Log = /tmp/syslog.log
-    # link to messages if not already a symlink
     if [ ! -L "/tmp/syslog.log" ]
     then
         cat /tmp/syslog.log >> /opt/var/log/messages
         rm -f /tmp/syslog.log /tmp/syslog.log-1
         ln -s /opt/var/log/messages /tmp/syslog.log
+        echo "### Top of Log File ###" >> /tmp/syslog.log-1
     fi
 
     # make /jffs/syslog.log and log-1 directories if not already
-    # prevents system log rotater from writting to jffs
-    if [ ! -d "/jffs/syslog.log" ]
+    # prevents system log saver from writing to jffs
+    if [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
     then
-        rm -f /jffs/syslog.log
-        mkdir /jffs/syslog.log
-    fi
-
-    if [ ! -d "/jffs/syslog.log-1" ]
-    then
-        rm -f /jffs/syslog.log-1
-        mkdir /jffs/syslog.log-1
+        rm -rf /jffs/syslog.log /jffs/syslog.log-1
+        mkdir /jffs/syslog.log /jffs/syslog.log-1
     fi
 }
 
 # export timezone if not already set
-[ -z "$TZ" ] && export TZ=$(cat /etc/TZ)
+[ -z "$TZ" ] && export TZ=$( cat /etc/TZ )
 
 PRECMD="kill_logger"
 # enabling the below can be useful when having problems,

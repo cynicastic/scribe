@@ -1,0 +1,31 @@
+# log ethernet change to /opt/var/log/ethernet.log only
+
+destination d_ethernet {
+    file("/opt/var/log/ethernet.log");
+};
+
+filter f_kernel {
+    program("kernel");
+};
+
+filter f_ethernet {
+    message("eth1") or
+    message("eth2") or
+    message("eth3") or
+    message("eth4") or
+    message("eth5") or
+    message("eth6") or
+    message("eth7") or
+    message("eth8") or
+    message("br0:");
+};
+
+log {
+    source(src);
+    filter(f_kernel);
+    filter(f_ethernet);
+    destination(d_ethernet);
+    flags(final);
+};
+
+#eof
