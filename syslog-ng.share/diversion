@@ -1,0 +1,19 @@
+# log all diversion and uiDivStats logs to diversion.log
+
+destination d_diversion { 
+    file("/opt/var/log/diversion.log");
+};
+
+filter f_diversion {
+    program("Diversion") or
+    program("uiDivStats");
+};
+
+log {
+    source(src);
+    filter(f_diversion);
+    destination(d_diversion);
+    flags(final);
+};
+
+#eof
