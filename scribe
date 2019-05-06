@@ -27,7 +27,7 @@
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I try to only embed the ansi color escapes in printf strings
 
 
-# scribe constants
+# parse parameters
 action="$1"
 got_zip="no"
 [ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
@@ -35,16 +35,29 @@ banner="yes"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
+
+# scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v0.9_2 ($scribe_branch)"
+readonly scribe_branch="gamma"
+readonly scribe_ver="0.10_3"
+readonly scribe_long="v$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_script="/jffs/scripts/$scribe_name"
 
-# script constants
+# router details
+readonly merlin="ASUSWRT-Merlin"
+readonly fwreqd="380.68"
+fwname="$( uname -o )"
+fwvers="$( nvram get buildno )"
+model="$( nvram get odmpid )"
+[ -z "$model" ] && model="$( nvram get productid )"
+arch="$( uname -m )"
+
+# miscellaneous constants
 readonly sng="syslog-ng"
+readonly sngreqd="3.19"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_loc="$init_d/S01$sng"
@@ -59,23 +72,25 @@ readonly syslogng_d="/opt/etc/$sng.d"
 readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
-#
 readonly srvc_event="/jffs/scripts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
-readonly merlin="ASUSWRT-Merlin"
 
 # color constants
 readonly red="\033[1;31m"
-readonly white="\033[1;37m"
 readonly green="\033[1;32m"
 readonly yellow="\033[1;33m"
 readonly blue="\033[1;34m"
+readonly magenta="\033[1;35m"
+readonly cyan="\033[1;36m"
+readonly white="\033[1;37m"
 readonly std="\033[m"
 
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
 # require Entware
-if [ ! -x "/opt/bin/opkg" ] || [ "$(uname -o)" != "$merlin" ]
+if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
 then
-    printf "\n\n$red %s with Entware is required - exiting! $std\n\n" "$merlin"
+    printf "\n\n$red %s version %s or later with Entware is required - exiting! $std\n\n" "$merlin" "$fwreqd"
     exit 1
 fi
 
@@ -96,8 +111,6 @@ updated(){ printf "$yellow updated. $std\n"; }
 finis (){ printf "$green done. $std\n"; }
 
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
-
-ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
 enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
 
@@ -130,7 +143,7 @@ logo(){
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
-    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_ver"
+    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_long"
 }
 
 getzip(){
@@ -153,7 +166,7 @@ getzip(){
 }
 
 sed_sng(){
-    printf "\n$white %33s" "Checking $(basename $S01sng_loc) ..."
+    printf "\n$white %34s" "checking $( basename $S01sng_loc ) ..."
     if ! grep -q $rcfunc_sng $S01sng_loc
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_loc
@@ -162,10 +175,11 @@ sed_sng(){
         present
     fi
 
-    printf "\n$white %33s" "Checking $(basename $srvc_event) ..."
+    printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
+    sed -i "/kill_logger/d" $srvc_event
     if ! grep -q $scribe_name $srvc_event
     then
-        echo "$scribe_script kill_logger nologo \"\$2\" & # added by scribe" >> $srvc_event
+        echo "$scribe_script kill-logger nologo \"\$2\" & # added by scribe" >> $srvc_event
         updated
     else
         present
@@ -173,7 +187,7 @@ sed_sng(){
 }
 
 lr_cron(){
-    printf "\n$white %33s" "Checking $(basename $postmount) ..."
+    printf "\n$white %34s" "checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
     then
         echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
@@ -182,27 +196,37 @@ lr_cron(){
         present
     fi
 
-	printf "\n\n$white %33s" "Checking $lr cron job ..."
+	printf "\n$white %34s" "checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
         updated
     else
-        alive
+        present
     fi
 }
 
-check_sng(){
-	printf "\n$white %33s" "Checking $sng daemon ..."
-    if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
+copy_rcfunc(){
+    printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
+    cp -pf $scribe_dir/init.d/$rcfunc_sng $init_d/
+    chmod 644 $rcfunc_loc
+    finis
 }
 
-check_sed(){ printf "\n$yellow Checking scripts for necessary scribe hooks:\n"; sed_sng; lr_cron; check_sng; }
+sng_syntax(){
+    printf "\n$white %34s" "$sng syntax check ..."
+    if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
+}
+
+check_sng(){
+	printf "\n$white %34s" "checking $sng daemon ..."
+    if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
+}
 
 # setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
 # all files in examples and .d must be 644 or 600
-setup_expl(){
+setup_exmpls(){
     [ "$1" = "$sng" ] && d_dir="$syslogng_d" && share="$syslogng_share" && conf="$syslogng_conf"
     [ "$1" = "$lr"  ] && d_dir="$logrotate_d" && share="$logrotate_share" && conf="$logrotate_conf"
     opkg="$1.conf-opkg"
@@ -235,12 +259,6 @@ force_install(){
     return $?
 }
 
-sng_syntax(){
-    printf "\n$white %s syntax check ...$std" "$sng"
-    sed_sng
-    if syslog-ng -s; then printf "$green okay! $std\n\n"; else printf "$red FAILED! $std\n\n"; fi
-}
-
 show_config(){
     if [ -e $syslogngloc ]
     then
@@ -253,55 +271,68 @@ show_config(){
 }
 
 run_logrotate(){
-    printf "$white running %s ..." "$lr" 
+    printf "\n$white %34s" "running $lr ..."
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
-    printf "\n check the output below for errors (blank = no errors) $std\n\n"
+    finis
+    printf "\n$magenta check the output below for errors $cyan\n\n"
     tail -v /opt/tmp/logrotate.daily
 }
 
 get_vers(){
-    scribe_github=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' ) || printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
-    [ -z "$scribe_github" ] && return 1
-    github_ver=$( ver_num "$scribe_github" )
+    github_ver=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+    [ -z "$github_ver" ] && printf "\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n" "$scribe_name" && exit 1
+    github_long="v$github_ver ($scribe_branch)"
 }
 
 prt_vers(){
-    printf "\n$white %33s$green %s \n" "scribe installed version:" "$scribe_installed"
-    printf "$white %33s$green %s $std\n\n" "scribe GitHub version:" "$scribe_github"
+    printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
+    printf "$white %34s$green %s $std\n\n" "scribe GitHub version:" "$github_long"
 }
 
 menu_status(){
-        check_sed
-        get_vers
-        prt_vers
+    printf "\n$magenta checking configuration files for necessary %s hooks ...\n" "$scribe_name"
+    sed_sng
+    lr_cron
+    printf "\n$magenta checking %s daemon ...\n" "$sng"
+    sng_syntax
+    check_sng
+    get_vers
+    prt_vers
 }
 
 
 install(){
 
-#### install sub-functions ####
-
 # determine syslog-ng conf file version
-    sng_conf_ver(){ grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }' | awk -F. '{ printf ("%d%03d", $1, $2); }'; }
+    sng_conf(){
+        sngvers="$( grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }'; )"
+        if [ "$( ver_num "$sngvers" )" -lt "$( ver_num "$sngreqd" )" ]
+        then
+            printf "\n$red %s version %s or higher required!\n" "$sng" "$sngreqd"
+            printf "Please update your Entware packages and run scribe install again.$cyan\n\n"
+            opkg remove "$sng"
+            printf "$std\n\n"
+            exit 1
+        fi
+    }
 
 # setup syslog-ng
     setup_sng(){
-        printf "\n$white setting up syslog-ng ..."
-        cp -pu $scribe_dir/init.d/$rcfunc_sng $init_d/
-        chmod u=rw,go=r $rcfunc_loc
+        printf "\n$magenta setting up syslog-ng ...\n $std"
+        copy_rcfunc
         sed_sng
 
         if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
         then
-            printf "$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
+            printf "\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
             cp -pf $syslogng_share/examples/$sng.conf-scribe $syslogng_conf
-            printf "\n\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package does not function \n"
-            printf " correctly on asuswrt due to a conflict with klogd.$blue A replacement syslog-ng.conf has been\n"
-            printf " installed$white at %s that corrects this conflict and also corrects other\n" "$syslogng_conf"
-            printf " issues with the syslog-ng.conf file provded by the package. The syslog-ng.conf file provided\n"
-            printf " by the Entware package has been moved to $std%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
-            printf "\n %s installation ..." "$sng"
+            finis
+            printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
+            printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
+            printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$syslogng_conf"
+            printf " by the Entware package has been moved to $blue%s$white.\n" "$syslogng_share/examples/$sng.conf-opkg"
+            printf "\n %34s" "$sng installation ..."
         fi
         finis
     }
@@ -309,20 +340,17 @@ install(){
 # setup logrotate
     setup_lr(){
         # assumes since entware is required / installed, post-mount exists and is properly executable
-        printf "\n$blue adding %s cron job$white ..." "$lr"
+        printf "\n$magenta adding %s cron job ..." "$lr"
         lr_cron
-        finis
     }
 
 #### install main routine ####
-
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
-
-    printf "\n$white setting up %s ... " "$1"
+    printf "\n$cyan"
     opkg install $force "$1" 
-    [ "$1" = "$sng" ] && [ "$(sng_conf_ver)" -lt "3019" ] && printf "$white syslog-ng version 3.19 or higher required!\n Please update your Entware packages and run scribe install again.$std\n\n" && exit 1
-    setup_expl "$1"
+    [ "$1" = "$sng" ] && sng_conf
+    setup_exmpls "$1"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
 }
@@ -367,10 +395,10 @@ menu_restart(){
 }
 
 uninstall(){
+    echo
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
-    printf "\n$white starting system klogd and syslogd ... $std"
+    printf "\n$white starting system klogd and syslogd ... $green"
     service start_logger
-    printf "\n"
     if [ -e $syslogngloc ]
     then
         sed -i "/$scribe_name/d" $srvc_event
@@ -379,11 +407,13 @@ uninstall(){
         dlt /tmp/syslog.log
         dlt /jffs/syslog.log
         dlt /jffs/syslog.log-1
+        printf "\n$cyan"
         opkg remove "$sng"
         dlt $syslogng_d
         dlt $syslogng_share
         dlt $syslogng_conf
         dlt /tmp/syslog.log
+        dlt /tmp/syslog.log-1
         [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
     else
         not_installed "$sng"
@@ -393,7 +423,7 @@ uninstall(){
     then
         sed -i "/cru a $lr/d" $postmount
         if cru l | grep -q $lr; then cru d $lr; fi
-        printf "\n"
+        printf "\n$cyan"
         opkg remove "$lr"
         dlt $logrotate_d
         dlt $logrotate_share
@@ -440,24 +470,22 @@ menu_uninstall(){
 
 menu_filters(){
     getzip
-    # ugly hack to harmonize filenames
-    [ -e $syslogng_d/crashes ] && [ ! -e $syslogng_d/crash ] && [ -z "$( diff $syslogng_d/crashes $scribe_dir/$sng.d/crash )" ] && dlt $syslogng_d/crashes
-    setup_expl "$sng"
-    setup_expl "$lr"
+    setup_exmpls "$sng"
+    setup_exmpls "$lr"
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
-    check_sed
+    menu_status
 }
 
 menu_update(){
     inst="no"
     upd="no"
-    if [ "$installed_ver" -lt "$github_ver" ]
+    if [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]
     then
         printf "\n$white New version available!\n"
         printf " Do you wish to upgrade [y|n] $std"
     else
         printf "\n$white No new version available. (GitHub version"
-        [ "$installed_ver" -eq "$github_ver" ] && printf " equal to " || printf "$red LESS THAN$white "
+        [ "$( ver_num "$github_ver" )" -eq "$( ver_num "$scribe_ver" )" ] && printf " equal to " || printf "$red LESS THAN$white "
         printf "local version)\n"
         printf " Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
@@ -469,8 +497,9 @@ menu_update(){
     then
         getzip
         setup_scribe
+        copy_rcfunc
         printf "\n$white $scribe_name updated!$std\n"
-        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else check_sed; fi
+        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else menu_status; fi
         printf "\n\n"
         exit 0
     else
@@ -482,22 +511,23 @@ menu_update(){
         menu_filters
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
-        check_sed
+        menu_status
     fi
 }
 
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
-    [ -z "$(nvram get odmpid)" ] && model="$(nvram get productid)" || model="$(nvram get odmpid)"
     printf "\n$white gathering debugging information ..."
-    printf "### Scribe Version: %s\n" "$scribe_ver" > $scribe_debug
+    get_vers
 
     # everything between { } goes to $scribe_debug
     {
-        printf "### Scribe md5: %s\n" "$( md5sum $scribe_script )"
-        printf "### Router: %s (%s)\n" "$model" "$(uname -m)"
-        printf "### Firmware Version: %s %s\n" "$(uname -o)" "$(nvram get buildno)"
+        printf "### Scribe Version: %s\n" "$scribe_long"
+        printf "### Local Scribe md5: %s\n" "$( md5sum $scribe_script )"
+        printf "### GitHub Version: %s\n" "$github_long"
+        printf "### Router: %s (%s)\n" "$model" "$arch"
+        printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n### check running processes:\n"
         ps | grep "syslog"
         printf "\n### check crontab:\n"
@@ -536,7 +566,7 @@ gather_debug(){
 
     if [ "$skynet_installed" = "yes" ]
     then
-        skynetloc="$(grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11-)"
+        skynetloc="$( grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
             printf "\n### Skynet log locations:\n"
@@ -547,7 +577,7 @@ gather_debug(){
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
-    redact=$(echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
+    redact=$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
     sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
@@ -566,11 +596,6 @@ scribe_menu(){
 ##############
 #### MAIN ####
 ##############
-
-# get installed scribe version if installed
-scribe_installed="$red Not Installed"
-[ -e $scribe_script ] && scribe_installed=$( grep "scribe_ver=" $scribe_script | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
-installed_ver=$( ver_num "$scribe_installed" )
 
 # save a spot for going to the menu (v.2 feature)
 # if [ "X$action" = "X" ]
@@ -594,6 +619,7 @@ case $action in
             $S01sng_loc stop
             install "$sng" "FORCE"
         fi
+        echo
         $S01sng_loc start
 
         if [ ! -e $logrotateloc ]
@@ -608,7 +634,7 @@ case $action in
         if [ ! -e "/opt/bin/$scribe_name" ]
         then
             setup_scribe
-        elif force_install "$scribe_name"
+        elif force_install "$scribe_name script"
         then
             setup_scribe
         fi
@@ -623,7 +649,6 @@ case $action in
         ;;
 
 # update scribe
-
     update)
         get_vers
         prt_vers
@@ -638,11 +663,6 @@ case $action in
 # show total combined config
     show-config | config)
         if show_config; then sng_syntax; fi
-        ;;
-
-# check syntax
-    check-syntax | syntax)
-        sng_syntax
         ;;
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
@@ -662,24 +682,26 @@ case $action in
         ;;
 
 # kill syslogd & klogd - only available via cli
-    kill_logger)
-        [ "$2" != "logger" ] && exit 0
+    kill-logger)
+        [ "$2" != "logger" ] && [ "$2" != "time" ] && exit 0
+        # load kill_logger() function
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
-        count=60
+        count=120
+        found=false
         while [ $count -gt 0 ]
         do
-            sleep 1 # give them a moment to start up, assumes both are started
-            if ps | grep -q klogd && ps | grep -q syslogd; then kill_logger; exit 0; fi
+            sleep 1 # give them a moment to start up, drop count to 6 in case lag between starting
+            { [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]; } && kill_logger && found=true && count=6
             count=$(( count - 1 ))
         done
-        logger -t "$scribe_name" "FAILED to kill klogd and/or syslogd!"
+        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
         ;;
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | update-filters | show-config | check-syntax | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | status | restart | debug )$std\n\n"
         exit 1
         ;;
 esac
