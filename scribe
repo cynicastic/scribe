@@ -32,6 +32,7 @@ action="$1"
 got_zip="no"
 [ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
 banner="yes"
+[ "$SCRIBE_LOGO" = "nologo" ] && banner="no"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
@@ -383,6 +384,38 @@ no_skynet(){
     enter_to continue
 }
 
+menu_install(){
+        if [ ! -e $syslogngloc ]
+        then
+            install "$sng"
+        elif force_install "$sng"
+        then
+            $S01sng_loc stop
+            install "$sng" "FORCE"
+        fi
+        echo
+        $S01sng_loc start
+
+        if [ ! -e $logrotateloc ]
+        then
+            install "$lr"
+        elif force_install "$lr"
+        then
+            install "$lr" "FORCE"
+        fi
+        run_logrotate
+
+        if [ ! -e "/opt/bin/$scribe_name" ]
+        then
+            setup_scribe
+        elif force_install "$scribe_name script"
+        then
+            setup_scribe
+        fi
+
+        [ "$skynet_installed" = "no" ] && no_skynet
+}
+
 menu_restart(){
     if check_sng
     then
@@ -610,36 +643,7 @@ case $action in
 # install syslog-ng, logrotate, & scribe script
         install)
         getzip
-
-        if [ ! -e $syslogngloc ]
-        then
-            install "$sng"
-        elif force_install "$sng"
-        then
-            $S01sng_loc stop
-            install "$sng" "FORCE"
-        fi
-        echo
-        $S01sng_loc start
-
-        if [ ! -e $logrotateloc ]
-        then
-            install "$lr"
-        elif force_install "$lr"
-        then
-            install "$lr" "FORCE"
-        fi
-        run_logrotate
-
-        if [ ! -e "/opt/bin/$scribe_name" ]
-        then
-            setup_scribe
-        elif force_install "$scribe_name script"
-        then
-            setup_scribe
-        fi
-
-        [ "$skynet_installed" = "no" ] && no_skynet
+        menu_install
         menu_status
         ;;
 
