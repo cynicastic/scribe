@@ -39,8 +39,8 @@ banner="yes"
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
-readonly scribe_ver="0.10_3"
+readonly scribe_branch="master"
+readonly scribe_ver="1.0_0"
 readonly scribe_long="v$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
