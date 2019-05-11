@@ -1,0 +1,61 @@
+### README.1ST --- 11 May 2019
+
+Please READ before copying any of these files to /opt/etc/syslog-ng.d/
+
+****    If you simply copy all of the files in this directory to    ****
+****    /opt/etc/syslog-ng.d/ the next time you try to restart      ****
+****    syslog-ng it will not start.                                ****
+
+Some of the files in this directory may be copied to /opt/etc/syslog-ng.d/
+to filter common messages from the default messages file to their own
+log files.  Note that when copying the files, they must be writable by the
+user only, e.g. chmod 600.  If the group or others can write to them, they
+will not be loaded by syslog-ng.
+
+Notes:      1)  All ".log" files will be in /opt/var/log/.
+            2)  Unless otherwise noted, all filters are "final", meaning
+                messages matched by the filter will not be logged in the
+                default messages file.
+
+The files in this directory are:
+    diversion   If you are using the popular Diversion script by 
+                thelonelycoder, this will filter out messages from Diversion
+                and Jack Yaz's uiDivStats script to diversion.log.
+
+    ethernet    Filters out messages containing "eth1" thru "eth8" or "bro:"
+                to ethernet.log.
+
+    expandlog   This should be used for testing purposes only.  This breaks
+                out every log message into multiple lines, with each part of
+                the message on its own line, into expanded-syslog.log.  This
+                file will get very large very quickly.  There is no
+                corresponding logrotate file in /opt/etc/logrotate.d/ since
+                this is not intended to be used except for testing.  This is
+                not a "final" filter.
+
+    firewall    If you are not using Skynet, this will filter out messages
+                from the firmware firewall containing "ACCEPT IN=" or "DROP
+                IN=" to firewall.log. Do not use this filter if you are using
+                Skynet.
+
+    openvpn     Filters out messages from "ovpn-server#" or "ovpn-client#" to
+                openvpn.log, where "#" is the server or client number.  Also
+                filters out messages from openvp-routing to the same file.
+
+    pixelserv   Filters out messages from pixelserv-tls to pixelserv.log.
+
+    skynet      If you are using the popular Skynet script by Adamm, this will
+                be automatically copied to /opt/etc/syslog-ng.d/ upon
+                installation of scribe.  This filters any messages from Skynet
+                and messages that contain "BLOCKED -" or "DROP IN=" to
+                skynet-0.log.  On installing scribe, it also tells Skynet to
+                get its data from skynet-0.log.
+
+    syslog-ng.conf-opkg     DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
+                            This is a copy of the original syslog-ng.conf file
+                            that is provided by the Entware package, for
+                            reference only.
+
+    syslog-ng.conf-scribe   DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
+                            This is a copy of the current syslog-ng.conf file
+                            that is provided by scribe, for reference only.
