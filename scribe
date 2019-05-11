@@ -290,7 +290,7 @@ prt_vers(){
 }
 
 menu_status(){
-    printf "\n$magenta checking configuration files for necessary %s hooks ...\n" "$scribe_name"
+    printf "\n$magenta checking configuration for necessary %s hooks ...\n" "$scribe_name"
     sed_sng
     lr_cron
     printf "\n$magenta checking %s daemon ...\n" "$sng"
@@ -528,8 +528,8 @@ gather_debug(){
         printf "### GitHub Version: %s\n" "$github_long"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
-        printf "\n### check running processes:\n"
-        ps | grep "syslog"
+        printf "\n### check running log processes:\n"
+        ps | grep "log"
         printf "\n### check crontab:\n"
         cru l | grep $lr
         printf "\n### directory check:\n"
@@ -693,7 +693,12 @@ case $action in
         while [ $count -gt 0 ]
         do
             sleep 1 # give them a moment to start up, drop count to 6 in case lag between starting
-            { [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]; } && kill_logger && found=true && count=6
+            if [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]
+            then
+                kill_logger
+                found=true
+                count=6
+            fi
             count=$(( count - 1 ))
         done
         if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
