@@ -32,6 +32,7 @@ action="$1"
 got_zip="no"
 [ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
 banner="yes"
+[ "$SCRIBE_LOGO" = "nologo" ] && banner="no"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
@@ -39,7 +40,7 @@ banner="yes"
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="0.10_2"
+readonly scribe_ver="1.0_0"
 readonly scribe_long="v$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -202,7 +203,7 @@ lr_cron(){
         cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
         updated
     else
-        alive
+        present
     fi
 }
 
@@ -213,16 +214,14 @@ copy_rcfunc(){
     finis
 }
 
+sng_syntax(){
+    printf "\n$white %34s" "$sng syntax check ..."
+    if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
+}
+
 check_sng(){
 	printf "\n$white %34s" "checking $sng daemon ..."
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
-}
-
-check_sed(){
-    printf "\n$magenta checking configuration files for necessary %s hooks ...\n" "$scribe_name"
-    sed_sng
-    lr_cron
-    check_sng
 }
 
 # setup example files in /usr/share/$1/examples
@@ -261,12 +260,6 @@ force_install(){
     return $?
 }
 
-sng_syntax(){
-    printf "\n$white %34s" "$sng syntax check ..."
-    if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
-    sed_sng
-}
-
 show_config(){
     if [ -e $syslogngloc ]
     then
@@ -298,7 +291,12 @@ prt_vers(){
 }
 
 menu_status(){
-    check_sed
+    printf "\n$magenta checking configuration for necessary %s hooks ...\n" "$scribe_name"
+    sed_sng
+    lr_cron
+    printf "\n$magenta checking %s daemon ...\n" "$sng"
+    sng_syntax
+    check_sng
     get_vers
     prt_vers
 }
@@ -384,6 +382,38 @@ no_skynet(){
     printf "script and force installation of %s to log the\n" "$scribe_name"
     printf "iptables messages used by Skynet to their own logfile.\n"
     enter_to continue
+}
+
+menu_install(){
+        if [ ! -e $syslogngloc ]
+        then
+            install "$sng"
+        elif force_install "$sng"
+        then
+            $S01sng_loc stop
+            install "$sng" "FORCE"
+        fi
+        echo
+        $S01sng_loc start
+
+        if [ ! -e $logrotateloc ]
+        then
+            install "$lr"
+        elif force_install "$lr"
+        then
+            install "$lr" "FORCE"
+        fi
+        run_logrotate
+
+        if [ ! -e "/opt/bin/$scribe_name" ]
+        then
+            setup_scribe
+        elif force_install "$scribe_name script"
+        then
+            setup_scribe
+        fi
+
+        [ "$skynet_installed" = "no" ] && no_skynet
 }
 
 menu_restart(){
@@ -476,7 +506,7 @@ menu_filters(){
     setup_exmpls "$sng"
     setup_exmpls "$lr"
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
-    check_sed
+    menu_status
 }
 
 menu_update(){
@@ -502,7 +532,7 @@ menu_update(){
         setup_scribe
         copy_rcfunc
         printf "\n$white $scribe_name updated!$std\n"
-        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else check_sed; fi
+        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else menu_status; fi
         printf "\n\n"
         exit 0
     else
@@ -514,7 +544,7 @@ menu_update(){
         menu_filters
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
-        check_sed
+        menu_status
     fi
 }
 
@@ -531,8 +561,8 @@ gather_debug(){
         printf "### GitHub Version: %s\n" "$github_long"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
-        printf "\n### check running processes:\n"
-        ps | grep "syslog"
+        printf "\n### check running log processes:\n"
+        ps | grep "log"
         printf "\n### check crontab:\n"
         cru l | grep $lr
         printf "\n### directory check:\n"
@@ -613,36 +643,7 @@ case $action in
 # install syslog-ng, logrotate, & scribe script
         install)
         getzip
-
-        if [ ! -e $syslogngloc ]
-        then
-            install "$sng"
-        elif force_install "$sng"
-        then
-            $S01sng_loc stop
-            install "$sng" "FORCE"
-        fi
-        echo
-        $S01sng_loc start
-
-        if [ ! -e $logrotateloc ]
-        then
-            install "$lr"
-        elif force_install "$lr"
-        then
-            install "$lr" "FORCE"
-        fi
-        run_logrotate
-
-        if [ ! -e "/opt/bin/$scribe_name" ]
-        then
-            setup_scribe
-        elif force_install "$scribe_name script"
-        then
-            setup_scribe
-        fi
-
-        [ "$skynet_installed" = "no" ] && no_skynet
+        menu_install
         menu_status
         ;;
 
@@ -652,7 +653,6 @@ case $action in
         ;;
 
 # update scribe
-
     update)
         get_vers
         prt_vers
@@ -667,11 +667,6 @@ case $action in
 # show total combined config
     show-config | config)
         if show_config; then sng_syntax; fi
-        ;;
-
-# check syntax
-    check-syntax | syntax)
-        sng_syntax
         ;;
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
@@ -702,7 +697,12 @@ case $action in
         while [ $count -gt 0 ]
         do
             sleep 1 # give them a moment to start up, drop count to 6 in case lag between starting
-            { [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]; } && kill_logger && found=true && count=6
+            if [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]
+            then
+                kill_logger
+                found=true
+                count=6
+            fi
             count=$(( count - 1 ))
         done
         if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
@@ -710,7 +710,7 @@ case $action in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | check-syntax | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | status | restart | debug )$std\n\n"
         exit 1
         ;;
 esac
