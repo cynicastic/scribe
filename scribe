@@ -275,7 +275,7 @@ run_logrotate(){
     printf "\n$white %34s" "running $lr ..."
     /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
     finis
-    printf "\n$magenta check the output below for errors $cyan\n\n"
+    printf "\n$magenta checking %s log for errors $cyan\n\n" "$lr"
     tail -v /opt/tmp/logrotate.daily
 }
 
