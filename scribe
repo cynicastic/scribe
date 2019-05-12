@@ -39,22 +39,24 @@ banner="yes"
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="1.0_0"
+readonly scribe_branch="gamma"
+readonly scribe_ver="1.0_1"
 readonly scribe_long="v$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_script="/jffs/scripts/$scribe_name"
+readonly scribe_md5="$( md5sum $scribe_script | awk '{ printf( $1 ); }'; )"
 
 # router details
 readonly merlin="ASUSWRT-Merlin"
 readonly fwreqd="380.68"
-fwname="$( uname -o )"
-fwvers="$( nvram get buildno )"
+readonly fwname="$( uname -o )"
+readonly fwvers="$( nvram get buildno )"
 model="$( nvram get odmpid )"
 [ -z "$model" ] && model="$( nvram get productid )"
-arch="$( uname -m )"
+readonly model
+readonly arch="$( uname -m )"
 
 # miscellaneous constants
 readonly sng="syslog-ng"
@@ -280,14 +282,28 @@ run_logrotate(){
 }
 
 get_vers(){
-    github_ver=$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )
+    github_ver="$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})([_][0-9]{1,2})' )"
     [ -z "$github_ver" ] && printf "\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n" "$scribe_name" && exit 1
     github_long="v$github_ver ($scribe_branch)"
+    github_md5="$( curl -fsL --retry 3 "$scribe_repo" | md5sum | awk '{ printf( $1 ); }'; )"
 }
 
 prt_vers(){
     printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
-    printf "$white %34s$green %s $std\n\n" "scribe GitHub version:" "$github_long"
+    printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
+    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]
+    then
+        printf "$red      Local scribe version greater than GitHub version!"
+    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]
+    then
+        printf "$yellow %40s" "New scribe version available"
+    elif [ "$scribe_md5" != "$github_md5" ]
+    then
+        printf "$blue %40s" "Minor scribe update available"
+    else
+        printf "$white %40s" "scribe is up to date!"
+    fi
+    printf "$std\n\n"
 }
 
 menu_status(){
@@ -367,7 +383,7 @@ setup_scribe(){
         then
             cp -pu $syslogng_share/examples/skynet $syslogng_d 
             printf "$blue setting skynet log file location$white ..."
-            skynetlog=$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )
+            skynetlog="$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
             sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         fi
     else
@@ -551,14 +567,16 @@ menu_update(){
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
+    rm -f $scribe_debug
     printf "\n$white gathering debugging information ..."
     get_vers
 
     # everything between { } goes to $scribe_debug
     {
         printf "### Scribe Version: %s\n" "$scribe_long"
-        printf "### Local Scribe md5: %s\n" "$( md5sum $scribe_script )"
+        printf "### Local Scribe md5: %s\n" "$scribe_md5"
         printf "### GitHub Version: %s\n" "$github_long"
+        printf "### GitHub Scribe md5: %s\n" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n### check running log processes:\n"
@@ -610,15 +628,15 @@ gather_debug(){
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
-    redact=$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )
+    redact="$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
 
-    printf " Debug output stored in %s, please review this file\n" "$scribe_debug"
+    printf "\n$std Debug output stored in $blue%s$std, please review this file\n" "$scribe_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
-    printf " Tarball of debug output is %s.tar.gz \n" "$scribe_debug"
+    printf " Tarball of debug output is $blue%s.tar.gz $std\n" "$scribe_debug"
 }
 
 scribe_menu(){
@@ -715,5 +733,5 @@ case $action in
         ;;
 esac
 
-printf "\n\n"
+printf "\n"
 #eof
