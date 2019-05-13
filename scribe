@@ -305,7 +305,7 @@ prt_vers(){
     then
         printf "$blue %40s" "Minor scribe update available"
     else
-        printf "$white %40s" "scribe is up to date!"
+        printf "$green %40s" "scribe is up to date!"
     fi
     printf "$std\n\n"
 }
