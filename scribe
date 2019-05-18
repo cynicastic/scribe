@@ -39,7 +39,7 @@ banner="yes"
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
+readonly scribe_branch="master"
 readonly scribe_ver="v1.1_0"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -542,7 +542,7 @@ menu_update(){
         printf "    Do you wish to upgrade [y|n] $std"
     else
         printf "\n$white    No new version available. (GitHub version"
-        [ "$( ver_num "$github_ver" )" -eq "$( ver_num "$scribe_ver" )" ] && printf " equal to " || printf "$red LESS THAN$white "
+        [ "$new_vers" = "none" ] && printf " equal to " || printf "$red LESS THAN $white"
         printf "local version)\n"
         printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
