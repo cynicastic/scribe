@@ -286,23 +286,30 @@ get_vers(){
     [ -z "$github_ver" ] && printf "\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n" "$scribe_name" && exit 1
     github_long="$github_ver ($scribe_branch)"
     github_md5="$( curl -fsL --retry 3 "$scribe_repo" | md5sum | awk '{ printf( $1 ); }'; )"
+    new_vers="none"
+    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]; then new_vers="older"
+    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
+    elif [ "$scribe_md5" != "$github_md5" ]; then new_vers="minor"
+    fi
 }
 
 prt_vers(){
     printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
     printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
-    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]
-    then
-        printf "$red      Local scribe version greater than GitHub version!"
-    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]
-    then
-        printf "$yellow %40s" "New scribe version available"
-    elif [ "$scribe_md5" != "$github_md5" ]
-    then
-        printf "$blue %40s" "Minor scribe update available"
-    else
-        printf "$green %40s" "scribe is up to date!"
-    fi
+    case $new_vers in
+        older)
+            printf "$red      Local scribe version greater than GitHub version!"
+            ;;
+        major)
+            printf "$yellow %45s" "New scribe version available"
+            ;;
+        minor)
+            printf "$blue %45s" "Minor scribe update available"
+            ;;
+        none)
+            printf "$green %40s" "scribe is up to date!"
+            ;;
+    esac
     printf "$std\n\n"
 }
 
@@ -528,18 +535,19 @@ menu_filters(){
 menu_update(){
     inst="no"
     upd="no"
-    if [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]
+    if [ "$new_vers" = "major" ] || [ "$new_vers" = "minor" ]
     then
-        printf "\n$white New version available!\n"
-        printf " Do you wish to upgrade [y|n] $std"
+        [ "$new_vers" = "major" ] && printf "\n$green    New version" || printf "$cyan    Minor update"
+        printf "$white available!\n"
+        printf "    Do you wish to upgrade [y|n] $std"
     else
-        printf "\n$white No new version available. (GitHub version"
+        printf "\n$white    No new version available. (GitHub version"
         [ "$( ver_num "$github_ver" )" -eq "$( ver_num "$scribe_ver" )" ] && printf " equal to " || printf "$red LESS THAN$white "
         printf "local version)\n"
-        printf " Do you wish to force re-installation of scribe script? [y|n] $std"
+        printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
     if yes_no; then inst="yes"; fi
-    printf "\n$white Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
+    printf "\n$white    Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
     if yes_no; then upd="yes"; fi
 
     if [ "$inst" = "yes" ]
@@ -664,7 +672,7 @@ scribe_menu(){
 case $action in
 
 # install syslog-ng, logrotate, & scribe script
-        install)
+    install)
         getzip
         menu_install
         menu_status
@@ -728,7 +736,7 @@ case $action in
             fi
             count=$(( count - 1 ))
         done
-        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
+        [ $found = false ] && logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."
         ;;
         
 # unrecognized command
