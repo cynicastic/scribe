@@ -37,7 +37,6 @@ banner="yes"
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 
-
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
@@ -549,7 +548,12 @@ menu_update(){
         setup_scribe
         copy_rcfunc
         printf "\n$white $scribe_name updated!$std\n"
-        if [ $upd = "yes" ]; then sh /jffs/scripts/"$scribe_name" filters gotzip nologo; else menu_status; fi
+        if [ $upd = "yes" ]
+        then
+            sh /jffs/scripts/"$scribe_name" filters gotzip nologo
+        else
+            sh /jffs/scripts/"$scribe_name" status nologo
+        fi
         printf "\n\n"
         exit 0
     else
