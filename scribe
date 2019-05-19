@@ -120,6 +120,22 @@ then
     okay=false
 fi
 
+# check if diversion is installed and >= 4.1.0
+if [ -x "$divers" ]
+then
+    printf "\n\n$white Diversion detected, checking version ..."
+    div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
+    printf " version %s detected ..." "$div_ver"
+    if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
+    then
+        printf "$red update required!\n"
+        printf " Diversion %s or later is required - exiting! $std\n\n" "$div_req"
+        okay=false
+    else
+        printf "$green okay! $std\n\n"
+    fi
+fi
+
 # check if Skynet is installed
 if ! grep -q "skynetloc" /jffs/scripts/firewall-start
 then
@@ -138,22 +154,6 @@ then
             printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
             okay=false
         fi
-    fi
-fi
-
-# check if diversion is installed and >= 4.1.0
-if [ -x "$divers" ]
-then
-    printf "\n\n$white Diversion detected, checking version ..."
-    div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
-    printf " version %s detected ..." "$div_ver"
-    if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
-    then
-        printf "$red update required!\n"
-        printf " Diversion %s or later is required - exiting! $std\n\n" "$div_req"
-        okay=false
-    else
-        printf "$green okay! $std\n\n"
     fi
 fi
 
