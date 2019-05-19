@@ -130,7 +130,7 @@ then
     printf " If Skynet is installed after %s, run\"%s install\"\n" "$scribe_name" "$scribe_name"
     printf " and force installation to configure %s and Skynet\n" "$scribe_name"
     printf " to work together.\n\n" "$sng"
-    if okay
+    if $okay
     then
         printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
         if ! yes_no
@@ -158,7 +158,7 @@ then
 fi
 
 # exit if requiements not met
-if ! okay; then dlt $scribe_script; exit 1; fi
+if ! $okay; then dlt $scribe_script; exit 1; fi
 
 
 #### functions ####
