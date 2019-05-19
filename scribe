@@ -34,13 +34,13 @@ got_zip="no"
 banner="yes"
 [ "$SCRIBE_LOGO" = "nologo" ] && banner="no"
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
+readonly banner
 [ -z "$TMP" ] && TMP=/opt/tmp
-
 
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
-readonly scribe_ver="v1.1_1"
+readonly scribe_ver="v1.2_0"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -90,7 +90,13 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
-# define a couple functions needed early first
+# check if re-installation
+re_inst=
+[ -e "/opt/bin/$scribe_name" ] && re_inst="re-"
+readonly re_inst
+
+
+# define a couple functions needed to check for required components
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
@@ -144,11 +150,11 @@ then
     printf " to stop %s installation now and install Skynet\n" "$scribe_name"
     printf " using amtm (https://github.com/decoderman/amtm).\n\n"
     printf " If Skynet is installed after %s, run \"%s install\"\n" "$scribe_name" "$scribe_name"
-    printf " and force installation to configure %s and Skynet\n" "$scribe_name"
+    printf " and force %sinstallation to configure %s and Skynet\n" "$re_inst" "$scribe_name"
     printf " to work together.\n\n" "$sng"
     if $okay
     then
-        printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
+        printf " Do you want to continue %sinstallation of %s [y|n]? $std" "$re_inst" "$scribe_name"
         if ! yes_no
         then
             okay=false
@@ -157,7 +163,7 @@ then
 fi
 
 # exit if requiements not met
-if ! $okay
+if [ ! $okay ] && [ "X$re_inst" = "X" ]
 then
     printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
     dlt $scribe_script
@@ -467,7 +473,7 @@ menu_install(){
         fi
         run_logrotate
 
-        if [ ! -e "/opt/bin/$scribe_name" ]
+        if [ "X$re_inst" = "X" ]
         then
             setup_scribe
         elif force_install "$scribe_name script"
