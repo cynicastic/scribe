@@ -116,7 +116,7 @@ okay=true
 # require Entware
 if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
 then
-    printf "\n\n$red %s version %s or later with Entware is required - exiting! $std\n\n" "$merlin" "$fwreqd"
+    printf "\n\n$red %s version %s or later with Entware is required - exiting! $std" "$merlin" "$fwreqd"
     okay=false
 fi
 
@@ -129,10 +129,10 @@ then
     if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
     then
         printf "$red update required!\n"
-        printf " Diversion %s or later is required - exiting! $std\n\n" "$div_req"
+        printf " Diversion %s or later is required - exiting! $std" "$div_req"
         okay=false
     else
-        printf "$green okay! $std\n\n"
+        printf "$green okay! $std"
     fi
 fi
 
@@ -143,7 +143,7 @@ then
     printf " If you plan to install Skynet, it is recommended\n"
     printf " to stop %s installation now and install Skynet\n" "$scribe_name"
     printf " using amtm (https://github.com/decoderman/amtm).\n\n"
-    printf " If Skynet is installed after %s, run\"%s install\"\n" "$scribe_name" "$scribe_name"
+    printf " If Skynet is installed after %s, run \"%s install\"\n" "$scribe_name" "$scribe_name"
     printf " and force installation to configure %s and Skynet\n" "$scribe_name"
     printf " to work together.\n\n" "$sng"
     if $okay
@@ -151,14 +151,18 @@ then
         printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
         if ! yes_no
         then
-            printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
             okay=false
         fi
     fi
 fi
 
 # exit if requiements not met
-if ! $okay; then dlt $scribe_script; exit 1; fi
+if ! $okay
+then
+    printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
+    dlt $scribe_script
+    exit 1
+fi
 
 
 #### functions ####
