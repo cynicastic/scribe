@@ -132,7 +132,7 @@ then
         printf " Diversion %s or later is required! $std\n" "$div_req"
         okay=false
     else
-        printf "$green okay! $std"
+        printf "$green okay! $std\n"
     fi
 fi
 
