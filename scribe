@@ -443,7 +443,7 @@ pre_install(){
     fi
 
     # exit if requiements not met
-    if [ ! $okay ]
+    if ! $okay
     then
         printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
         dlt $scribe_script
