@@ -77,6 +77,8 @@ readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
 readonly srvc_event="/jffs/scripts/service-event"
 readonly postmount="/jffs/scripts/post-mount"
+readonly divers="/opt/bin/diversion"
+readonly div_req="4.1"
 
 # color constants
 readonly red="\033[1;31m"
@@ -99,6 +101,22 @@ fi
 
 # check if skynet is installed
 if grep -q "skynetloc" /jffs/scripts/firewall-start; then skynet_installed="yes"; else skynet_installed="no"; fi
+
+# check if diversion is installed and >= 4.1.0
+if [ -x "$divers" ]
+then
+    printf "\n\n$white Diversion detected, checking version ..."
+    div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
+    printf " version %s detected ..." "$div_ver"
+    if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
+    then
+        printf "$red update required!\n"
+        printf " Diversion %s or later is required - exiting! $std\n\n" "$div_req"
+        exit 1
+    else
+        printf "$green okay! $std\n\n"
+    fi
+fi
 
 
 #### functions ####
@@ -400,15 +418,14 @@ setup_scribe(){
 }
 
 no_skynet(){
-    printf "$white\n"
-    printf "Skynet is$red NOT$std installed on this system!\n"
-    printf "If you plan to install Skynet, it is recommended\n"
-    printf "to stop %s installation now and install Skynet\n" "$scribe_name"
-    printf "using amtm (https://github.com/decoderman/amtm).\n\n"
-    printf "If Skynet is installed after %s, re-run this\n" "$scribe_name"
-    printf "script and force %s installation to configure\n" "$scribe_name"
-    printf "%s and Skynet to work together.\n\n" "$sng"
-    printf "To stop %s installation now, press ctrl-c." "$scribe_name"
+    printf "$white\n Skynet is$red NOT$white installed on this system!\n\n"
+    printf "$yellow If you plan to install Skynet, it is recommended\n"
+    printf " to stop %s installation now and install Skynet\n" "$scribe_name"
+    printf " using amtm (https://github.com/decoderman/amtm).\n\n"
+    printf " If Skynet is installed after %s, re-run this\n" "$scribe_name"
+    printf " script and force %s installation to configure\n" "$scribe_name"
+    printf " %s and Skynet to work together.\n\n" "$sng"
+    printf "$white To stop %s installation now, press ctrl-c." "$scribe_name"
     enter_to continue
 }
 
