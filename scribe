@@ -111,7 +111,7 @@ finis (){ printf "$green done. $std\n"; }
 
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
-enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
+enter_to(){ printf "$white Press [Enter] to %s: $std" "$1"; read -r; echo; }
 
 dlt(){ rm -rf "$1"; }
 
@@ -389,8 +389,6 @@ setup_scribe(){
             skynetlog="$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
             sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         fi
-    else
-        printf "$red Skynet NOT installed$white ..."
     fi
     finis
 }
@@ -479,6 +477,9 @@ menu_install(){
         then
             setup_scribe
         fi
+
+        printf "\n$white %s setup complete!  "
+        enter_to "continue"
 }
 
 menu_restart(){
@@ -537,7 +538,7 @@ uninstall(){
 
     printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
     printf " It is recommended to reboot the router at this time.  If you do not\n"
-    printf " wish to reboot the router, press ctrl-c now to exit.\n"
+    printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
     enter_to "reboot"
     service reboot; exit 0
 }
