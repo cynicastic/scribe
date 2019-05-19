@@ -39,8 +39,8 @@ banner="yes"
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v1.1_0"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v1.1_1"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -400,14 +400,21 @@ setup_scribe(){
 }
 
 no_skynet(){
-    printf "\nSkynet is$red NOT$std installed on this system!\n"
-    printf "If Skynet is installed at a later date, re-run this\n"
-    printf "script and force installation of %s to log the\n" "$scribe_name"
-    printf "iptables messages used by Skynet to their own logfile.\n"
+    printf "$white\n"
+    printf "Skynet is$red NOT$std installed on this system!\n"
+    printf "If you plan to install Skynet, it is recommended\n"
+    printf "to stop %s installation now and install Skynet\n" "$scribe_name"
+    printf "using amtm (https://github.com/decoderman/amtm).\n\n"
+    printf "If Skynet is installed after %s, re-run this\n" "$scribe_name"
+    printf "script and force %s installation to configure\n" "$scribe_name"
+    printf "%s and Skynet to work together.\n\n" "$sng"
+    printf "To stop %s installation now, press ctrl-c." "$scribe_name"
     enter_to continue
 }
 
 menu_install(){
+        [ "$skynet_installed" = "no" ] && no_skynet
+
         if [ ! -e $syslogngloc ]
         then
             install "$sng"
@@ -435,8 +442,6 @@ menu_install(){
         then
             setup_scribe
         fi
-
-        [ "$skynet_installed" = "no" ] && no_skynet
 }
 
 menu_restart(){
