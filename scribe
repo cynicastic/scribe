@@ -116,7 +116,7 @@ okay=true
 # require Entware
 if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
 then
-    printf "\n\n$red %s version %s or later with Entware is required - exiting! $std" "$merlin" "$fwreqd"
+    printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
     okay=false
 fi
 
@@ -129,7 +129,7 @@ then
     if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
     then
         printf "$red update required!\n"
-        printf " Diversion %s or later is required - exiting! $std" "$div_req"
+        printf " Diversion %s or later is required! $std\n" "$div_req"
         okay=false
     else
         printf "$green okay! $std"
