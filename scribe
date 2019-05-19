@@ -90,17 +90,56 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
+# define a couple functions needed early first
+
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
+dlt(){ rm -rf "$1" }
+
+# Check yes or no
+yes_no(){
+    read -r resp
+    case "$resp" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+
+# check for required components
+okay=true
 
 # require Entware
 if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
 then
     printf "\n\n$red %s version %s or later with Entware is required - exiting! $std\n\n" "$merlin" "$fwreqd"
-    exit 1
+    okay=false
 fi
 
-# check if skynet is installed
-if grep -q "skynetloc" /jffs/scripts/firewall-start; then skynet_installed="yes"; else skynet_installed="no"; fi
+# check if Skynet is installed
+if ! grep -q "skynetloc" /jffs/scripts/firewall-start
+then
+    printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
+    printf " If you plan to install Skynet, it is recommended\n"
+    printf " to stop %s installation now and install Skynet\n" "$scribe_name"
+    printf " using amtm (https://github.com/decoderman/amtm).\n\n"
+    printf " If Skynet is installed after %s, run\"%s install\"\n" "$scribe_name" "$scribe_name"
+    printf " and force installation to configure %s and Skynet\n" "$scribe_name"
+    printf " to work together.\n\n" "$sng"
+    if okay
+    then
+        printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
+        if ! yes_no
+        then
+            printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
+            okay=false
+        fi
+    fi
+fi
 
 # check if diversion is installed and >= 4.1.0
 if [ -x "$divers" ]
@@ -112,11 +151,14 @@ then
     then
         printf "$red update required!\n"
         printf " Diversion %s or later is required - exiting! $std\n\n" "$div_req"
-        exit 1
+        okay=false
     else
         printf "$green okay! $std\n\n"
     fi
 fi
+
+# exit if requiements not met
+if ! okay; then dlt $scribe_script; exit 1; fi
 
 
 #### functions ####
@@ -134,23 +176,6 @@ finis (){ printf "$green done. $std\n"; }
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
-
-# Check yes or no
-yes_no(){
-    read -r resp
-    case "$resp" in
-        [yY][eE][sS]|[yY])
-            true
-            ;;
-        *)
-            false
-            ;;
-    esac
-}
-
-# Note this is not if-then-else; if rm -rf fails, it will try to rm -f, but it doesn't matter here
-# shellcheck disable=SC2015
-dlt(){ [ -d "$1" ] && rm -rf "$1" || rm -f "$1"; }
 
 # get md5sum of file
 md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; }
@@ -417,21 +442,7 @@ setup_scribe(){
     finis
 }
 
-no_skynet(){
-    printf "$white\n Skynet is$red NOT$white installed on this system!\n\n"
-    printf "$yellow If you plan to install Skynet, it is recommended\n"
-    printf " to stop %s installation now and install Skynet\n" "$scribe_name"
-    printf " using amtm (https://github.com/decoderman/amtm).\n\n"
-    printf " If Skynet is installed after %s, re-run this\n" "$scribe_name"
-    printf " script and force %s installation to configure\n" "$scribe_name"
-    printf " %s and Skynet to work together.\n\n" "$sng"
-    printf "$white To stop %s installation now, press ctrl-c." "$scribe_name"
-    enter_to continue
-}
-
 menu_install(){
-        [ "$skynet_installed" = "no" ] && no_skynet
-
         if [ ! -e $syslogngloc ]
         then
             install "$sng"
@@ -517,7 +528,7 @@ uninstall(){
 
     printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
     printf " It is recommended to reboot the router at this time.  If you do not\n"
-    printf " wish to reboot the router now, press ctrl-C now to exit.\n"
+    printf " wish to reboot the router, press ctrl-c now to exit.\n"
     enter_to "reboot"
     service reboot; exit 0
 }
