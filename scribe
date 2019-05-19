@@ -29,11 +29,11 @@
 
 # parse parameters
 action="$1"
-got_zip="no"
-[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip="yes" && shift
-banner="yes"
-[ "$SCRIBE_LOGO" = "nologo" ] && banner="no"
-[ -n "$2" ] && [ "$2" = "nologo" ] && banner="no" && shift
+got_zip=false
+[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip=true && shift
+banner=true
+[ "$SCRIBE_LOGO" = "nologo" ] && banner=false
+[ -n "$2" ] && [ "$2" = "nologo" ] && banner=false && shift
 readonly banner
 [ -z "$TMP" ] && TMP=/opt/tmp
 
@@ -90,86 +90,12 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
-# check if re-installation
-re_inst=
-[ -e "/opt/bin/$scribe_name" ] && re_inst="re-"
-readonly re_inst
-
-
-# define a couple functions needed to check for required components
-
-ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
-
-dlt(){ rm -rf "$1"; }
-
-# Check yes or no
-yes_no(){
-    read -r resp
-    case "$resp" in
-        [yY][eE][sS]|[yY])
-            true
-            ;;
-        *)
-            false
-            ;;
-    esac
-}
-
-
-# check for required components
-okay=true
-
-# require Entware
-if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
-then
-    printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
-    okay=false
-fi
-
-# check if diversion is installed and >= 4.1.0
-if [ -x "$divers" ]
-then
-    printf "\n\n$white Diversion detected, checking version ..."
-    div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
-    printf " version %s detected ..." "$div_ver"
-    if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
-    then
-        printf "$red update required!\n"
-        printf " Diversion %s or later is required! $std\n" "$div_req"
-        okay=false
-    else
-        printf "$green okay! $std\n"
-    fi
-fi
+# check if already installed by looking for link in /opt/bin
+is_inst=false
+[ -e "/opt/bin/$scribe_name" ] && is_inst=true
 
 # check if Skynet is installed
-if ! grep -q "skynetloc" /jffs/scripts/firewall-start
-then
-    printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
-    printf " If you plan to install Skynet, it is recommended\n"
-    printf " to stop %s installation now and install Skynet\n" "$scribe_name"
-    printf " using amtm (https://github.com/decoderman/amtm).\n\n"
-    printf " If Skynet is installed after %s, run \"%s install\"\n" "$scribe_name" "$scribe_name"
-    printf " and force %sinstallation to configure %s and Skynet\n" "$re_inst" "$scribe_name"
-    printf " to work together.\n\n" "$sng"
-    if $okay
-    then
-        printf " Do you want to continue %sinstallation of %s [y|n]? $std" "$re_inst" "$scribe_name"
-        if ! yes_no
-        then
-            okay=false
-        fi
-    fi
-fi
-
-# exit if requiements not met
-if [ ! $okay ] && [ "X$re_inst" = "X" ]
-then
-    printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
-    dlt $scribe_script
-    exit 1
-fi
-
+if grep -q "skynetloc" /jffs/scripts/firewall-start; then skynet_inst=true; else skynet_inst=false; fi
 
 #### functions ####
 
@@ -187,6 +113,23 @@ not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 enter_to(){ printf "\n\n$white Press [Enter] to %s $std" "$1"; read -r; echo; }
 
+dlt(){ rm -rf "$1"; }
+
+# Check yes or no
+yes_no(){
+    read -r resp
+    case "$resp" in
+        [yY][eE][sS]|[yY])
+            true
+            ;;
+        *)
+            false
+            ;;
+    esac
+}
+
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
 # get md5sum of file
 md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; }
 
@@ -202,8 +145,8 @@ logo(){
     printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_long"
 }
 
-getzip(){
-    if [ "$got_zip" = "no" ]
+get_zip(){
+    if ! $got_zip
     then
         dlt $scribe_dir
         dlt $TMP/$scribe_name.zip
@@ -213,7 +156,7 @@ getzip(){
             printf "\n$white unzipping %s ...$std\n" "$scribe_name"
             unzip $TMP/$scribe_name.zip -d $TMP
             opkg update
-            got_zip="yes"
+            got_zip=true
         else
             printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
             exit 1
@@ -437,7 +380,7 @@ setup_scribe(){
     cp -pf "$scribe_dir/$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
-    if [ "$skynet_installed" = "yes" ]
+    if $skynet_inst
     then
         if [ ! -e "$syslogng_d/skynet" ]
         then
@@ -450,6 +393,62 @@ setup_scribe(){
         printf "$red Skynet NOT installed$white ..."
     fi
     finis
+}
+
+pre_install(){
+    # check for required components
+    okay=true
+
+    # require Entware
+    if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
+    then
+        printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
+        okay=false
+    fi
+
+    # check if diversion is installed and version number
+    if [ -x "$divers" ]
+    then
+        printf "\n\n$white Diversion detected, checking version ..."
+        div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
+        printf " version %s detected ..." "$div_ver"
+        if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
+        then
+            printf "$red update required!\n"
+            printf " Diversion %s or later is required! $std\n" "$div_req"
+            okay=false
+        else
+            printf "$green okay! $std\n"
+        fi
+    fi
+
+    # check if Skynet is installed
+    if ! $skynet_inst 
+    then
+        printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
+        printf " If you plan to install Skynet, it is recommended\n"
+        printf " to stop %s installation now and install Skynet\n" "$scribe_name"
+        printf " using amtm (https://github.com/decoderman/amtm).\n\n"
+        printf " If Skynet is installed after %s, run \"%s install\"\n" "$scribe_name" "$scribe_name"
+        printf " and force installation to configure %s and Skynet\n" "$scribe_name"
+        printf " to work together.\n\n"
+        if $okay
+        then
+            printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
+            if ! yes_no
+            then
+                okay=false
+            fi
+        fi
+    fi
+
+    # exit if requiements not met
+    if [ ! $okay ]
+    then
+        printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
+        dlt $scribe_script
+        exit 1
+    fi
 }
 
 menu_install(){
@@ -473,7 +472,7 @@ menu_install(){
         fi
         run_logrotate
 
-        if [ "X$re_inst" = "X" ]
+        if ! $is_inst
         then
             setup_scribe
         elif force_install "$scribe_name script"
@@ -513,7 +512,7 @@ uninstall(){
         dlt $syslogng_conf
         dlt /tmp/syslog.log
         dlt /tmp/syslog.log-1
-        [ "$skynet_installed" = "yes" ] && sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1
+        if $skynet_inst; then sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1; fi
     else
         not_installed "$sng"
     fi
@@ -568,7 +567,7 @@ menu_uninstall(){
 }
 
 menu_filters(){
-    getzip
+    get_zip
     setup_exmpls "$sng"
     setup_exmpls "$lr"
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
@@ -576,8 +575,8 @@ menu_filters(){
 }
 
 menu_update(){
-    inst="no"
-    upd="no"
+    inst=false
+    upd=false
     if [ "$new_vers" = "major" ] || [ "$new_vers" = "minor" ]
     then
         [ "$new_vers" = "major" ] && printf "\n$green    New version" || printf "$cyan    Minor update"
@@ -589,17 +588,17 @@ menu_update(){
         printf "local version)\n"
         printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
-    if yes_no; then inst="yes"; fi
+    if yes_no; then inst=true; fi
     printf "\n$white    Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
-    if yes_no; then upd="yes"; fi
+    if yes_no; then upd=true; fi
 
-    if [ "$inst" = "yes" ]
+    if $inst
     then
-        getzip
+        get_zip
         setup_scribe
         copy_rcfunc
         printf "\n$white $scribe_name updated!$std\n"
-        if [ $upd = "yes" ]
+        if $upd
         then
             sh /jffs/scripts/"$scribe_name" filters gotzip nologo
         else
@@ -611,7 +610,7 @@ menu_update(){
         printf "\n$white $scribe_name$red not$white updated!$std\n"
     fi
 
-    if [ "$upd" = "yes" ]
+    if $upd
     then
         menu_filters
     else
@@ -671,7 +670,7 @@ gather_debug(){
         printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE ABOVE ****\n" >> $scribe_debug
     fi
 
-    if [ "$skynet_installed" = "yes" ]
+    if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
@@ -710,13 +709,14 @@ scribe_menu(){
 # 	scribe_menu
 # fi
 
-[ "$banner" != "no" ] && logo
+if $banner; then logo; fi
 
 case $action in
 
-# install syslog-ng, logrotate, & scribe script
+# (re-)install syslog-ng, logrotate, & scribe script
     install)
-        getzip
+        if ! $is_inst; then pre_install; fi
+        get_zip
         menu_install
         menu_status
         ;;
@@ -779,7 +779,7 @@ case $action in
             fi
             count=$(( count - 1 ))
         done
-        [ $found = false ] && logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."
+        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
         ;;
         
 # unrecognized command
