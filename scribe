@@ -94,7 +94,7 @@ readonly std="\033[m"
 
 ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
 
-dlt(){ rm -rf "$1" }
+dlt(){ rm -rf "$1"; }
 
 # Check yes or no
 yes_no(){
