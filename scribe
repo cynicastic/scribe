@@ -186,6 +186,7 @@ sed_sng(){
         else
             present
         fi
+        [ $( grep -c "#!/bin/sh" $srvc_event ) != 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
     else
         {
             echo "#!/bin/sh"
@@ -193,8 +194,8 @@ sed_sng(){
             echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe"
         } > $srvc_event
         printf "$green created. $std\n"
-        chmod 0755 $srvc_event
     fi
+    [ ! -x $srvc_event ] && chmod 0755 $srvc_event
 }
 
 lr_cron(){
