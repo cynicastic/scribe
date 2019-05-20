@@ -599,7 +599,7 @@ menu_update(){
         get_zip
         setup_scribe
         copy_rcfunc
-        printf "\n$white $scribe_name updated!$std\n"
+        printf "\n$white %s updated!$std\n" "$scribe_name"
         if $upd
         then
             sh "$scribe_script" filters gotzip nologo
@@ -609,7 +609,7 @@ menu_update(){
         printf "\n\n"
         exit 0
     else
-        printf "\n$white $scribe_name$red not$white updated!$std\n"
+        printf "\n$white %s$red not$white updated!$std\n" "$scribe_name"
     fi
 
     if $upd
@@ -624,7 +624,7 @@ menu_update(){
 gather_debug(){
     scribe_debug_name=$scribe_name"_debug.log"
     scribe_debug=$TMP/$scribe_debug_name
-    rm -f $scribe_debug
+    dlt $scribe_debug
     printf "\n$white gathering debugging information ..."
     get_vers
 
