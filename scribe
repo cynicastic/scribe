@@ -176,13 +176,24 @@ sed_sng(){
     fi
 
     printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
-    sed -i "/kill_logger/d" $srvc_event
-    if ! grep -q $scribe_name $srvc_event
+    if [ -f $srvc_event ]
     then
-        echo "$scribe_script kill-logger nologo \"\$2\" & # added by scribe" >> $srvc_event
-        updated
+        sed -i "/kill_logger/d" "/nologo \"\$2\"/d" $srvc_event # fix a couple mistakes
+        if ! grep -q $scribe_name $srvc_event
+        then
+            echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe" >> $srvc_event
+            updated
+        else
+            present
+        fi
     else
-        present
+        {
+            echo "#!/bin/sh"
+            echo ""
+            echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe"
+        } > $srvc_event
+        printf "$green created. $std\n"
+        chmod 0755 $srvc_event
     fi
 }
 
@@ -763,7 +774,7 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill-logger)
-        [ "$2" != "logger" ] && [ "$2" != "time" ] && exit 0
+        [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; } && exit 0
         # load kill_logger() function
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
