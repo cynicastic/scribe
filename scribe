@@ -186,7 +186,7 @@ sed_sng(){
         else
             present
         fi
-        [ $( grep -c "#!/bin/sh" $srvc_event ) != 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
+        [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
     else
         {
             echo "#!/bin/sh"
