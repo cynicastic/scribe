@@ -45,7 +45,8 @@ readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
-readonly scribe_script="/jffs/scripts/$scribe_name"
+readonly script_d="/jffs/scripts"
+readonly scribe_script="$script_d/$scribe_name"
 readonly scribe_md5="$( md5sum $scribe_script | awk '{ printf( $1 ); }'; )"
 
 # router details
@@ -75,8 +76,8 @@ readonly syslogng_d="/opt/etc/$sng.d"
 readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
 readonly logrotate_share="/opt/share/$lr"
-readonly srvc_event="/jffs/scripts/service-event"
-readonly postmount="/jffs/scripts/post-mount"
+readonly srvc_event="$script_d/service-event"
+readonly postmount="$script_d/post-mount"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
@@ -95,7 +96,7 @@ is_inst=false
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true
 
 # check if Skynet is installed
-if grep -q "skynetloc" /jffs/scripts/firewall-start; then skynet_inst=true; else skynet_inst=false; fi
+if grep -q "skynetloc" $script_d/firewall-start; then skynet_inst=true; else skynet_inst=false; fi
 
 #### functions ####
 
@@ -387,7 +388,7 @@ setup_scribe(){
             cp -pu $syslogng_share/examples/skynet $syslogng_d 
             printf "$blue setting skynet log file location$white ..."
             skynetlog="$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
-            sh /jffs/scripts/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+            sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         fi
     fi
     finis
@@ -478,7 +479,7 @@ menu_install(){
             setup_scribe
         fi
 
-        printf "\n$white %s setup complete!  "
+        printf "\n$white %s setup complete!  " "$scribe_name"
         enter_to "continue"
 }
 
@@ -513,7 +514,7 @@ uninstall(){
         dlt $syslogng_conf
         dlt /tmp/syslog.log
         dlt /tmp/syslog.log-1
-        if $skynet_inst; then sh /jffs/scripts/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1; fi
+        if $skynet_inst; then sh $script_d/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1; fi
     else
         not_installed "$sng"
     fi
@@ -601,9 +602,9 @@ menu_update(){
         printf "\n$white $scribe_name updated!$std\n"
         if $upd
         then
-            sh /jffs/scripts/"$scribe_name" filters gotzip nologo
+            sh "$scribe_script" filters gotzip nologo
         else
-            sh /jffs/scripts/"$scribe_name" status nologo
+            sh "$scribe_script" status nologo
         fi
         printf "\n\n"
         exit 0
@@ -673,7 +674,7 @@ gather_debug(){
 
     if $skynet_inst
     then
-        skynetloc="$( grep -ow "skynetloc=.* # Skynet" /jffs/scripts/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
+        skynetloc="$( grep -ow "skynetloc=.* # Skynet" $script_d/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
             printf "\n### Skynet log locations:\n"
@@ -719,7 +720,7 @@ case $action in
         if ! $is_inst; then pre_install; fi
         get_zip
         menu_install
-        menu_status
+        sh "$scribe_script" status nologo
         ;;
 
 # uninstall scribe
