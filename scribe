@@ -39,15 +39,15 @@ readonly banner
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v1.2_0"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v1.2_1"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
+readonly scribe_tmp="$TMP/scribe.tmp"
 readonly script_d="/jffs/scripts"
 readonly scribe_script="$script_d/$scribe_name"
-readonly scribe_md5="$( md5sum $scribe_script | awk '{ printf( $1 ); }'; )"
 
 # router details
 readonly merlin="ASUSWRT-Merlin"
@@ -67,11 +67,12 @@ readonly init_d="/opt/etc/init.d"
 readonly S01sng_loc="$init_d/S01$sng"
 readonly rcfunc_sng="rc.func.$sng"
 readonly rcfunc_loc="$init_d/$rcfunc_sng"
-readonly syslogngloc="/opt/sbin/$sng"
-readonly logrotateloc="/opt/sbin/$lr"
+readonly syslogng_loc="/opt/sbin/$sng"
+readonly logrotate_loc="/opt/sbin/$lr"
 readonly syslogng_conf="/opt/etc/$sng.conf"
 readonly sngconf_merged="$TMP/syslog-ng-complete.conf"
 readonly logrotate_conf="/opt/etc/$lr.conf"
+readonly lr_daily="/opt/tmp/logrotate.daily"
 readonly syslogng_d="/opt/etc/$sng.d"
 readonly logrotate_d="/opt/etc/$lr.d"
 readonly syslogng_share="/opt/share/$sng"
@@ -202,7 +203,7 @@ lr_cron(){
     printf "\n$white %34s" "checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
     then
-        echo 'cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1" # added by scribe' >> $postmount
+        echo "cru a $lr "'"5 0 * * *'" $logrotate_loc $logrotate_conf >> $lr_daily "'2>&1" # added by scribe' >> $postmount
         updated
     else
         present
@@ -211,7 +212,7 @@ lr_cron(){
 	printf "\n$white %34s" "checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
-        cru a logrotate "5 0 * * * /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1"
+        cru a $lr "5 0 * * * $logrotate_loc $logrotate_conf >> $lr_daily 2>&1"
         updated
     else
         present
@@ -272,9 +273,9 @@ force_install(){
 }
 
 show_config(){
-    if [ -e $syslogngloc ]
+    if [ -e $syslogng_loc ]
     then
-        $syslogngloc --preprocess-into=$sngconf_merged && less $sngconf_merged
+        $syslogng_loc --preprocess-into=$sngconf_merged && less $sngconf_merged
         true
     else
         not_installed $sng
@@ -283,18 +284,24 @@ show_config(){
 }
 
 run_logrotate(){
+    dlt $lr_daily
     printf "\n$white %34s" "running $lr ..."
-    /opt/sbin/logrotate /opt/etc/logrotate.conf >> /opt/tmp/logrotate.daily 2>&1
+    $logrotate_loc $logrotate_conf >> $lr_daily 2>&1
     finis
     printf "\n$magenta checking %s log for errors $cyan\n\n" "$lr"
-    tail -v /opt/tmp/logrotate.daily
+    tail -v $lr_daily
 }
 
 get_vers(){
-    github_ver="$( curl -fsL --retry 3 "$scribe_repo" | grep "scribe_ver=" | grep -m1 -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' )"
-    [ -z "$github_ver" ] && printf "\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n" "$scribe_name" && exit 1
-    github_long="$github_ver ($scribe_branch)"
-    github_md5="$( curl -fsL --retry 3 "$scribe_repo" | md5sum | awk '{ printf( $1 ); }'; )"
+    # only get scribe once from github
+    scribe_md5="$( md5_file "$scribe_script")"
+    dlt $scribe_tmp
+    curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
+    [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
+    github_ver="$( grep "scribe_ver=" "$scribe_tmp" | grep -m1 -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' )"
+    github_branch="$( grep "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
+    github_long="$github_ver ($github_branch)"
+    github_md5="$( md5_file "$scribe_tmp")"
     new_vers="none"
     if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]; then new_vers="older"
     elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
@@ -355,7 +362,7 @@ install(){
         copy_rcfunc
         sed_sng
 
-        if [ "$( md5_file $syslogng_share/examples/$sng.conf-scribe )" != "$( md5_file $syslogng_conf )" ]
+        if [ "$( md5_file "$syslogng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$syslogng_conf" )" ]
         then
             printf "\n$white backing up %s to %s ...$std" "$syslogng_conf" "$syslogng_conf-prev"
             cp -pf $syslogng_conf $syslogng_conf-prev
@@ -463,7 +470,7 @@ pre_install(){
 }
 
 menu_install(){
-        if [ ! -e $syslogngloc ]
+        if [ ! -e $syslogng_loc ]
         then
             install "$sng"
         elif force_install "$sng"
@@ -474,7 +481,7 @@ menu_install(){
         echo
         $S01sng_loc start
 
-        if [ ! -e $logrotateloc ]
+        if [ ! -e $logrotate_loc ]
         then
             install "$lr"
         elif force_install "$lr"
@@ -511,7 +518,7 @@ uninstall(){
     [ -n "$( pidof $sng )" ] && $S01sng_loc stop
     printf "\n$white starting system klogd and syslogd ... $green"
     service start_logger
-    if [ -e $syslogngloc ]
+    if [ -e $syslogng_loc ]
     then
         sed -i "/$scribe_name/d" $srvc_event
         dlt $S01sng_loc
@@ -531,7 +538,7 @@ uninstall(){
         not_installed "$sng"
     fi
 
-    if [ -e $logrotateloc ]
+    if [ -e $logrotate_loc ]
     then
         sed -i "/cru a $lr/d" $postmount
         if cru l | grep -q $lr; then cru d $lr; fi
@@ -540,6 +547,7 @@ uninstall(){
         dlt $logrotate_d
         dlt $logrotate_share
         dlt $logrotate_conf
+        dlt $lr_daily
     else
         not_installed "$lr"
     fi
@@ -672,7 +680,7 @@ gather_debug(){
     printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
     if syslog-ng -s > /dev/null 2>&1
     then
-	    $syslogngloc --preprocess-into=$sngconf_merged > /dev/null 2>&1
+	    $syslogng_loc --preprocess-into=$sngconf_merged > /dev/null 2>&1
         {
             printf "syslog-ng syntax check okay!\n"
             printf "\n### syslog-ng config:\n"
