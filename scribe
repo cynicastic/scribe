@@ -298,8 +298,8 @@ get_vers(){
     dlt $scribe_tmp
     curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
     [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
-    github_ver="$( grep "scribe_ver=" "$scribe_tmp" | grep -m1 -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' )"
-    github_branch="$( grep "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
+    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' )"
+    github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
     github_long="$github_ver ($github_branch)"
     github_md5="$( md5_file "$scribe_tmp")"
     new_vers="none"
@@ -345,7 +345,7 @@ install(){
 
 # determine syslog-ng conf file version
     sng_conf(){
-        sngvers="$( grep '@version:' $syslogng_conf | awk '{ printf( $2 ); }'; )"
+        sngvers="$( grep -m1 '@version:' $syslogng_conf | awk '{ printf( $2 ); }'; )"
         if [ "$( ver_num "$sngvers" )" -lt "$( ver_num "$sngreqd" )" ]
         then
             printf "\n$red %s version %s or higher required!\n" "$sng" "$sngreqd"
@@ -406,7 +406,7 @@ setup_scribe(){
         then
             cp -pu $syslogng_share/examples/skynet $syslogng_d 
             printf "$blue setting skynet log file location$white ..."
-            skynetlog="$( grep 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
+            skynetlog="$( grep -m1 'file("' $syslogng_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
             sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         fi
     fi
@@ -428,7 +428,7 @@ pre_install(){
     if [ -x "$divers" ]
     then
         printf "\n\n$white Diversion detected, checking version ..."
-        div_ver="$( grep "VERSION" $divers | grep -m1 -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
+        div_ver="$( grep -m1 "VERSION" $divers | grep -oE '[0-9]{1,2}([.][0-9]{1,2})' )"
         printf " version %s detected ..." "$div_ver"
         if [ "$( ver_num "$div_ver" )" -lt "$( ver_num "$div_req" )" ]
         then
