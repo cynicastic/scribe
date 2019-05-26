@@ -585,7 +585,7 @@ uninstall(){
         if [ -e $sng_conf ]
         then
             if same_same "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
-            then 
+            then
                 dlt $sng_conf
             else
                 printf "\n$blue %s$yellow does not match$blue %s$yellow,\n" "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
@@ -677,8 +677,8 @@ menu_filters(){
 }
 
 menu_update(){
-    inst=false
-    upd=false
+    do_inst=false
+    do_upd=false
     if [ "$new_vers" = "major" ] || [ "$new_vers" = "minor" ]
     then
         [ "$new_vers" = "major" ] && printf "\n$green    New version" || printf "$cyan    Minor update"
@@ -690,19 +690,22 @@ menu_update(){
         printf "local version)\n"
         printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
-    if yes_no; then inst=true; fi
-    printf "\n$white    Do you want to update %s and %s example files? \n" "$sng" "$lr"
-    printf "    (adds any new files to /opt/share/*/examples, or updates if \n"
-    printf  "    newer; adds any new files to /opt/etc/*.d directories) [y|n] $std"
-    if yes_no; then upd=true; fi
+    if yes_no; then do_inst=true; fi
+    printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
+    printf "    * adds any new files to /opt/share/*/examples and updates files\n"
+    printf "    that have changed\n"
+    printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
+    pringf "    modify any existing files\n"
+    printf "        Update filter files? [y|n] $std"
+    if yes_no; then do_upd=true; fi
 
-    if $inst
+    if $do_inst
     then
         get_zip
         setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
-        if $upd
+        if $do_upd
         then
             sh "$scribe_script" filters gotzip nologo
         else
@@ -714,7 +717,7 @@ menu_update(){
         printf "\n$white %s$red not$white updated!$std\n" "$scribe_name"
     fi
 
-    if $upd
+    if $do_upd
     then
         menu_filters
     else
