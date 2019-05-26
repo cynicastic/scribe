@@ -266,6 +266,7 @@ setup_exmpls(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
+    printf "\n $white"
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
 
@@ -278,7 +279,7 @@ setup_exmpls(){
             cp -pf "$exmpl" "$shrfile"
         elif notsame_newer "$exmpl" "$shrfile"
         then
-            printf "$white updating %s ..." "$shrfile"
+            printf "updating %s\n" "$shrfile"
             cp -pf "$exmpl" "$shrfile"
         fi
     done
@@ -293,6 +294,7 @@ setup_exmpls(){
     fi
     
     chmod 600 $share/examples/*
+    printf "$std \n"
 }
 
 force_install(){
@@ -579,11 +581,15 @@ uninstall(){
         dlt $rcfunc_loc
         printf "\n$cyan"
         opkg remove "$sng"
-        if same_same "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
-        then 
-            dlt $sng_conf
-        else
-            printf "\n$blue %s$yellow does not match$blue %s$yellow, not deleting$blue %s$yellow ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe" "$sng_conf"
+        if [ -e $sng_conf ]
+        then
+            if same_same "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+            then 
+                dlt $sng_conf
+            else
+                printf "\n$blue %s$yellow does not match$blue %s$yellow,\n" "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+                printf " not deleting$blue %s$yellow ..." "$sng_conf"
+            fi
         fi
         # need to look for non-scribe & changed filters here or just backup the directories
         dlt $sngd_d
@@ -604,11 +610,15 @@ uninstall(){
         if cru l | grep -q $lr; then cru d $lr; fi
         printf "\n$cyan"
         opkg remove "$lr"
-        if same_same "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
+        if [ -e $lr_conf ]
         then
-            dlt $lr_conf
-        else
-            printf "\n$blue %s$yellow does not match$blue %s$yellow, not deleting$blue %s$yellow ..." "$lr_conf" "$lr_share/examples/$lr.conf-opkg" "$lr_conf"
+            if same_same "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
+            then
+                dlt $lr_conf
+            else
+                printf "\n$blue %s$yellow does not match$blue %s$yellow,\n" "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
+                printf " not deleting$blue %s$yellow ..." "$lr_conf"
+            fi
         fi
         # need to look for non-scribe & changed filters here or just backup the directories
         dlt $lrd_d
