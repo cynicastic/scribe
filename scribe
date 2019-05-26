@@ -120,15 +120,16 @@ ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $
 
 md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
 
+dlt(){ rm -rf "$1"; }
+
 # in this case, A && B || C does function as if-then-else because B is by definition true
 # shellcheck disable=SC2015
 same_same(){ [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ] && true || false; }
 
-# not POSIX, but busybox sh has '-nt' file comparison
-# shellcheck disable=SC2039
-notsame_newer(){ if ! same_same "$1" "$2" && [ "$1" -nt "$2" ]; then true; else false; fi; }
-
-dlt(){ rm -rf "$1"; }
+update_file(){
+    [ -e "$2" ] && mv "$2" "$2-$( date -Iseconds | cut -c 1-19 )"
+    cp -pf "$1" "$2"
+}
 
 # Check yes or no
 yes_no(){
@@ -276,25 +277,32 @@ setup_exmpls(){
         shrfile="$share/examples/$exbase"
         if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
         then
-            cp -pf "$exmpl" "$shrfile"
-        elif notsame_newer "$exmpl" "$shrfile"
+            update_file "$exmpl" "$shrfile"
+        elif ! same_same "$exmpl" "$shrfile"
         then
             printf "updating %s\n" "$shrfile"
-            cp -pf "$exmpl" "$shrfile"
+            update_file "$exmpl" "$shrfile"
         fi
     done
 
     if [ -e $conf_opkg ]
     then
-        cp -pf $conf_opkg $share/examples
+        update_file "$conf_opkg" "$share/examples/$opkg"
         dlt $conf_opkg
     elif [ ! -e "$share/examples/$opkg" ]
     then
         cp -pf $conf "$share/examples/$opkg"
+        if [ "$1" = "$sng" ]
+        then
+            printf "\n$white NOTE: The %s file provided by the Entware %s package sources a very\n" "$( basename $conf )" "$sng"
+            printf " complex set of logging functions most users don't need.$blue A replacement %s has been\n" "$( basename $conf )"
+            printf " installed$white to %s that corrects this issue. The %s file provided\n" "$conf" "$( basename $conf )"
+            printf " by the Entware package has been moved to $blue%s$white.\n" "$share/examples/$opkg"
+        fi
     fi
     
     chmod 600 $share/examples/*
-    printf "$std \n"
+    printf "$std"
 }
 
 force_install(){
@@ -393,14 +401,9 @@ setup_sng(){
 
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
-        printf "\n$white backing up %s to %s ...$std" "$sng_conf" "$sng_conf-prev"
-        cp -pf $sng_conf $sng_conf-prev
-        cp -pf $sng_share/examples/$sng.conf-scribe $sng_conf
+        printf "\n$white updating %s ... $std" "$sng_conf"
+        update_file $sng_share/examples/$sng.conf-scribe $sng_conf
         finis
-        printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
-        printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
-        printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$sng_conf"
-        printf " by the Entware package has been moved to $blue%s$white.\n" "$sng_share/examples/$sng.conf-opkg"
         printf "\n %34s" "$sng installation ..."
     fi
     finis
@@ -444,7 +447,7 @@ setup_scribe(){
         then
             printf "$white installing"
             sky_filter
-        elif notsame_newer "$sng_share/examples/skynet" "$sngd_d/skynet"
+        elif ! same_same "$sng_share/examples/skynet" "$sngd_d/skynet"
         then
             printf "$white updating"
             sky_filter
@@ -455,7 +458,7 @@ setup_scribe(){
         then 
             printf "$white installing %s firewall filter ..." "$sng"
             cp -pu $sng_share/examples/firewall $sngd_d 
-        elif notsame_newer "$sngd_d/firewall" "$sngd_d/firewall"
+        elif ! same_same "$sng_share/examples/firewall" "$sngd_d/firewall"
         then
             printf "$white updating %s firewall filter ..." "$sng"
             cp -pu $sng_share/examples/firewall $sngd_d 
