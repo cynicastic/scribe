@@ -295,9 +295,9 @@ setup_exmpls(){
         if [ "$1" = "$sng" ]
         then
             printf "\n$white NOTE: The %s file provided by the Entware %s package sources a very\n" "$( basename $conf )" "$sng"
-            printf " complex set of logging functions most users don't need.$blue A replacement %s has been\n" "$( basename $conf )"
+            printf " complex set of logging functions most users don't need.$cyan A replacement %s has been\n" "$( basename $conf )"
             printf " installed$white to %s that corrects this issue. The %s file provided\n" "$conf" "$( basename $conf )"
-            printf " by the Entware package has been moved to $blue%s$white.\n" "$share/examples/$opkg"
+            printf " by the Entware package has been moved to $cyan%s$white.\n" "$share/examples/$opkg"
         fi
     fi
     
@@ -515,7 +515,7 @@ pre_install(){
     # exit if requiements not met
     if ! $okay
     then
-        printf "\n\n$cyan exiting %s installation. $std\n\n" "$scribe_name"
+        printf "\n\n$magenta exiting %s installation. $std\n\n" "$scribe_name"
         dlt $scribe_script
         exit 1
     fi
@@ -692,11 +692,11 @@ menu_update(){
     fi
     if yes_no; then do_inst=true; fi
     printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "    * adds any new files to /opt/share/*/examples and updates files\n"
+    printf "$cyan    * adds any new files to /opt/share/*/examples and updates files\n"
     printf "    that have changed\n"
     printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
     printf "    modify any existing files\n"
-    printf "        Update filter files? [y|n] $std"
+    printf "$white        Update filter files? [y|n] $std"
     if yes_no; then do_upd=true; fi
 
     if $do_inst
@@ -796,9 +796,9 @@ gather_debug(){
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
 
-    printf "\n$std Debug output stored in $blue%s$std, please review this file\n" "$scribe_debug"
+    printf "\n$std Debug output stored in $cyan%s$std, please review this file\n" "$scribe_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
-    printf " Tarball of debug output is $blue%s.tar.gz $std\n" "$scribe_debug"
+    printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
 }
 
 scribe_menu(){
