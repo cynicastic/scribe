@@ -245,7 +245,6 @@ check_sng(){
 }
 
 # install default file in /usr/etc/$1.d
-# all files in .d must be 644 or 600
 setup_ddir(){
     [ "$1" = "$sng" ] && d_dir="$sngd_d"
     [ "$1" = "$lr"  ] && d_dir="$lrd_d"
@@ -260,8 +259,7 @@ setup_ddir(){
     chmod 600 $d_dir/*
 }
 
-# setup example files in /usr/share/$1/examples
-# all files in examples must be 644 or 600
+# install example files in /usr/share/$1/examples
 setup_exmpls(){
     [ "$1" = "$sng" ] && share="$sng_share" && conf="$sng_conf"
     [ "$1" = "$lr"  ] && share="$lr_share" && conf="$lr_conf"
@@ -373,52 +371,45 @@ menu_status(){
     prt_vers
 }
 
+sng_ver_chk(){
+    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})' )"
+    if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
+    then
+        printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
+        printf "Please update your Entware packages and run scribe install again.$cyan\n\n"
+        opkg remove "$sng"
+        printf "$std\n\n"
+        exit 1
+    fi
+}
+
+setup_sng(){
+    printf "\n$magenta setting up syslog-ng ...\n $std"
+    copy_rcfunc
+    sed_sng
+
+    if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
+    then
+        printf "\n$white backing up %s to %s ...$std" "$sng_conf" "$sng_conf-prev"
+        cp -pf $sng_conf $sng_conf-prev
+        cp -pf $sng_share/examples/$sng.conf-scribe $sng_conf
+        finis
+        printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
+        printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
+        printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$sng_conf"
+        printf " by the Entware package has been moved to $blue%s$white.\n" "$sng_share/examples/$sng.conf-opkg"
+        printf "\n %34s" "$sng installation ..."
+    fi
+    finis
+}
+
+setup_lr(){
+    # assumes since entware is required / installed, post-mount exists and is properly executable
+    printf "\n$magenta adding %s cron job ..." "$lr"
+    lr_cron
+}
 
 install(){
-
-# determine syslog-ng conf file version
-    sng_ver_chk(){
-        # sng_vers="$( grep -m1 '@version:' $sng_conf | awk '{ printf( $2 ); }'; )"
-        sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})' )"
-        if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
-        then
-            printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
-            printf "Please update your Entware packages and run scribe install again.$cyan\n\n"
-            opkg remove "$sng"
-            printf "$std\n\n"
-            exit 1
-        fi
-    }
-
-# setup syslog-ng
-    setup_sng(){
-        printf "\n$magenta setting up syslog-ng ...\n $std"
-        copy_rcfunc
-        sed_sng
-
-        if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
-        then
-            printf "\n$white backing up %s to %s ...$std" "$sng_conf" "$sng_conf-prev"
-            cp -pf $sng_conf $sng_conf-prev
-            cp -pf $sng_share/examples/$sng.conf-scribe $sng_conf
-            finis
-            printf "\n$white NOTE: The syslog-ng.conf file provided by the Entware syslog-ng package sources a very\n"
-            printf " complex set of logging functions most users don't need.$blue A replacement syslog-ng.conf has been\n"
-            printf " installed$white at %s that corrects this issue. The syslog-ng.conf file provided\n" "$sng_conf"
-            printf " by the Entware package has been moved to $blue%s$white.\n" "$sng_share/examples/$sng.conf-opkg"
-            printf "\n %34s" "$sng installation ..."
-        fi
-        finis
-    }
-
-# setup logrotate
-    setup_lr(){
-        # assumes since entware is required / installed, post-mount exists and is properly executable
-        printf "\n$magenta adding %s cron job ..." "$lr"
-        lr_cron
-    }
-
-#### install main routine ####
     force=""
     [ "X$2" = "XFORCE" ] && force="--force-reinstall"
     printf "\n$cyan"
@@ -446,7 +437,7 @@ setup_scribe(){
     if $skynet_inst
     then
         dlt $sngd_d/firewall
-        if [ ! -e "$sngd_d/skynet" ]
+        if [ ! -e "$sngd_d/skynet" ] || [ "$1" = "ALL" ]
         then
             printf "$white installing"
             sky_filter
@@ -457,7 +448,7 @@ setup_scribe(){
         fi
     else
         dlt $sngd_d/skynet
-        if [ ! -e "$sngd_d/firewall" ] 
+        if [ ! -e "$sngd_d/firewall" ] || [ "$1" = "ALL" ]
         then 
             printf "$white installing %s firewall filter ..." "$sng"
             cp -pu $sng_share/examples/firewall $sngd_d 
@@ -549,10 +540,10 @@ menu_install(){
 
         if ! $is_inst
         then
-            setup_scribe
+            setup_scribe "ALL"
         elif force_install "$scribe_name script"
         then
-            setup_scribe
+            setup_scribe "ALL"
         fi
 
         printf "\n$white %s setup complete!  " "$scribe_name"
@@ -593,9 +584,10 @@ uninstall(){
         else
             printf "\n$blue %s$yellow does not match$blue %s$yellow, not deleting$blue %s$yellow ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe" "$sng_conf"
         fi
-        # need to look for non-scribe & changed filters here
+        # need to look for non-scribe & changed filters here or just backup the directories
         dlt $sngd_d
         dlt $sng_share
+
         if $skynet_inst
         then
             printf "$white restoring Skynet logging to %s ..." "$syslog_log"
@@ -611,17 +603,22 @@ uninstall(){
         if cru l | grep -q $lr; then cru d $lr; fi
         printf "\n$cyan"
         opkg remove "$lr"
-        # need to look for non-scribe & changed filters here
+        if same_same "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
+        then
+            dlt $lr_conf
+        else
+            printf "\n$blue %s$yellow does not match$blue %s$yellow, not deleting$blue %s$yellow ..." "$lr_conf" "$lr_share/examples/$lr.conf-opkg" "$lr_conf"
+        fi
+        # need to look for non-scribe & changed filters here or just backup the directories
         dlt $lrd_d
         dlt $lr_share
-        dlt $lr_conf
         dlt $lr_daily
     else
         not_installed "$lr"
     fi
+
     dlt $TMP/$scribe_name.zip
     dlt $TMP/$scribe_name-$scribe_branch
-
     dlt /opt/bin/$scribe_name
     dlt $scribe_script
 
@@ -690,7 +687,7 @@ menu_update(){
     if $inst
     then
         get_zip
-        setup_scribe
+        setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
         if $upd
