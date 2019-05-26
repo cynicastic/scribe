@@ -252,7 +252,7 @@ setup_ddir(){
     
     for dfile in "$unzip_dir/$1.d"/*
     do
-        dfbase="$( basename "$dfile" )"
+        dfbase="$( basename $dfile )"
         ddfile="$d_dir/$dfbase"
         { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && cp -pu "$dfile" "$ddfile"
     done
@@ -273,7 +273,7 @@ setup_exmpls(){
 
     for exmpl in "$unzip_dir/$1.share"/*
     do
-        exbase="$( basename "$exmpl")"
+        exbase="$( basename $exmpl )"
         shrfile="$share/examples/$exbase"
         if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
         then
@@ -395,23 +395,21 @@ sng_ver_chk(){
 }
 
 setup_sng(){
-    printf "\n$magenta setting up syslog-ng ...\n $std"
+    printf "\n$magenta setting up %s ...\n $std" "$sng"
     copy_rcfunc
     sed_sng
 
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
-        printf "\n$white updating %s ... $std" "$sng_conf"
+        printf "\n$white updating %34s ...$std" "$( basename $sng_conf )"
         update_file $sng_share/examples/$sng.conf-scribe $sng_conf
         finis
-        printf "\n %34s" "$sng installation ..."
     fi
-    finis
 }
 
 setup_lr(){
     # assumes since entware is required / installed, post-mount exists and is properly executable
-    printf "\n$magenta adding %s cron job ..." "$lr"
+    printf "\n$magenta setting up %s ..." "$lr"
     lr_cron
 }
 
