@@ -44,7 +44,7 @@ readonly scribe_ver="v1.2_2"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
-readonly scribe_dir="$TMP/$scribe_name-$scribe_branch"
+readonly unzip_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_tmp="$TMP/scribe.tmp"
 readonly script_d="/jffs/scripts"
 readonly scribe_script="$script_d/$scribe_name"
@@ -120,6 +120,7 @@ ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $
 
 md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
 
+# in this case, A && B || C does function as if-then-else because B is by definition true
 # shellcheck disable=SC2015
 same_same(){ [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ] && true || false; }
 
@@ -153,7 +154,7 @@ logo(){
 get_zip(){
     if ! $got_zip
     then
-        dlt $scribe_dir
+        dlt $unzip_dir
         dlt $TMP/$scribe_name.zip
         printf "\n$white fetching %s from GitHub %s branch ...$std\n" "$scribe_name" "$scribe_branch"
         if curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o $TMP/$scribe_name.zip
@@ -224,7 +225,7 @@ lr_cron(){
 
 copy_rcfunc(){
     printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
-    cp -pf $scribe_dir/init.d/$rcfunc_sng $init_d/
+    cp -pf $unzip_dir/init.d/$rcfunc_sng $init_d/
     chmod 644 $rcfunc_loc
     finis
 }
@@ -248,12 +249,12 @@ setup_exmpls(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    cp -pu $scribe_dir/"$1".d/* $d_dir/
+    cp -pu $unzip_dir/"$1".d/* $d_dir/
     chmod 600 $d_dir/*
 
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf $scribe_dir/"$1".share/* $share/examples/
+    cp -pf $unzip_dir/"$1".share/* $share/examples/
     
     if [ -e $conf_opkg ]
     then
@@ -401,7 +402,7 @@ install(){
 
 setup_scribe(){
     printf "\n$white setting up %s ..." "$scribe_name"
-    cp -pf "$scribe_dir/$scribe_name" "$scribe_script"
+    cp -pf "$unzip_dir/$scribe_name" "$scribe_script"
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
     if $skynet_inst
@@ -413,6 +414,8 @@ setup_scribe(){
             skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
             sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
         fi
+    else
+        [ ! -e "$sngd_d/firewall" ] && cp -pu $sng_share/examples/firewall $sngd_d 
     fi
     finis
 }
@@ -800,6 +803,7 @@ case $action in
     kill-logger)
         [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; } && exit 0
         # load kill_logger() function
+        # keep shellcheck from barfing on sourcing $rcfunc_loc
         # shellcheck disable=SC1091
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
