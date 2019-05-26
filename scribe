@@ -67,6 +67,7 @@ readonly init_d="/opt/etc/init.d"
 readonly S01sng_init="$init_d/S01$sng"
 readonly rcfunc_sng="rc.func.$sng"
 readonly rcfunc_loc="$init_d/$rcfunc_sng"
+readonly syslog_log="/tmp/syslog.log"
 readonly sng_loc="/opt/sbin/$sng"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
@@ -115,6 +116,13 @@ not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 enter_to(){ printf "$white Press [Enter] to %s: $std" "$1"; read -r; echo; }
 
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+
+md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
+
+# shellcheck disable=SC2015
+same_same(){ [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ] && true || false; }
+
 dlt(){ rm -rf "$1"; }
 
 # Check yes or no
@@ -129,11 +137,6 @@ yes_no(){
             ;;
     esac
 }
-
-ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
-
-# get md5sum of file
-md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; }
 
 logo(){
     clear
@@ -514,26 +517,36 @@ menu_restart(){
 }
 
 uninstall(){
-    echo
-    [ -n "$( pidof $sng )" ] && $S01sng_init stop
-    printf "\n$white starting system klogd and syslogd ... $green"
-    service start_logger
+    printf "\n\n"
     if [ -e $sng_loc ]
     then
+        [ -n "$( pidof $sng )" ] && printf "$white stopping %s ..." "$sng" && $S01sng_init stop
+        dlt $syslog_log
+        dlt "$syslog_log-1"
+        dlt /jffs/syslog.log
+        dlt /jffs/syslog.log-1
+        mv /opt/var/log/messages $syslog_log
+        printf "$white starting system klogd and syslogd ..."
+        service start_logger
         sed -i "/$scribe_name/d" $srvc_event
         dlt $S01sng_init
         dlt $rcfunc_loc
-        dlt /tmp/syslog.log
-        dlt /jffs/syslog.log
-        dlt /jffs/syslog.log-1
         printf "\n$cyan"
         opkg remove "$sng"
+        if same_same "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+        then 
+            dlt $sng_conf
+        else
+            printf "$yellow %s does not match %s, not deleting ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+        fi
+        # need to look for non-scribe & changed filters here
         dlt $sngd_d
         dlt $sng_share
-        dlt $sng_conf
-        dlt /tmp/syslog.log
-        dlt /tmp/syslog.log-1
-        if $skynet_inst; then sh $script_d/firewall settings syslog /tmp/syslog.log > /dev/null 2>&1; fi
+        if $skynet_inst
+        then
+            printf "$white restoring Skynet logging to %s ..." "$syslog_log"
+            sh $script_d/firewall settings syslog $syslog_log > /dev/null 2>&1
+        fi
     else
         not_installed "$sng"
     fi
@@ -544,6 +557,7 @@ uninstall(){
         if cru l | grep -q $lr; then cru d $lr; fi
         printf "\n$cyan"
         opkg remove "$lr"
+        # need to look for non-scribe & changed filters here
         dlt $lrd_d
         dlt $lr_share
         dlt $lr_conf
