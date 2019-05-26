@@ -124,6 +124,10 @@ md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
 # shellcheck disable=SC2015
 same_same(){ [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ] && true || false; }
 
+# not POSIX, but busybox sh has '-nt' file comparison
+# shellcheck disable=SC2039
+notsame_newer(){ if ! same_same "$1" "$2" && [ "$1" -nt "$2" ]; then true; else false; fi; }
+
 dlt(){ rm -rf "$1"; }
 
 # Check yes or no
@@ -271,11 +275,10 @@ setup_exmpls(){
     do
         exbase="$( basename "$exmpl")"
         shrfile="$share/examples/$exbase"
-        # shellcheck disable=SC2039 # not POSIX, but busybox sh has '-nt' file comparison
         if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
         then
             cp -pf "$exmpl" "$shrfile"
-        elif ! same_same "$exmpl" "$shrfile" && [ "$exmpl" -nt "$shrfile" ]
+        elif notsame_newer "$exmpl" "$shrfile"
         then
             printf "$white updating %s ..." "$shrfile"
             cp -pf "$exmpl" "$shrfile"
@@ -295,7 +298,7 @@ setup_exmpls(){
 
 force_install(){
     printf "\n$blue %s$white already installed!\n" "$1"
-    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation may overwrite modified configuration files!\n"
+    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation$red WILL OVERWRITE$yellow any modified configuration files!\n"
     printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
     yes_no
     return $?
@@ -427,6 +430,14 @@ install(){
     [ "$1" = "$lr"  ] && setup_lr
 }
 
+sky_filter(){
+    printf " %s Skynet filter ..." "$sng"
+    cp -pu $sng_share/examples/skynet $sngd_d 
+    printf "$blue setting Skynet log file location$white ..."
+    skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
+    sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+}
+
 setup_scribe(){
     printf "\n$white setting up %s ..." "$scribe_name"
     cp -pf $unzip_dir/$scribe_name $scribe_script
@@ -434,15 +445,27 @@ setup_scribe(){
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
     if $skynet_inst
     then
+        dlt $sngd_d/firewall
         if [ ! -e "$sngd_d/skynet" ]
         then
-            cp -pu $sng_share/examples/skynet $sngd_d 
-            printf "$blue setting skynet log file location$white ..."
-            skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
-            sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+            printf "$white installing"
+            sky_filter
+        elif notsame_newer "$sng_share/examples/skynet" "$sngd_d/skynet"
+        then
+            printf "$white updating"
+            sky_filter
         fi
     else
-        [ ! -e "$sngd_d/firewall" ] && cp -pu $sng_share/examples/firewall $sngd_d 
+        dlt $sngd_d/skynet
+        if [ ! -e "$sngd_d/firewall" ] 
+        then 
+            printf "$white installing %s firewall filter ..." "$sng"
+            cp -pu $sng_share/examples/firewall $sngd_d 
+        elif notsame_newer "$sngd_d/firewall" "$sngd_d/firewall"
+        then
+            printf "$white updating %s firewall filter ..." "$sng"
+            cp -pu $sng_share/examples/firewall $sngd_d 
+        fi
     fi
     finis
 }
