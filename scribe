@@ -40,7 +40,7 @@ readonly banner
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
-readonly scribe_ver="v1.2_2"
+readonly scribe_ver="v1.3_0"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -249,12 +249,12 @@ setup_exmpls(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    cp -pu $unzip_dir/"$1".d/* $d_dir/
+    cp -pu $unzip_dir/$1.d/* $d_dir/
     chmod 600 $d_dir/*
 
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf $unzip_dir/"$1".share/* $share/examples/
+    cp -pf $unzip_dir/$1.share/* $share/examples/
     
     if [ -e $conf_opkg ]
     then
@@ -401,7 +401,7 @@ install(){
 
 setup_scribe(){
     printf "\n$white setting up %s ..." "$scribe_name"
-    cp -pf "$unzip_dir/$scribe_name" "$scribe_script"
+    cp -pf $unzip_dir/$scribe_name $scribe_script
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
     if $skynet_inst
@@ -525,7 +525,7 @@ uninstall(){
     then
         [ -n "$( pidof $sng )" ] && printf "$white stopping %s ..." "$sng" && $S01sng_init stop
         dlt $syslog_log
-        dlt "$syslog_log-1"
+        dlt $syslog_log-1
         dlt /jffs/syslog.log
         dlt /jffs/syslog.log-1
         mv /opt/var/log/messages $syslog_log
@@ -540,7 +540,7 @@ uninstall(){
         then 
             dlt $sng_conf
         else
-            printf "\n$yellow %s does not match %s, not deleting ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+            printf "\n$blue %s$yellow does not match$blue %s$yellow, not deleting$blue %s$yellow ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe" "$sng_conf"
         fi
         # need to look for non-scribe & changed filters here
         dlt $sngd_d
