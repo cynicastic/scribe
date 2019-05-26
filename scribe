@@ -260,9 +260,8 @@ setup_exmpls(){
     then
         cp -pf $conf_opkg $share/examples
         dlt $conf_opkg
-    elif [ ! -e $share/examples/"$opkg" ]
-    then
-        cp -pf $conf $share/examples/"$opkg"
+    else
+        cp -pf $conf $share/examples/$opkg
     fi
     
     chmod 600 $share/examples/*
