@@ -240,28 +240,54 @@ check_sng(){
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
 }
 
-# setup example files in /usr/share/$1/examples
 # install default file in /usr/etc/$1.d
-# all files in examples and .d must be 644 or 600
+# all files in .d must be 644 or 600
+setup_ddir(){
+    [ "$1" = "$sng" ] && d_dir="$sngd_d"
+    [ "$1" = "$lr"  ] && d_dir="$lrd_d"
+    
+    for dfile in "$unzip_dir/$1.d"/*
+    do
+        dfbase="$( basename "$dfile" )"
+        ddfile="$d_dir/$dfbase"
+        { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && cp -pu "$dfile" "$ddfile"
+    done
+
+    chmod 600 $d_dir/*
+}
+
+# setup example files in /usr/share/$1/examples
+# all files in examples must be 644 or 600
 setup_exmpls(){
-    [ "$1" = "$sng" ] && d_dir="$sngd_d" && share="$sng_share" && conf="$sng_conf"
-    [ "$1" = "$lr"  ] && d_dir="$lrd_d" && share="$lr_share" && conf="$lr_conf"
+    [ "$1" = "$sng" ] && share="$sng_share" && conf="$sng_conf"
+    [ "$1" = "$lr"  ] && share="$lr_share" && conf="$lr_conf"
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    cp -pu $unzip_dir/$1.d/* $d_dir/
-    chmod 600 $d_dir/*
-
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
-    cp -pf $unzip_dir/$1.share/* $share/examples/
-    
+
+    for exmpl in "$unzip_dir/$1.share"/*
+    do
+        exbase="$( basename "$exmpl")"
+        shrfile="$share/examples/$exbase"
+        # shellcheck disable=SC2039 # not POSIX, but busybox sh has '-nt' file comparison
+        if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
+        then
+            cp -pf "$exmpl" "$shrfile"
+        elif ! same_same "$exmpl" "$shrfile" && [ "$exmpl" -nt "$shrfile" ]
+        then
+            printf "$white updating %s ..." "$shrfile"
+            cp -pf "$exmpl" "$shrfile"
+        fi
+    done
+
     if [ -e $conf_opkg ]
     then
         cp -pf $conf_opkg $share/examples
         dlt $conf_opkg
     else
-        cp -pf $conf $share/examples/$opkg
+        cp -pf $conf "$share/examples/$opkg"
     fi
     
     chmod 600 $share/examples/*
@@ -296,7 +322,7 @@ run_logrotate(){
 }
 
 get_vers(){
-    # only get scribe once from github
+    # only get scribe from github once 
     scribe_md5="$( md5_file "$scribe_script")"
     dlt $scribe_tmp
     curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
@@ -310,6 +336,7 @@ get_vers(){
     elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
     elif [ "$scribe_md5" != "$github_md5" ]; then new_vers="minor"
     fi
+    dlt $scribe_tmp
 }
 
 prt_vers(){
@@ -394,7 +421,8 @@ install(){
     printf "\n$cyan"
     opkg install $force "$1" 
     [ "$1" = "$sng" ] && sng_ver_chk
-    setup_exmpls "$1"
+    setup_ddir "$1" "ALL"
+    setup_exmpls "$1" "ALL"
     [ "$1" = "$sng" ] && setup_sng
     [ "$1" = "$lr"  ] && setup_lr
 }
@@ -607,8 +635,11 @@ menu_uninstall(){
 
 menu_filters(){
     get_zip
-    setup_exmpls "$sng"
-    setup_exmpls "$lr"
+    for pckg in $sng $lr
+    do
+        setup_ddir "$pckg" "NEW"
+        setup_exmpls "$pckg" "NEWER"
+    done
     printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
     menu_status
 }
@@ -628,7 +659,9 @@ menu_update(){
         printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
     if yes_no; then inst=true; fi
-    printf "\n$white    Do you want to update %s and %s example files? [y|n] $std" "$sng" "$lr"
+    printf "\n$white    Do you want to update %s and %s example files? \n" "$sng" "$lr"
+    printf "    (adds any new files to /opt/share/*/examples, or updates if \n"
+    printf  "    newer; adds any new files to /opt/etc/*.d directories) [y|n] $std"
     if yes_no; then upd=true; fi
 
     if $inst
