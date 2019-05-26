@@ -695,7 +695,7 @@ menu_update(){
     printf "    * adds any new files to /opt/share/*/examples and updates files\n"
     printf "    that have changed\n"
     printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
-    pringf "    modify any existing files\n"
+    printf "    modify any existing files\n"
     printf "        Update filter files? [y|n] $std"
     if yes_no; then do_upd=true; fi
 
