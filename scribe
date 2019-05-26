@@ -39,8 +39,8 @@ readonly banner
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v1.2_1"
+readonly scribe_branch="gamma"
+readonly scribe_ver="v1.2_2"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -348,7 +348,8 @@ install(){
 
 # determine syslog-ng conf file version
     sng_ver_chk(){
-        sng_vers="$( grep -m1 '@version:' $sng_conf | awk '{ printf( $2 ); }'; )"
+        # sng_vers="$( grep -m1 '@version:' $sng_conf | awk '{ printf( $2 ); }'; )"
+        sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})' )"
         if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
         then
             printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
@@ -537,7 +538,7 @@ uninstall(){
         then 
             dlt $sng_conf
         else
-            printf "$yellow %s does not match %s, not deleting ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
+            printf "\n$yellow %s does not match %s, not deleting ..." "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
         fi
         # need to look for non-scribe & changed filters here
         dlt $sngd_d
