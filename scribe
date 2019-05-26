@@ -295,8 +295,8 @@ setup_exmpls(){
         if [ "$1" = "$sng" ]
         then
             printf "\n$white NOTE: The %s file provided by the Entware %s package sources a very\n" "$( basename $conf )" "$sng"
-            printf " complex set of logging functions most users don't need.$cyan A replacement %s has been\n" "$( basename $conf )"
-            printf " installed$white to %s that corrects this issue. The %s file provided\n" "$conf" "$( basename $conf )"
+            printf " complex set of logging functions most users don't need.$magenta A replacement %s has been\n" "$( basename $conf )"
+            printf " installed to %s$white that corrects this issue. The %s file provided\n" "$conf" "$( basename $conf )"
             printf " by the Entware package has been moved to $cyan%s$white.\n" "$share/examples/$opkg"
         fi
     fi
