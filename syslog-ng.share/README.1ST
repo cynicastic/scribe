@@ -1,4 +1,4 @@
-### README.1ST --- 11 May 2019
+### README.1ST --- 25 May 2019
 
 Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 
@@ -33,10 +33,11 @@ The files in this directory are:
                 this is not intended to be used except for testing.  This is
                 not a "final" filter.
 
-    firewall    If you are not using Skynet, this will filter out messages
-                from the firmware firewall containing "ACCEPT IN=" or "DROP
-                IN=" to firewall.log. Do not use this filter if you are using
-                Skynet.
+    firewall    If you are not using Skynet, be automatically copied to
+                /opt/etc/syslog-ng.d/ upon installation of scribe.  This
+                filters messages from the firmware firewall containing
+                "ACCEPT IN=" or "DROP IN=" to firewall.log.  Do not use this
+                filter if you are using Skynet.
 
     openvpn     Filters out messages from "ovpn-server#" or "ovpn-client#" to
                 openvpn.log, where "#" is the server or client number.  Also
