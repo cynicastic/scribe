@@ -267,7 +267,7 @@ setup_exmpls(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    printf "\n $white"
+    [ "$2" != "ALL" ] && printf "\n $white"
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
 
