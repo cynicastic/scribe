@@ -40,7 +40,7 @@ readonly banner
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-readonly scribe_ver="v1.3_0"
+readonly scribe_ver="v1.3_1"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -206,6 +206,18 @@ sed_sng(){
         printf "$green created. $std\n"
     fi
     [ ! -x $srvc_event ] && chmod 0755 $srvc_event
+
+    # This needs user acceptance eventually
+    printf "\n$white %34s" "checking $( basename $sng_conf ) version ..."
+    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    if [ "$sng_vers" != "$sng_conf_vers" ]
+    then
+        sed -i "s/$sng_conf_vers/$sng_vers/" $sng_conf
+        updated
+    else
+        printf "$green matchs %s. $std\n" "$sng"
+    fi
 }
 
 lr_cron(){
