@@ -206,9 +206,11 @@ sed_sng(){
         printf "$green created. $std\n"
     fi
     [ ! -x $srvc_event ] && chmod 0755 $srvc_event
+}
 
+sync_conf(){
     # This needs user acceptance eventually
-    printf "\n$white %34s" "checking $( basename $sng_conf ) version ..."
+    printf "\n$white %34s" "$( basename $sng_conf ) version ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
@@ -388,6 +390,7 @@ menu_status(){
     sed_sng
     lr_cron
     printf "\n$magenta checking %s daemon ...\n" "$sng"
+    sync_conf
     sng_syntax
     check_sng
     get_vers
