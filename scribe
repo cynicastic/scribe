@@ -175,6 +175,13 @@ get_zip(){
     fi
 }
 
+copy_rcfunc(){
+    printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
+    cp -pf $unzip_dir/init.d/$rcfunc_sng $init_d/
+    chmod 644 $rcfunc_loc
+    finis
+}
+
 sed_sng(){
     printf "\n$white %34s" "checking $( basename $S01sng_init ) ..."
     if ! grep -q $rcfunc_sng $S01sng_init
@@ -208,20 +215,6 @@ sed_sng(){
     [ ! -x $srvc_event ] && chmod 0755 $srvc_event
 }
 
-sync_conf(){
-    # This needs user acceptance eventually
-    printf "\n$white %34s" "$( basename $sng_conf ) version ..."
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ]
-    then
-        sed -i "s/$sng_conf_vers/$sng_vers/" $sng_conf
-        updated
-    else
-        printf "$green matchs %s. $std\n" "$sng"
-    fi
-}
-
 lr_cron(){
     printf "\n$white %34s" "checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
@@ -242,15 +235,22 @@ lr_cron(){
     fi
 }
 
-copy_rcfunc(){
-    printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
-    cp -pf $unzip_dir/init.d/$rcfunc_sng $init_d/
-    chmod 644 $rcfunc_loc
-    finis
+sync_conf(){
+    # This needs user acceptance eventually
+    printf "\n$white %34s" "$( basename $sng_conf ) version ..."
+    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    if [ "$sng_vers" != "$sng_conf_vers" ]
+    then
+        sed -i "s/$sng_conf_vers/$sng_vers/" $sng_conf
+        updated
+    else
+        printf "$green matchs %s. $std\n" "$sng"
+    fi
 }
 
 sng_syntax(){
-    printf "\n$white %34s" "$sng syntax check ..."
+    printf "\n$white %34s" "$( basename $sng_conf ) syntax check ..."
     if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
