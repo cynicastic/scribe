@@ -237,15 +237,17 @@ lr_cron(){
 
 sync_conf(){
     # This needs user acceptance eventually
-    printf "\n$white %34s" "$( basename $sng_conf ) version ..."
+    printf "\n$white %34s" "$sng version ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    printf "$green %s $std\n" "$sng_vers"
+    printf "$white %34s" "$( basename $sng_conf ) version ..."
     sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
         sed -i "s/$sng_conf_vers/$sng_vers/" $sng_conf
         updated
     else
-        printf "$green matchs %s. $std\n" "$sng"
+        printf "$green %s $std\n" "$sng_conf_vers"
     fi
 }
 
