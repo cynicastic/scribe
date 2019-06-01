@@ -24,11 +24,12 @@
 # shellcheck disable=SC2009
 # SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt
 # shellcheck disable=SC2059
-# SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I try to only embed the ansi color escapes in printf strings
+# SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
 
 
 # parse parameters
 action="$1"
+[ "X$action" = "X" ] && action="menu"
 got_zip=false
 [ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip=true && shift
 banner=true
@@ -39,8 +40,9 @@ readonly banner
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-readonly scribe_ver="v1.3_1"
+readonly scribe_branch="gamma"
+scribe_ver="v2.0.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
 readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
@@ -72,6 +74,7 @@ readonly sng_loc="/opt/sbin/$sng"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
 readonly sngconf_merged="$TMP/syslog-ng-complete.conf"
+readonly sngconf_error="$TMP/syslog-ng-error.conf"
 readonly lr_conf="/opt/etc/$lr.conf"
 readonly lr_daily="/opt/tmp/logrotate.daily"
 readonly sngd_d="/opt/etc/$sng.d"
@@ -96,6 +99,10 @@ readonly std="\033[m"
 # check if already installed by looking for link in /opt/bin
 is_inst=false
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true
+
+# test if syslog-ng is installed
+sng_inst=false
+[ -e "$sng_loc" ] && sng_inst=true
 
 # check if Skynet is installed
 if grep -q "skynetloc" $script_d/firewall-start; then skynet_inst=true; else skynet_inst=false; fi
@@ -145,6 +152,7 @@ yes_no(){
 }
 
 logo(){
+    if ! $banner; then return; fi
     clear
     printf "$white                            _\n"
     printf "                         _ ( )            \n"
@@ -172,6 +180,17 @@ get_zip(){
             printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
             exit 1
         fi
+    fi
+}
+
+sync_conf(){
+    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    if [ "$sng_vers" != "$sng_conf_vers" ]
+    then
+        printf "\n$cyan syncing %s to %s version (%s) ..." "$( basename $sng_conf )" "$sng" "$sng_vers"
+        sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
+        finis
     fi
 }
 
@@ -235,25 +254,9 @@ lr_cron(){
     fi
 }
 
-sync_conf(){
-    # This needs user acceptance eventually
-    printf "\n$white %34s" "$sng version ..."
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    printf "$green %s $std\n" "$sng_vers"
-    printf "$white %34s" "$( basename $sng_conf ) version ..."
-    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ]
-    then
-        sed -i "s/$sng_conf_vers/$sng_vers/" $sng_conf
-        updated
-    else
-        printf "$green %s $std\n" "$sng_conf_vers"
-    fi
-}
-
 sng_syntax(){
     printf "\n$white %34s" "$( basename $sng_conf ) syntax check ..."
-    if syslog-ng -s; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
+    if syslog-ng -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
 check_sng(){
@@ -332,7 +335,9 @@ force_install(){
 show_config(){
     if [ -e $sng_loc ]
     then
-        $sng_loc --preprocess-into=$sngconf_merged && less $sngconf_merged
+        dlt $sngconf_merged
+        dlt $sngconf_error
+        $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error && less $sngconf_merged || less $sngconf_error
         true
     else
         not_installed $sng
@@ -388,11 +393,10 @@ prt_vers(){
 }
 
 menu_status(){
-    printf "\n$magenta checking configuration for necessary %s hooks ...\n" "$scribe_name"
+    printf "\n$magenta checking system for necessary %s hooks ...\n" "$scribe_name"
     sed_sng
     lr_cron
-    printf "\n$magenta checking %s daemon ...\n" "$sng"
-    sync_conf
+    printf "\n$magenta checking %s configuration ...\n" "$sng"
     sng_syntax
     check_sng
     get_vers
@@ -700,7 +704,7 @@ menu_update(){
     then
         [ "$new_vers" = "major" ] && printf "\n$green    New version" || printf "$cyan    Minor update"
         printf "$white available!\n"
-        printf "    Do you wish to upgrade [y|n] $std"
+        printf "    Do you wish to upgrade? [y|n] $std"
     else
         printf "\n$white    No new version available. (GitHub version"
         [ "$new_vers" = "none" ] && printf " equal to " || printf "$red LESS THAN $white"
@@ -780,18 +784,16 @@ gather_debug(){
     } >> $scribe_debug
 
     printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
-    if syslog-ng -s > /dev/null 2>&1
+    dlt $sngconf_merged
+    dlt $sngconf_error
+    $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
+    cat $sngconf_merged >> $scribe_debug
+    if [ -s $sngconf_error ]
     then
-	    $sng_loc --preprocess-into=$sngconf_merged > /dev/null 2>&1
-        {
-            printf "syslog-ng syntax check okay!\n"
-            printf "\n### syslog-ng config:\n"
-            cat $sngconf_merged
-        } >> $scribe_debug
-
+        printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ****\n" >> $scribe_debug
+        cat $sngconf_error >> $scribe_debug
     else
-        syslog-ng -s >> $scribe_debug 2>&1
-        printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE ABOVE ****\n" >> $scribe_debug
+        printf "**** syslog-ng syntax check okay! ****\n" >> $scribe_debug
     fi
 
     if $skynet_inst
@@ -818,8 +820,78 @@ gather_debug(){
     printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
 }
 
+main_menu(){
+    header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
+    printf "$white $header"
+    printf "%5ss.    Show scribe status\n"
+    printf "%5sc.    Show combined syslog-ng config\n"
+    printf "%5srs.   Restart syslog-ng\n"
+    printf "%5slr.   Run logrotate now\n\n"
+    printf "%5su.    Update scribe\n"
+    printf "%5suf.   Update filters\n"
+    printf "%5sd.    Generate debug info\n\n"
+    printf "%5se.    Exit scribe\n\n"
+    printf "%5sis.   Install scribe\n"
+    printf "%5szs.   Remove scribe\n\n"
+    printf "$white $header"
+    printf "$magenta Please select an option: $std"
+}
+
 scribe_menu(){
-	printf "\n$yellow menu not yet implemented $std\n\n"
+	while true
+    do
+        pause=true
+        logo
+        if $sng_inst; then sync_conf; fi
+        main_menu
+        read -r choice
+        case "$choice" in
+            s)
+                menu_status
+                ;;
+            c)
+                show_config
+                pause=false
+                ;;
+            rs)
+                menu_restart
+                menu_status
+                ;;
+            lr)
+                run_logrotate
+                ;;
+            u)
+                get_vers
+                print_vers
+                menu_update
+                ;;
+            uf)
+                menu_filters
+                ;;
+            d)
+                gather_debug
+                printf "\n$white Would like to review the debug data (opens in less)? [y|n] $std"
+                if yes_no; then pause=false; less "$scribe_debug"; fi
+                ;;
+            e)
+                printf "\n$white Thanks for using scribe! $std\n\n"
+                exit 0
+                ;;
+            is)
+                if ! $is_inst; then pre_install; fi
+                get_zip
+                menu_install
+                sh "$scribe_script" status nologo
+                ;;
+            zs)
+                menu_uninstall
+                ;;
+            *)
+                printf "\n$red Unrecognized command \"%s\". " "$choice"
+                ;;
+        esac
+        if $pause; then enter_to "continue"; fi
+    done
 }
 
 
@@ -827,13 +899,7 @@ scribe_menu(){
 #### MAIN ####
 ##############
 
-# save a spot for going to the menu (v.2 feature)
-# if [ "X$action" = "X" ]
-# then
-# 	scribe_menu
-# fi
-
-if $banner; then logo; fi
+[ "$action" = "menu" ] && scribe_menu || logo
 
 case $action in
 
