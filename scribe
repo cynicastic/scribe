@@ -337,7 +337,12 @@ show_config(){
     then
         dlt $sngconf_merged
         dlt $sngconf_error
-        $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error && less $sngconf_merged || less $sngconf_error
+        if $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
+        then
+            less $sngconf_merged
+        else 
+            less $sngconf_error
+        fi
         true
     else
         not_installed $sng
@@ -790,9 +795,11 @@ gather_debug(){
     cat $sngconf_merged >> $scribe_debug
     if [ -s $sngconf_error ]
     then
-        printf "#### SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ####\n" >> $scribe_debug
-        cat $sngconf_error >> $scribe_debug
-        printf "###### END SYSLOG-NG SYNTAX FAILURE OUTPUT ######\n" >> $scribe_debug
+        {
+            printf "#### SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ####\n"
+            cat $sngconf_error
+            printf "###### END SYSLOG-NG SYNTAX FAILURE OUTPUT ######\n"
+        } >> $scribe_debug
     else
         printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
     fi
@@ -824,16 +831,16 @@ gather_debug(){
 main_menu(){
     header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
     printf "$white $header"
-    printf "%5ss.    Show scribe status\n"
-    printf "%5sc.    Show combined syslog-ng config\n"
-    printf "%5srs.   Restart syslog-ng\n"
-    printf "%5slr.   Run logrotate now\n\n"
-    printf "%5su.    Update scribe\n"
-    printf "%5suf.   Update filters\n"
-    printf "%5sd.    Generate debug info\n\n"
-    printf "%5se.    Exit scribe\n\n"
-    printf "%5sis.   Install scribe\n"
-    printf "%5szs.   Remove scribe\n\n"
+    printf "     s.    Show scribe status\n"
+    printf "     c.    Show combined syslog-ng config\n"
+    printf "     rs.   Restart syslog-ng\n"
+    printf "     lr.   Run logrotate now\n\n"
+    printf "     u.    Update scribe\n"
+    printf "     uf.   Update filters\n"
+    printf "     d.    Generate debug info\n\n"
+    printf "     e.    Exit scribe\n\n"
+    printf "     is.   Install scribe\n"
+    printf "     zs.   Remove scribe\n\n"
     printf "$white $header"
     printf "$magenta Please select an option: $std"
 }
@@ -900,7 +907,7 @@ scribe_menu(){
 #### MAIN ####
 ##############
 
-[ "$action" = "menu" ] && scribe_menu || logo
+if [ "$action" = "menu" ]; then scribe_menu; else logo; fi
 
 case $action in
 
