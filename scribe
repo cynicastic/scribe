@@ -214,7 +214,8 @@ sed_sng(){
     printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
     if [ -f $srvc_event ]
     then
-        sed -i "/kill_logger/d; /nologo \"\$2\"/d" $srvc_event # fix a couple mistakes
+        sed -i "s/$scribe_name kill_logger/$scribe_name kill-logger/g" $srvc_event
+        sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"" $srvc_event
         if ! grep -q $scribe_name $srvc_event
         then
             echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe" >> $srvc_event
