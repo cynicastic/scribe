@@ -399,6 +399,7 @@ prt_vers(){
 }
 
 menu_status(){
+    sync_conf
     printf "\n$magenta checking system for necessary %s hooks ...\n" "$scribe_name"
     sed_sng
     lr_cron
@@ -850,6 +851,7 @@ scribe_menu(){
 	while true
     do
         pause=true
+        run_scribe=false
         logo
         if $sng_inst; then sync_conf; fi
         main_menu
@@ -883,14 +885,14 @@ scribe_menu(){
                 if yes_no; then pause=false; less "$scribe_debug"; fi
                 ;;
             e)
-                printf "\n$white Thanks for using scribe! $std\n\n"
+                printf "\n$white Thanks for using scribe! $std\n\n\n"
                 exit 0
                 ;;
             is)
                 if ! $is_inst; then pre_install; fi
                 get_zip
                 menu_install
-                sh "$scribe_script" status nologo
+                run_scribe=true
                 ;;
             zs)
                 menu_uninstall
@@ -900,6 +902,7 @@ scribe_menu(){
                 ;;
         esac
         if $pause; then enter_to "continue"; fi
+        if $run_scribe; then sh "$scribe_script"; exit 0; fi
     done
 }
 
