@@ -757,7 +757,7 @@ gather_debug(){
     # everything between { } goes to $scribe_debug
     {
         printf "### Scribe Version: %s\n" "$scribe_long"
-        printf "### Local Scribe md5: %s\n" "$scribe_md5"
+        printf "###  Local Scribe md5: %s\n" "$scribe_md5"
         printf "### GitHub Version: %s\n" "$github_long"
         printf "### GitHub Scribe md5: %s\n" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
@@ -790,10 +790,11 @@ gather_debug(){
     cat $sngconf_merged >> $scribe_debug
     if [ -s $sngconf_error ]
     then
-        printf "**** SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ****\n" >> $scribe_debug
+        printf "#### SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ####\n" >> $scribe_debug
         cat $sngconf_error >> $scribe_debug
+        printf "###### END SYSLOG-NG SYNTAX FAILURE OUTPUT ######\n" >> $scribe_debug
     else
-        printf "**** syslog-ng syntax check okay! ****\n" >> $scribe_debug
+        printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
     fi
 
     if $skynet_inst
