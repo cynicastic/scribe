@@ -365,7 +365,7 @@ get_vers(){
     dlt $scribe_tmp
     curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
     [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
-    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' )"
+    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
     github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
     github_long="$github_ver ($github_branch)"
     github_md5="$( md5_file "$scribe_tmp")"
