@@ -738,7 +738,6 @@ menu_update(){
     if $run_scribe
     then
         sh "$scribe_script" filters gotzip nologo
-        echo "I'm back"
         sh "$scribe_script" status nologo
     else
         menu_filters
