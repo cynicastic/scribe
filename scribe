@@ -692,19 +692,27 @@ menu_uninstall(){
 }
 
 menu_filters(){
-    get_zip
-    for pckg in $sng $lr
-    do
-        setup_ddir "$pckg" "NEW"
-        setup_exmpls "$pckg" "NEWER"
-    done
-    printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
-    menu_status
+    printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
+    printf "$cyan    * adds any new files to /opt/share/*/examples and updates files\n"
+    printf "    that have changed\n"
+    printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
+    printf "    modify any existing files\n"
+    printf "$white        Update filter files? [y|n] $std"
+    if yes_no
+    then
+        get_zip
+        for pckg in $sng $lr
+        do
+            setup_ddir "$pckg" "NEW"
+            setup_exmpls "$pckg" "NEWER"
+        done
+        printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
+    else
+        printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
+    fi
 }
 
 menu_update(){
-    do_inst=false
-    do_upd=false
     if [ "$new_vers" = "major" ] || [ "$new_vers" = "minor" ]
     then
         [ "$new_vers" = "major" ] && printf "\n$green    New version" || printf "$cyan    Minor update"
@@ -716,38 +724,23 @@ menu_update(){
         printf "local version)\n"
         printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
     fi
-    if yes_no; then do_inst=true; fi
-    printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "$cyan    * adds any new files to /opt/share/*/examples and updates files\n"
-    printf "    that have changed\n"
-    printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
-    printf "    modify any existing files\n"
-    printf "$white        Update filter files? [y|n] $std"
-    if yes_no; then do_upd=true; fi
-
-    if $do_inst
+    if yes_no
     then
         get_zip
         setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
-        if $do_upd
-        then
-            sh "$scribe_script" filters gotzip nologo
-        else
-            sh "$scribe_script" status nologo
-        fi
-        printf "\n\n"
-        exit 0
+        run_scribe=true
     else
         printf "\n$white %s$red not$white updated!$std\n" "$scribe_name"
     fi
 
-    if $do_upd
+    if $run_scribe
     then
-        menu_filters
+        sh "$scribe_script" filters gotzip nologo
+        sh "$scribe_script" status nologo
     else
-        printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
+        menu_filters
         menu_status
     fi
 }
@@ -879,7 +872,7 @@ scribe_menu(){
                 ;;
             d)
                 gather_debug
-                printf "\n$white Would like to review the debug data (opens in less)? [y|n] $std"
+                printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
                 if yes_no; then pause=false; less "$scribe_debug"; fi
                 ;;
             e)
@@ -928,6 +921,7 @@ case $action in
 
 # update scribe
     update)
+        run_scribe=false
         get_vers
         prt_vers
         menu_update
