@@ -806,7 +806,7 @@ gather_debug(){
             grep "syslog" "$skynetcfg"
         } >> $scribe_debug
     else
-        printf "\n### Skynet not installed.\n"
+        printf "\n### Skynet not installed.\n" >> $scribe_debug
     fi
 
     printf "\n### end of output ###\n" >> $scribe_debug
