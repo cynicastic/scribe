@@ -883,6 +883,7 @@ scribe_menu(){
                 if ! $is_inst; then pre_install; fi
                 get_zip
                 menu_install
+                sh "$scribe_script" status nologo
                 run_scribe=true
                 ;;
             zs)
