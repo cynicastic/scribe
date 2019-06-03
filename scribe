@@ -864,7 +864,7 @@ scribe_menu(){
                 ;;
             u)
                 get_vers
-                print_vers
+                prt_vers
                 menu_update
                 ;;
             uf)
