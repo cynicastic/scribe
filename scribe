@@ -79,8 +79,10 @@ readonly sngd_d="/opt/etc/$sng.d"
 readonly lrd_d="/opt/etc/$lr.d"
 readonly sng_share="/opt/share/$sng"
 readonly lr_share="/opt/share/$lr"
+readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
+readonly skynet="$script_d/firewall"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
@@ -103,7 +105,14 @@ sng_inst=false
 [ -e "$sng_loc" ] && sng_inst=true
 
 # check if Skynet is installed
-if grep -q "skynetloc" $script_d/firewall-start; then skynet_inst=true; else skynet_inst=false; fi
+skynet_inst=false
+if [ -e $fire_start ]
+then
+    if grep -q "skynetloc" $fire_start
+    then
+        skynet_inst=true
+    fi
+fi
 
 #### functions ####
 
@@ -456,7 +465,7 @@ sky_filter(){
     cp -pu $sng_share/examples/skynet $sngd_d 
     printf "$blue setting Skynet log file location$white ..."
     skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
-    sh $script_d/firewall settings syslog "$skynetlog" > /dev/null 2>&1
+    sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
 }
 
 setup_scribe(){
@@ -625,7 +634,7 @@ uninstall(){
         if $skynet_inst
         then
             printf "$white restoring Skynet logging to %s ..." "$syslog_log"
-            sh $script_d/firewall settings syslog $syslog_log > /dev/null 2>&1
+            sh $skynet settings syslog $syslog_log > /dev/null 2>&1
         fi
     else
         not_installed "$sng"
@@ -799,7 +808,7 @@ gather_debug(){
 
     if $skynet_inst
     then
-        skynetloc="$( grep -ow "skynetloc=.* # Skynet" $script_d/firewall-start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
+        skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
             printf "\n### Skynet log locations:\n"
