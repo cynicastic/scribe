@@ -222,7 +222,7 @@ sed_sng(){
     if [ -f $srvc_event ]
     then
         if grep -q "kill_logger" $srvc_event; then sed -i "s/$scribe_name kill_logger/$scribe_name kill-logger/g" $srvc_event; fi
-        if grep -q "nologo \"\$2\""; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
+        if grep -q "nologo \"\$2\"" $srvc_event; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
         if ! grep -q $scribe_name $srvc_event
         then
             echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe" >> $srvc_event
