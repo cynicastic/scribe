@@ -96,7 +96,7 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
-# check if already installed by looking for link in /opt/bin
+# check if scribe is already installed by looking for link in /opt/bin
 is_inst=false
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true
 
@@ -115,10 +115,6 @@ then
 fi
 
 #### functions ####
-
-alive(){ printf "$green alive. $std\n"; }
-
-dead(){ printf "$red dead. $std\n"; }
 
 present(){ printf "$green present. $std\n"; }
 
@@ -195,8 +191,27 @@ copy_rcfunc(){
     finis
 }
 
+check_sng(){
+	printf "\n$white %34s" "checking $sng daemon ..."
+    if $sng_rung
+    then
+        printf "$green alive. $std\n"
+    else
+        printf "$red dead. $std\n"
+        printf "$yellow    type 'scribe restart' at shell prompt or\n"
+        printf "    select rs from %s menu to start %s\n" "$scribe_name" "$sng"
+        printf "    the system logger (syslogd)"
+        if [ -n "$( pidof syslogd )" ]
+        then
+            printf "$green is running. $std\n"
+        else
+            printf "$red is not running! $std\n"
+        fi
+    fi
+}
+
 sed_sng(){
-    printf "\n$white %34s" "checking $( basename $S01sng_init ) ..."
+    printf "$white %34s" "checking $( basename $S01sng_init ) ..."
     if ! grep -q $rcfunc_sng $S01sng_init
     then
         sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_init
@@ -204,8 +219,10 @@ sed_sng(){
     else
         present
     fi
+}
 
-    printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
+sed_srvc(){
+    printf "$white %34s" "checking $( basename $srvc_event ) ..."
     if [ -f $srvc_event ]
     then
         [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
@@ -229,8 +246,8 @@ sed_sng(){
     [ ! -x $srvc_event ] && chmod 0755 $srvc_event
 }
 
-lr_cron(){
-    printf "\n$white %34s" "checking $( basename $postmount ) ..."
+lr_post(){
+    printf "$white %34s" "checking $( basename $postmount ) ..."
     if ! grep -q $lr $postmount
     then
         echo "cru a $lr "'"5 0 * * *'" $lr_loc $lr_conf >> $lr_daily "'2>&1" # added by scribe' >> $postmount
@@ -238,8 +255,10 @@ lr_cron(){
     else
         present
     fi
+}
 
-	printf "\n$white %34s" "checking $lr cron job ..."
+lr_cron(){
+	printf "$white %34s" "checking $lr cron job ..."
     if ! cru l | grep -q $lr
     then
         cru a $lr "5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1"
@@ -250,7 +269,7 @@ lr_cron(){
 }
 
 dir_links(){
-	printf "\n$white %34s" "checking directory links ..."
+	printf "$white %34s" "checking directory links ..."
     if [ ! -L "/tmp/syslog.log" ] || [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
     then
         # load kill_logger() function to reset system path links/hacks
@@ -266,7 +285,7 @@ dir_links(){
 }
 
 sync_conf(){
-    printf "\n$white %34s" "$( basename $sng_conf ) version check ..."
+    printf "$white %34s" "$( basename $sng_conf ) version check ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
@@ -279,13 +298,8 @@ sync_conf(){
 }
 
 sng_syntax(){
-    printf "\n$white %34s" "$( basename $sng_conf ) syntax check ..."
+    printf "$white %34s" "$( basename $sng_conf ) syntax check ..."
     if syslog-ng -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
-}
-
-check_sng(){
-	printf "\n$white %34s" "checking $sng daemon ..."
-    if $sng_rung; then alive; else dead; fi
 }
 
 get_vers(){
@@ -422,14 +436,15 @@ run_logrotate(){
 }
 
 menu_status(){
-    printf "\n$magenta checking system for necessary %s hooks ...\n" "$scribe_name"
+    check_sng
+    printf "\n$magenta checking system for necessary %s hooks ...\n\n" "$scribe_name"
     sed_sng
-    lr_cron
-    dir_links
-    printf "\n$magenta checking %s configuration ...\n" "$sng"
+    if $sng_rung; then sed_srvc; fi
+    lr_post
+    if $sng_rung; then lr_cron; dir_links;fi
+    printf "\n$magenta checking %s configuration ...\n\n" "$sng"
     sync_conf
     sng_syntax
-    check_sng
     get_vers
     prt_vers
 }
@@ -450,6 +465,7 @@ setup_sng(){
     printf "\n$magenta setting up %s ...\n $std" "$sng"
     copy_rcfunc
     sed_sng
+    sed_srvc
 
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
@@ -462,6 +478,7 @@ setup_sng(){
 setup_lr(){
     # assumes since entware is required / installed, post-mount exists and is properly executable
     printf "\n$magenta setting up %s ..." "$lr"
+    lr_post
     lr_cron
 }
 
@@ -866,33 +883,35 @@ main_menu(){
     and_lr=" & $lr cron\n"
     header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
     printf "$white $header"
-    printf "     s.    Show scribe status\n"
-    printf "     c.    Show combined syslog-ng config\n"
-    if $sng_rung; then res="Res"; else res="S"; fi
-    printf "     rs.   %start %s" "$res" "$sng"
-    if ! $sng_rung
+    if $is_inst
     then
-        printf "$and_lr"
-    else
-        printf "\n     st.   Stop %s$and_lr" "$sng"
+        printf "     s.    Show scribe status\n"
+        printf "     c.    Show combined syslog-ng config\n"
+        if $sng_rung; then res="Res"; else res="S"; fi
+        printf "     rs.   %start %s" "$res" "$sng"
+        if ! $sng_rung
+        then
+            printf "$and_lr"
+        else
+            printf "\n     st.   Stop %s$and_lr" "$sng"
+        fi
+        printf "     lr.   Run logrotate now\n\n"
+        printf "     u.    Update scribe\n"
+        printf "     uf.   Update filters\n"
+        printf "     d.    Generate debug info\n\n"
     fi
-    printf "     lr.   Run logrotate now\n\n"
-    printf "     u.    Update scribe\n"
-    printf "     uf.   Update filters\n"
-    printf "     d.    Generate debug info\n\n"
     printf "     e.    Exit scribe\n\n"
-    printf "     is.   Install scribe\n"
+    printf "     is.   Install / Reinstall scribe\n"
     printf "     zs.   Remove scribe\n\n"
     printf "$white $header"
     printf "$magenta Please select an option: $std"
 }
 
-not_recog(){ printf "\n$red Unrecognized command \"%s\". " "$choice"; }
-
 scribe_menu(){
 	while true
     do
         pause=true
+        not_recog=false
         run_scribe=false
         sng_rung=false
         [ -n "$( pidof $sng )" ] && sng_rung=true
@@ -901,7 +920,12 @@ scribe_menu(){
         read -r choice
         case "$choice" in
             s)
-                menu_status
+                if $is_inst
+                then
+                    menu_status
+                else
+                    not_recog=true
+                fi
                 ;;
             c)
                 show_config
@@ -916,7 +940,7 @@ scribe_menu(){
                 then
                     menu_stop
                 else
-                    not_recog
+                    not_recog=true
                 fi
                 ;;
             lr)
@@ -950,9 +974,10 @@ scribe_menu(){
                 menu_uninstall
                 ;;
             *)
-                not_recog
+                not_recog=true
                 ;;
         esac
+        if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then sh "$scribe_script"; exit 0; fi
     done
@@ -977,7 +1002,7 @@ case $action in
 
 # uninstall scribe
     uninstall | remove)
-        menu_uninstall
+        if $is_inst; then menu_uninstall; fi
         ;;
 
 # update scribe
@@ -1045,7 +1070,7 @@ case $action in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | update | [update-]filters | [show-]config | status | restart | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | remove | update | [update-]filters | [show-]config | status | [re]start | debug )$std\n\n"
         exit 1
         ;;
 esac
