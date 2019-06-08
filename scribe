@@ -101,8 +101,8 @@ is_inst=false
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true
 
 # test if syslog-ng is installed
-sng_inst=false
-[ -e "$sng_loc" ] && sng_inst=true
+#sng_inst=false
+#[ -e "$sng_loc" ] && sng_inst=true
 
 # check if Skynet is installed
 skynet_inst=false
@@ -136,9 +136,7 @@ md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
 
 dlt(){ rm -rf "$1"; }
 
-# in this case, A && B || C does function as if-then-else because B is by definition true
-# shellcheck disable=SC2015
-same_same(){ [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ] && true || false; }
+same_same(){ if [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ]; then true; else false; fi; }
 
 update_file(){
     [ -e "$2" ] && mv "$2" "$2-$( date -Iseconds | cut -c 1-19 )"
@@ -255,6 +253,10 @@ dir_links(){
 	printf "\n$white %34s" "checking directory links ..."
     if [ ! -L "/tmp/syslog.log" ] || [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
     then
+        # load kill_logger() function to reset system path links/hacks
+        # keep shellcheck from barfing on sourcing $rcfunc_loc
+        # shellcheck disable=SC1091
+        # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
         kill_logger
         updated
@@ -283,7 +285,7 @@ sng_syntax(){
 
 check_sng(){
 	printf "\n$white %34s" "checking $sng daemon ..."
-    if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
+    if $sng_rung; then alive; else dead; fi
 }
 
 get_vers(){
@@ -605,29 +607,44 @@ menu_install(){
 }
 
 menu_restart(){
-    if check_sng
+    if $sng_rung
     then
-        printf "$yellow Restarting %s... $std\n" "$sng"
+        printf "\n$yellow Restarting %s... $std\n" "$sng"
         $S01sng_init restart
     else
-        printf "$white %s$red NOT$white running! $yellow Starting %s ... $std\n" "$sng"
+        printf "\n$white %s$red NOT$white running! $yellow Starting %s ... $std\n" "$sng"
         $S01sng_init start
     fi
+}
+
+stop_sng(){
+    if $sng_rung
+    then
+        printf "\n$white stopping %s ..." "$sng"
+        $S01sng_init stop
+    fi
+    dlt $syslog_log
+    dlt $syslog_log-1
+    dlt /jffs/syslog.log
+    dlt /jffs/syslog.log-1
+    mv /opt/var/log/messages $syslog_log
+    sed -i "/$scribe_name/d" $srvc_event
+    printf "$white starting system klogd and syslogd ..."
+    service start_logger
+}
+
+stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
+
+menu_stop(){
+    stop_sng
+    stop_lr
 }
 
 uninstall(){
     printf "\n\n"
     if [ -e $sng_loc ]
     then
-        [ -n "$( pidof $sng )" ] && printf "$white stopping %s ..." "$sng" && $S01sng_init stop
-        dlt $syslog_log
-        dlt $syslog_log-1
-        dlt /jffs/syslog.log
-        dlt /jffs/syslog.log-1
-        mv /opt/var/log/messages $syslog_log
-        printf "$white starting system klogd and syslogd ..."
-        service start_logger
-        sed -i "/$scribe_name/d" $srvc_event
+        stop_sng
         dlt $S01sng_init
         dlt $rcfunc_loc
         printf "\n$cyan"
@@ -657,8 +674,8 @@ uninstall(){
 
     if [ -e $lr_loc ]
     then
+        stop_lr
         sed -i "/cru a $lr/d" $postmount
-        if cru l | grep -q $lr; then cru d $lr; fi
         printf "\n$cyan"
         opkg remove "$lr"
         if [ -e $lr_conf ]
@@ -846,11 +863,19 @@ gather_debug(){
 }
 
 main_menu(){
+    and_lr=" & $lr cron\n"
     header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
     printf "$white $header"
     printf "     s.    Show scribe status\n"
     printf "     c.    Show combined syslog-ng config\n"
-    printf "     rs.   Restart syslog-ng\n"
+    if $sng_rung; then res="Res"; else res="S"; fi
+    printf "     rs.   %start %s" "$res" "$sng"
+    if ! $sng_rung
+    then
+        printf "$and_lr"
+    else
+        printf "\n     st.   Stop %s$and_lr" "$sng"
+    fi
     printf "     lr.   Run logrotate now\n\n"
     printf "     u.    Update scribe\n"
     printf "     uf.   Update filters\n"
@@ -862,11 +887,15 @@ main_menu(){
     printf "$magenta Please select an option: $std"
 }
 
+not_recog(){ printf "\n$red Unrecognized command \"%s\". " "$choice"; }
+
 scribe_menu(){
 	while true
     do
         pause=true
         run_scribe=false
+        sng_rung=false
+        [ -n "$( pidof $sng )" ] && sng_rung=true
         logo
         main_menu
         read -r choice
@@ -881,6 +910,14 @@ scribe_menu(){
             rs)
                 menu_restart
                 menu_status
+                ;;
+            st)
+                if $sng_rung
+                then
+                    menu_stop
+                else
+                    not_recog
+                fi
                 ;;
             lr)
                 run_logrotate
@@ -913,7 +950,7 @@ scribe_menu(){
                 menu_uninstall
                 ;;
             *)
-                printf "\n$red Unrecognized command \"%s\". " "$choice"
+                not_recog
                 ;;
         esac
         if $pause; then enter_to "continue"; fi
@@ -967,9 +1004,14 @@ case $action in
         ;;
 
 # restart (or start if not running) syslog-ng
-    restart)
+    restart | start)
         menu_restart
         menu_status
+        ;;
+
+# stop syslog-ng & logrotate cron job
+    stop)
+        if $sng_rung; then menu_stop; fi
         ;;
 
 # generate debug tarball
