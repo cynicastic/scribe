@@ -270,7 +270,7 @@ sed_umnt(){
     if [ -f $unmount ]
     then
         [ "$( grep -c "#!/bin/sh" $unmount )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $unmount
-        if ! grep -q  $unmount
+        if ! grep -q "$scribe_name stop" $unmount
         then
             echo "[ \"\$(/usr/bin/find \$1/entware*/bin/$scribe_name 2> /dev/null)\" ] && $scribe_name stop nologo # added by $scribe_name" >> $unmount
             updated
