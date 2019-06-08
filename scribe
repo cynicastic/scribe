@@ -38,8 +38,8 @@ readonly banner
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-scribe_ver="v2.0.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_branch="gamma"
+scribe_ver="v2.1.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -190,17 +190,6 @@ get_zip(){
     fi
 }
 
-sync_conf(){
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ]
-    then
-        printf "\n$cyan syncing %s to %s version (%s) ..." "$( basename $sng_conf )" "$sng" "$sng_vers"
-        sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
-        finis
-    fi
-}
-
 copy_rcfunc(){
     printf "$white copying %s to %s ...$std" "$rcfunc_sng" "$init_d"
     cp -pf $unzip_dir/init.d/$rcfunc_sng $init_d/
@@ -221,6 +210,7 @@ sed_sng(){
     printf "\n$white %34s" "checking $( basename $srvc_event ) ..."
     if [ -f $srvc_event ]
     then
+        [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
         if grep -q "kill_logger" $srvc_event; then sed -i "s/$scribe_name kill_logger/$scribe_name kill-logger/g" $srvc_event; fi
         if grep -q "nologo \"\$2\"" $srvc_event; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
         if ! grep -q $scribe_name $srvc_event
@@ -230,7 +220,6 @@ sed_sng(){
         else
             present
         fi
-        [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
     else
         {
             echo "#!/bin/sh"
@@ -262,6 +251,31 @@ lr_cron(){
     fi
 }
 
+dir_links(){
+	printf "\n$white %34s" "checking directory links ..."
+    if [ ! -L "/tmp/syslog.log" ] || [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
+    then
+        . $rcfunc_loc
+        kill_logger
+        updated
+    else
+        present
+    fi
+}
+
+sync_conf(){
+    printf "\n$white %34s" "$( basename $sng_conf ) version check ..."
+    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    if [ "$sng_vers" != "$sng_conf_vers" ]
+    then
+        sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
+        printf "$cyan synced (%s). $std\n" "$sng_vers"
+    else
+        printf "$green in sync. $std\n"
+    fi
+}
+
 sng_syntax(){
     printf "\n$white %34s" "$( basename $sng_conf ) syntax check ..."
     if syslog-ng -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
@@ -270,6 +284,44 @@ sng_syntax(){
 check_sng(){
 	printf "\n$white %34s" "checking $sng daemon ..."
     if [ -z "$( pidof $sng )" ]; then dead; false; else alive; true; fi
+}
+
+get_vers(){
+    # only get scribe from github once 
+    scribe_md5="$( md5_file "$scribe_script")"
+    dlt $scribe_tmp
+    curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
+    [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
+    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
+    github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
+    github_long="$github_ver ($github_branch)"
+    github_md5="$( md5_file "$scribe_tmp")"
+    new_vers="none"
+    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]; then new_vers="older"
+    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
+    elif [ "$scribe_md5" != "$github_md5" ]; then new_vers="minor"
+    fi
+    dlt $scribe_tmp
+}
+
+prt_vers(){
+    printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
+    printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
+    case $new_vers in
+        older)
+            printf "$red      Local scribe version greater than GitHub version!"
+            ;;
+        major)
+            printf "$yellow %45s" "New scribe version available"
+            ;;
+        minor)
+            printf "$blue %45s" "Minor scribe update available"
+            ;;
+        none)
+            printf "$green %40s" "scribe is up to date!"
+            ;;
+    esac
+    printf "$std\n\n"
 }
 
 # install default file in /usr/etc/$1.d
@@ -367,50 +419,13 @@ run_logrotate(){
     tail -v $lr_daily
 }
 
-get_vers(){
-    # only get scribe from github once 
-    scribe_md5="$( md5_file "$scribe_script")"
-    dlt $scribe_tmp
-    curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
-    [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
-    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
-    github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
-    github_long="$github_ver ($github_branch)"
-    github_md5="$( md5_file "$scribe_tmp")"
-    new_vers="none"
-    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]; then new_vers="older"
-    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
-    elif [ "$scribe_md5" != "$github_md5" ]; then new_vers="minor"
-    fi
-    dlt $scribe_tmp
-}
-
-prt_vers(){
-    printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
-    printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
-    case $new_vers in
-        older)
-            printf "$red      Local scribe version greater than GitHub version!"
-            ;;
-        major)
-            printf "$yellow %45s" "New scribe version available"
-            ;;
-        minor)
-            printf "$blue %45s" "Minor scribe update available"
-            ;;
-        none)
-            printf "$green %40s" "scribe is up to date!"
-            ;;
-    esac
-    printf "$std\n\n"
-}
-
 menu_status(){
-    sync_conf
     printf "\n$magenta checking system for necessary %s hooks ...\n" "$scribe_name"
     sed_sng
     lr_cron
+    dir_links
     printf "\n$magenta checking %s configuration ...\n" "$sng"
+    sync_conf
     sng_syntax
     check_sng
     get_vers
@@ -853,7 +868,6 @@ scribe_menu(){
         pause=true
         run_scribe=false
         logo
-        if $sng_inst; then sync_conf; fi
         main_menu
         read -r choice
         case "$choice" in
