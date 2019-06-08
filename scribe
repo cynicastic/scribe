@@ -198,9 +198,9 @@ check_sng(){
         printf "$green alive. $std\n"
     else
         printf "$red dead. $std\n"
-        printf "$yellow    type 'scribe restart' at shell prompt or\n"
+        printf "$yellow    type '%s restart' at shell prompt or\n" "$scribe_name"
         printf "    select rs from %s menu to start %s\n" "$scribe_name" "$sng"
-        printf "    the system logger (syslogd)"
+        printf "    * the system logger (syslogd)"
         if [ -n "$( pidof syslogd )" ]
         then
             printf "$green is running. $std\n"
@@ -648,6 +648,9 @@ stop_sng(){
     sed -i "/$scribe_name/d" $srvc_event
     printf "$white starting system klogd and syslogd ..."
     service start_logger
+    printf "$white %s will be started at next reboot; you\n" "$sng"
+    printf " may type '%s restart' at shell prompt, or\n" "$scribe_name"
+    printf " select rs from %s menu to restart %s\n" "$scribe_name" "$sng"
 }
 
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
