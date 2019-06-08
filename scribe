@@ -82,6 +82,7 @@ readonly lr_share="/opt/share/$lr"
 readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
+readonly unmount="$script_d/unmount"
 readonly skynet="$script_d/firewall"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
@@ -248,13 +249,43 @@ sed_srvc(){
 
 lr_post(){
     printf "$white %34s" "checking $( basename $postmount ) ..."
+    if [ ! -f $postmount ]
+    then
+        printf "$red MISSING! \n"
+        printf " Entware is not properly set up!\n"
+        printf " Correct Entware installation before continuing! $std\n\n"
+        exit 1
+    fi
     if ! grep -q $lr $postmount
     then
-        echo "cru a $lr "'"5 0 * * *'" $lr_loc $lr_conf >> $lr_daily "'2>&1" # added by scribe' >> $postmount
+        echo "cru a $lr \"5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1\" # added by scribe" >> $postmount
         updated
     else
         present
     fi
+}
+
+sed_umnt(){
+    printf "$white %34s" "checking $( basename $unmount ) ..."
+    if [ -f $unmount ]
+    then
+        [ "$( grep -c "#!/bin/sh" $unmount )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $unmount
+        if ! grep -q  $unmount
+        then
+            echo "[ \"\$(/usr/bin/find \$1/entware*/bin/$scribe_name 2> /dev/null)\" ] && $scribe_name stop nologo # added by $scribe_name" >> $unmount
+            updated
+        else
+            present
+        fi
+    else
+        {
+            echo "#!/bin/sh"
+            echo ""
+            echo "[ \"\$(/usr/bin/find \$1/entware*/bin/$scribe_name 2> /dev/null)\" ] && $scribe_name stop nologo # added by $scribe_name"
+        } > $unmount
+        printf "$green created. $std\n"
+    fi
+    [ ! -x $unmount ] && chmod 0755 $unmount
 }
 
 lr_cron(){
@@ -441,6 +472,7 @@ menu_status(){
     sed_sng
     if $sng_rung; then sed_srvc; fi
     lr_post
+    sed_umnt
     if $sng_rung; then lr_cron; dir_links;fi
     printf "\n$magenta checking %s configuration ...\n\n" "$sng"
     sync_conf
@@ -466,6 +498,7 @@ setup_sng(){
     copy_rcfunc
     sed_sng
     sed_srvc
+    sed_umnt
 
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
@@ -649,9 +682,10 @@ stop_sng(){
     sed -i "/$scribe_name/d" $srvc_event
     printf "$white starting system klogd and syslogd ..."
     service start_logger
-    printf "$white %s will be started at next reboot; you\n" "$sng"
+    if ! $banner; then return; fi
+    printf "\n$white %s will be started at next reboot; you\n" "$sng"
     printf " may type '%s restart' at shell prompt, or\n" "$scribe_name"
-    printf " select rs from %s menu to restart %s\n" "$scribe_name" "$sng"
+    printf " select rs from %s menu to restart %s $std\n" "$scribe_name" "$sng"
 }
 
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
@@ -666,6 +700,7 @@ uninstall(){
     if [ -e $sng_loc ]
     then
         stop_sng
+        sed -i "/$scribe_name stop/d" $unmount
         dlt $S01sng_init
         dlt $rcfunc_loc
         printf "\n$cyan"
