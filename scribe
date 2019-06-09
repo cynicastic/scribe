@@ -229,7 +229,7 @@ sed_srvc(){
         [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh\n\n~" $srvc_event
         if grep -q "kill_logger" $srvc_event; then sed -i "s/$scribe_name kill_logger/$scribe_name kill-logger/g" $srvc_event; fi
         if grep -q "nologo \"\$2\"" $srvc_event; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
-        if ! grep -q $scribe_name $srvc_event
+        if ! grep -q "$scribe_name kill-logger" $srvc_event
         then
             echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe" >> $srvc_event
             updated
@@ -674,12 +674,12 @@ stop_sng(){
         printf "\n$white stopping %s ..." "$sng"
         $S01sng_init stop
     fi
+    sng_rung=false
     dlt $syslog_log
     dlt $syslog_log-1
     dlt /jffs/syslog.log
     dlt /jffs/syslog.log-1
     mv /opt/var/log/messages $syslog_log
-    sed -i "/$scribe_name/d" $srvc_event
     printf "$white starting system klogd and syslogd ..."
     service start_logger
     if ! $banner; then return; fi
@@ -957,65 +957,65 @@ scribe_menu(){
         logo
         main_menu
         read -r choice
-        case "$choice" in
-            s)
-                if $is_inst
-                then
+        if $is_inst || [ "$choice" = "e" ] || [ "$choice" = "is" ] || [ "$choice" = "zs" ]
+        then
+            case "$choice" in
+                s)
                     menu_status
-                else
+                    ;;
+                c)
+                    show_config
+                    pause=false
+                    ;;
+                rs)
+                    menu_restart
+                    menu_status
+                    ;;
+                st)
+                    if $sng_rung
+                    then
+                        menu_stop
+                    else
+                        not_recog=true
+                    fi
+                    ;;
+                lr)
+                    run_logrotate
+                    ;;
+                u)
+                    get_vers
+                    prt_vers
+                    menu_update
+                    ;;
+                uf)
+                    menu_filters
+                    ;;
+                d)
+                    gather_debug
+                    printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
+                    if yes_no; then pause=false; less "$scribe_debug"; fi
+                    ;;
+                e)
+                    printf "\n$white Thanks for using scribe! $std\n\n\n"
+                    exit 0
+                    ;;
+                is)
+                    if ! $is_inst; then pre_install; fi
+                    get_zip
+                    menu_install
+                    sh "$scribe_script" status nologo
+                    run_scribe=true
+                    ;;
+                zs)
+                    menu_uninstall
+                    ;;
+                *)
                     not_recog=true
-                fi
-                ;;
-            c)
-                show_config
-                pause=false
-                ;;
-            rs)
-                menu_restart
-                menu_status
-                ;;
-            st)
-                if $sng_rung
-                then
-                    menu_stop
-                else
-                    not_recog=true
-                fi
-                ;;
-            lr)
-                run_logrotate
-                ;;
-            u)
-                get_vers
-                prt_vers
-                menu_update
-                ;;
-            uf)
-                menu_filters
-                ;;
-            d)
-                gather_debug
-                printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
-                if yes_no; then pause=false; less "$scribe_debug"; fi
-                ;;
-            e)
-                printf "\n$white Thanks for using scribe! $std\n\n\n"
-                exit 0
-                ;;
-            is)
-                if ! $is_inst; then pre_install; fi
-                get_zip
-                menu_install
-                sh "$scribe_script" status nologo
-                run_scribe=true
-                ;;
-            zs)
-                menu_uninstall
-                ;;
-            *)
-                not_recog=true
-                ;;
-        esac
+                    ;;
+            esac
+        else
+            not_recog=true
+        fi
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then sh "$scribe_script"; exit 0; fi
@@ -1029,6 +1029,9 @@ scribe_menu(){
 
 if [ "$action" = "menu" ]; then scribe_menu; else logo; fi
 
+sng_rung=false
+[ -n "$( pidof $sng )" ] && sng_rung=true
+
 case $action in
 
 # (re-)install syslog-ng, logrotate, & scribe script
@@ -1041,11 +1044,12 @@ case $action in
 
 # uninstall scribe
     uninstall | remove)
-        if $is_inst; then menu_uninstall; fi
+        menu_uninstall
         ;;
 
 # update scribe
     update)
+        if ! $sng_rung; then exit 0; fi
         run_scribe=false
         get_vers
         prt_vers
@@ -1054,7 +1058,7 @@ case $action in
 
 # update syslog-ng and logrotate filters
     update-filters | filters)
-        menu_filters
+        if $sng_rung; then menu_filters; fi
         ;;
 
 # show total combined config
@@ -1085,7 +1089,7 @@ case $action in
 
 # kill syslogd & klogd - only available via cli
     kill-logger)
-        [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; } && exit 0
+        [ "$sng_rung" = "false" ] || [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; } && exit 0
         # load kill_logger() function
         # keep shellcheck from barfing on sourcing $rcfunc_loc
         # shellcheck disable=SC1091
