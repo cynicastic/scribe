@@ -33,7 +33,6 @@ got_zip=false
 banner=true
 [ "$SCRIBE_LOGO" = "nologo" ] && banner=false
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner=false && shift
-readonly banner
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 # scribe constants
@@ -69,6 +68,7 @@ readonly rcfunc_sng="rc.func.$sng"
 readonly rcfunc_loc="$init_d/$rcfunc_sng"
 readonly syslog_log="/tmp/syslog.log"
 readonly sng_loc="/opt/sbin/$sng"
+readonly sngctl_loc="$sng_loc-ctl"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
 readonly sngconf_merged="$TMP/syslog-ng-complete.conf"
@@ -183,6 +183,12 @@ get_zip(){
             exit 1
         fi
     fi
+}
+
+rld_conf(){
+    printf "$white reloading %s ...$std" "$( basename $sng_conf )"
+    $sngctl_loc reload
+    finis
 }
 
 copy_rcfunc(){
@@ -543,6 +549,7 @@ setup_scribe(){
     if $skynet_inst
     then
         dlt $sngd_d/firewall
+        dlt $lrd_d/firewall
         if [ ! -e "$sngd_d/skynet" ] || [ "$1" = "ALL" ]
         then
             printf "$white installing"
@@ -555,13 +562,23 @@ setup_scribe(){
     else
         dlt $sngd_d/skynet
         if [ ! -e "$sngd_d/firewall" ] || [ "$1" = "ALL" ]
-        then 
+        then
             printf "$white installing %s firewall filter ..." "$sng"
-            cp -pu $sng_share/examples/firewall $sngd_d 
+            cp -pu $sng_share/examples/firewall $sngd_d
         elif ! same_same "$sng_share/examples/firewall" "$sngd_d/firewall"
         then
             printf "$white updating %s firewall filter ..." "$sng"
-            cp -pu $sng_share/examples/firewall $sngd_d 
+            cp -pu $sng_share/examples/firewall $sngd_d
+        fi
+
+        if [ ! -e "$lrd_d/firewall" ] || [ "$1" = "ALL" ]
+        then
+            printf "$white installing %s firewall log rotation ..." "$lr"
+            cp -pu $lr_share/examples/firewall $lrd_d
+        elif ! same_same "$lr_share/examples/firewall" "$lrd_d/firewall"
+        then
+            printf "$white updating %s firewall log rotation ..." "$lr"
+            cp -pu $lr_share/examples/firewall $lrd_d
         fi
     fi
     finis
@@ -652,6 +669,7 @@ menu_install(){
             setup_scribe "ALL"
         fi
 
+        rld_conf
         printf "\n$white %s setup complete!  " "$scribe_name"
         enter_to "continue"
 }
@@ -680,12 +698,13 @@ stop_sng(){
     dlt /jffs/syslog.log
     dlt /jffs/syslog.log-1
     mv /opt/var/log/messages $syslog_log
+    ln -s $syslog_log /opt/var/log/messages
     printf "$white starting system klogd and syslogd ..."
     service start_logger
     if ! $banner; then return; fi
     printf "\n$white %s will be started at next reboot; you\n" "$sng"
     printf " may type '%s restart' at shell prompt, or\n" "$scribe_name"
-    printf " select rs from %s menu to restart %s $std\n" "$scribe_name" "$sng"
+    printf " select rs from %s menu to restart %s $std\n\n" "$scribe_name" "$sng"
 }
 
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
@@ -697,9 +716,11 @@ menu_stop(){
 
 uninstall(){
     printf "\n\n"
+    banner=false # use this suppress some messages
     if [ -e $sng_loc ]
     then
         stop_sng
+        sed -i "/$scribe_name kill-logger/d" $srvc_event
         sed -i "/$scribe_name stop/d" $unmount
         dlt $S01sng_init
         dlt $rcfunc_loc
@@ -807,6 +828,7 @@ menu_filters(){
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
     fi
+    rld_conf
 }
 
 menu_update(){
@@ -988,7 +1010,12 @@ scribe_menu(){
                     menu_update
                     ;;
                 uf)
-                    menu_filters
+                    if $sng_rung
+                    then
+                        menu_filters
+                    else
+                        not_recog=true
+                    fi
                     ;;
                 d)
                     gather_debug
