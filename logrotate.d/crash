@@ -1,5 +1,5 @@
 /opt/var/log/crash.log {
-    minsize 4096k
+    minsize 1024k
     daily
     postrotate
         /usr/bin/killall -HUP syslog-ng
