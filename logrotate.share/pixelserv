@@ -1,5 +1,5 @@
 /opt/var/log/pixelserv.log {
-    minsize 16M
+    minsize 1024K
     daily
     rotate 9
     postrotate
