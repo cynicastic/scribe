@@ -6,6 +6,9 @@ kill_logger (){
     [ -n "$( pidof klogd )" ] && killall klogd
     [ -n "$( pidof syslogd )" ] && killall syslogd
 
+    # if syslog-ng was stopped at reboot, messages will be symlink
+    [ -L /opt/var/log/messages ] && rm -f /opt/var/log/messages
+
     # webGUI System Log = /tmp/syslog.log
     if [ ! -L "/tmp/syslog.log" ]
     then
