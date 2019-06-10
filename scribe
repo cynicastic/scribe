@@ -328,9 +328,9 @@ sync_conf(){
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
         sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
-        printf "$cyan synced (%s). $std\n" "$sng_vers"
+        printf "$cyan updated (%s). $std\n" "$sng_vers"
     else
-        printf "$green in sync. $std\n"
+        printf "$green synced. $std\n"
     fi
 }
 
@@ -948,18 +948,26 @@ main_menu(){
     then
         printf "     s.    Show scribe status\n"
         printf "     c.    Show combined syslog-ng config\n"
-        if $sng_rung; then res="Res"; else res="S"; fi
+        if $sng_rung
+        then
+            printf "     rl.   Reload syslog-ng.conf\n"
+            res="Res"
+        else
+            res="S"
+        fi
         printf "     rs.   %start %s" "$res" "$sng"
         if ! $sng_rung
         then
             printf "$and_lr"
         else
             printf "\n     st.   Stop %s$and_lr" "$sng"
-            printf "     rl.   Reload syslog-ng.conf\n"
         fi
-        printf "     lr.   Run logrotate now\n\n"
-        printf "     u.    Update scribe\n"
-        printf "     uf.   Update filters\n"
+        printf "     lr.   Run logrotate now\n"
+        if $sng_rung
+        then
+            printf "\n     u.    Update scribe\n"
+            printf "     uf.   Update filters\n"
+        fi
         printf "     d.    Generate debug info\n\n"
     fi
     printf "     e.    Exit scribe\n\n"
@@ -990,6 +998,14 @@ scribe_menu(){
                     show_config
                     pause=false
                     ;;
+                rl)
+                    if $sng_rung
+                    then
+                        rld_conf
+                    else
+                        not_recog=true
+                    fi
+                    ;;
                 rs)
                     menu_restart
                     menu_status
@@ -1002,21 +1018,18 @@ scribe_menu(){
                         not_recog=true
                     fi
                     ;;
-                rl)
-                    if $sng_rung
-                    then
-                        rld_conf
-                    else
-                        not_recog=true
-                    fi
-                    ;;
                 lr)
                     run_logrotate
                     ;;
                 u)
-                    get_vers
-                    prt_vers
-                    menu_update
+                    if $sng_rung
+                    then
+                        get_vers
+                        prt_vers
+                        menu_update
+                    else
+                        not_recog=true
+                    fi
                     ;;
                 uf)
                     if $sng_rung
