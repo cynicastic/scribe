@@ -6,7 +6,7 @@ kill_logger (){
     [ -n "$( pidof klogd )" ] && killall klogd
     [ -n "$( pidof syslogd )" ] && killall syslogd
 
-    # if syslog-ng was stopped at reboot, messages will be symlink
+    # if syslog-ng was stopped by scribe, messages will be symlink to syslog.log
     [ -L /opt/var/log/messages ] && rm -f /opt/var/log/messages
 
     # webGUI System Log = /tmp/syslog.log
