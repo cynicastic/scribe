@@ -186,9 +186,9 @@ get_zip(){
 }
 
 rld_conf(){
-    printf "$white reloading %s ...$std" "$( basename $sng_conf )"
+    printf "$white reloading %s ... $cyan" "$( basename $sng_conf )"
     $sngctl_loc reload
-    finis
+    printf "\n$std"
 }
 
 copy_rcfunc(){
@@ -955,6 +955,7 @@ main_menu(){
             printf "$and_lr"
         else
             printf "\n     st.   Stop %s$and_lr" "$sng"
+            printf "     rl.   Reload syslog-ng.conf\n"
         fi
         printf "     lr.   Run logrotate now\n\n"
         printf "     u.    Update scribe\n"
@@ -997,6 +998,14 @@ scribe_menu(){
                     if $sng_rung
                     then
                         menu_stop
+                    else
+                        not_recog=true
+                    fi
+                    ;;
+                rl)
+                    if $sng_rung
+                    then
+                        rld_conf
                     else
                         not_recog=true
                     fi
@@ -1060,6 +1069,8 @@ sng_rung=false
 [ -n "$( pidof $sng )" ] && sng_rung=true
 
 case $action in
+
+# run logrotate and reload syslog-ng conf not yet implement in cli
 
 # (re-)install syslog-ng, logrotate, & scribe script
     install)
