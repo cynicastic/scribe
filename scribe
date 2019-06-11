@@ -687,11 +687,8 @@ menu_restart(){
 }
 
 stop_sng(){
-    if $sng_rung
-    then
-        printf "\n$white stopping %s ..." "$sng"
-        $S01sng_init stop
-    fi
+    printf "\n$white stopping %s ..." "$sng"
+    $S01sng_init stop
     sng_rung=false
     dlt $syslog_log
     dlt $syslog_log-1
@@ -710,6 +707,7 @@ stop_sng(){
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
 
 menu_stop(){
+    if ! $sng_rung; then return; fi
     stop_sng
     stop_lr
 }
@@ -719,7 +717,7 @@ uninstall(){
     banner=false # use this suppress some messages
     if [ -e $sng_loc ]
     then
-        stop_sng
+        if $sng_rung; then stop_sng; fi
         sed -i "/$scribe_name kill-logger/d" $srvc_event
         sed -i "/$scribe_name stop/d" $unmount
         dlt $S01sng_init
