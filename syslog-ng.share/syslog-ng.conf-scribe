@@ -11,7 +11,7 @@
 #   source net function to get udp log messages from local network commented out
 #   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
 
-@version: 3.19
+@version: 3.20
 @include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
 
 options {
