@@ -388,7 +388,6 @@ setup_ddir(){
         ddfile="$d_dir/$dfbase"
         { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && cp -pu "$dfile" "$ddfile"
     done
-
     chmod 600 $d_dir/*
 }
 
@@ -432,7 +431,6 @@ setup_exmpls(){
             printf " by the Entware package has been moved to $cyan%s$white.\n" "$share/examples/$opkg"
         fi
     fi
-    
     chmod 600 $share/examples/*
     printf "$std"
 }
@@ -508,7 +506,7 @@ setup_sng(){
 
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
-        printf "\n$white %34s" "updating $( basename $sng_conf ) ..."
+        printf "$white %34s" "updating $( basename $sng_conf ) ..."
         update_file $sng_share/examples/$sng.conf-scribe $sng_conf
         finis
     fi
@@ -516,7 +514,7 @@ setup_sng(){
 
 setup_lr(){
     # assumes since entware is required / installed, post-mount exists and is properly executable
-    printf "\n$magenta setting up %s ..." "$lr"
+    printf "\n$magenta setting up %s ...\n" "$lr"
     lr_post
     lr_cron
 }
@@ -775,7 +773,6 @@ uninstall(){
     dlt $TMP/$scribe_name-$scribe_branch
     dlt /opt/bin/$scribe_name
     dlt $scribe_script
-
     printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
     printf " It is recommended to reboot the router at this time.  If you do not\n"
     printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
@@ -1112,16 +1109,18 @@ case $action in
 
 # show total combined config
     show-config | config)
+        if ! $is_inst; then exit 0; fi
         if show_config; then sng_syntax; fi
         ;;
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
-        menu_status
+        if $is_inst; then menu_status; fi
         ;;
 
 # restart (or start if not running) syslog-ng
     restart | start)
+        if ! $is_inst; then exit 0; fi
         menu_restart
         menu_status
         ;;
@@ -1133,7 +1132,7 @@ case $action in
 
 # generate debug tarball
     debug)
-        gather_debug
+        if $is_inst; then gather_debug; fi
         ;;
 
 # kill syslogd & klogd - only available via cli
@@ -1148,12 +1147,12 @@ case $action in
         found=false
         while [ $count -gt 0 ]
         do
-            sleep 1 # give them a moment to start up; drop count to 6 if found in case lag between starting
+            sleep 1 # give them a moment to start up
             if [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]
             then
                 kill_logger
                 found=true
-                count=6
+                count=6 # drop count to 6 if found in case lag between starting
             fi
             count=$(( count - 1 ))
         done
