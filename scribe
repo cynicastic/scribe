@@ -141,7 +141,14 @@ update_file(){
     cp -pf "$1" "$2"
 }
 
-hup_uisc(){ if $uisc_inst; then $uiscribe startup; fi }
+hup_uisc(){
+    if $uisc_inst
+    then
+        printf "$white Restarting uiScribe ..."
+        $uiscribe startup
+        printf "           $green done. $std\n"
+    fi
+}
 
 # Check yes or no
 yes_no(){
