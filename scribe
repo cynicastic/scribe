@@ -37,8 +37,8 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-scribe_ver="v2.1.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_branch="gamma"
+scribe_ver="v2.1.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -83,6 +83,7 @@ readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
 readonly unmount="$script_d/unmount"
+readonly uiscribe="$script_d/uiScribe"
 readonly skynet="$script_d/firewall"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
@@ -101,9 +102,9 @@ readonly std="\033[m"
 is_inst=false
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true
 
-# test if syslog-ng is installed
-#sng_inst=false
-#[ -e "$sng_loc" ] && sng_inst=true
+# test if uiScribe is installed
+uisc_inst=false
+[ -e "$uiscribe" ] && uisc_inst=true
 
 # check if Skynet is installed
 skynet_inst=false
@@ -139,6 +140,8 @@ update_file(){
     [ -e "$2" ] && mv "$2" "$2-$( date -Iseconds | cut -c 1-19 )"
     cp -pf "$1" "$2"
 }
+
+hup_uisc(){ if $uisc_inst; then $uiscribe startup; fi }
 
 # Check yes or no
 yes_no(){
@@ -189,6 +192,7 @@ rld_conf(){
     printf "$white reloading %s ... $cyan" "$( basename $sng_conf )"
     $sngctl_loc reload
     printf "\n$std"
+    hup_uisc
 }
 
 copy_rcfunc(){
@@ -330,7 +334,7 @@ sync_conf(){
         sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
         printf "$cyan updated (%s). $std\n" "$sng_vers"
     else
-        printf "$green synced. $std\n"
+        printf "$green in sync. $std\n"
     fi
 }
 
@@ -503,13 +507,13 @@ setup_sng(){
     sed_sng
     sed_srvc
     sed_umnt
-
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
         printf "$white %34s" "updating $( basename $sng_conf ) ..."
         update_file $sng_share/examples/$sng.conf-scribe $sng_conf
         finis
     fi
+    sync_conf
 }
 
 setup_lr(){
@@ -681,6 +685,7 @@ menu_restart(){
         printf "\n$white %s$red NOT$white running! $yellow Starting %s ... $std\n" "$sng"
         $S01sng_init start
     fi
+    hup_uisc
     [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
 }
 
