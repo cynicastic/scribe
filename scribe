@@ -713,7 +713,7 @@ menu_restart(){
 }
 
 stop_sng(){
-    printf "\n$white stopping %s ..." "$sng"
+    printf "$white stopping %s ..." "$sng"
     $S01sng_init stop
     sng_rung=false
     dlt $syslog_log
@@ -739,11 +739,11 @@ menu_stop(){
 }
 
 uninst_uisc(){
+    printf "\n"
     if $uisc_inst
     then
-        printf "$white uiScribe detected, uninstalling ..."
+        printf "$white uiScribe detected, uninstalling ...\n\n"
         $uiscribe uninstall
-        printf "           $green done. $std\n"
     fi
 }
 
