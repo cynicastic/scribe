@@ -1,8 +1,10 @@
 #############################################################################
 # OpenWrt syslog-ng.conf specific file
 # which collects all local logs into a single file called /var/log/messages.
-# More details about these settings can be found here:
-# https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
+#
+# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.23/administration-guide
+#
+# Release notes: https://github.com/syslog-ng/syslog-ng/releases 
 #
 # non-scl version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
 #   moved sourcing /proc/kmsg from "source kernel" to "source src" and added directives to /proc/kmsg and /dev/log sourcing
@@ -10,8 +12,10 @@
 #   stats_freq changed to every 6 hours
 #   source net function to get udp log messages from local network commented out
 #   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
+#
+#   NB: time_reap default behaviour was changed significantly in version 3.23; this causes problems with Skynet, but must be corrected in the skynet file in the syslog-ng.d directory  *** sigh ***
 
-@version: 3.20
+@version: 3.23
 @include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
 
 options {
@@ -20,7 +24,7 @@ options {
     keep_hostname(yes); # Enable or disable hostname rewriting.
     log_fifo_size(256); # The number of messages that the output queue can store.
     log_msg_size(16384); # Maximum length of a message in bytes.
-    stats_freq(21600); # The period between two STATS messages (sent by syslog-ng, containing statistics about dropped logs) in seconds. (21,600 seconds = 6 hours)
+    stats_freq(21600); # The period between two STATS messages sent by syslog-ng, containing statistics about dropped logs in seconds; 0 disables. (21,600 seconds = 6 hours)
     flush_lines(0); # How many lines are flushed to a destination at a time.
     use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
 };

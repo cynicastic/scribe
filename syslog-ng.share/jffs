@@ -1,0 +1,19 @@
+# log kernel messages about the jffs
+
+destination d_jffs { 
+    file("/opt/var/log/jffs.log");
+};
+
+filter f_jffs {
+    program("kernel") and
+    message("jffs2:");
+};
+
+log {
+    source(src);
+    filter(f_jffs);
+    destination(d_jffs);
+    flags(final);
+};
+
+#eof

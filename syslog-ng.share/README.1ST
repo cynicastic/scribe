@@ -1,4 +1,4 @@
-### README.1ST --- 25 May 2019
+### README.1ST --- 9 Nov 2019
 
 Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 
@@ -9,8 +9,16 @@ Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 Some of the files in this directory may be copied to /opt/etc/syslog-ng.d/
 to filter common messages from the default messages file to their own
 log files.  Note that when copying the files, they must be writable by the
-user only, e.g. chmod 600.  If the group or others can write to them, they
+user only, i.e. chmod 600.  If the group or others can write to them, they
 will not be loaded by syslog-ng.
+
+It is highly recommended to copy the corresponding file of the same name
+in /opt/share/logrotate/examples/ to /opt/etc/logroate.d/ to ensure the
+log files do not grow too large.  If there is not corresponding file in
+/opt/share/logrotate/examples, then either the file is not intended to be
+used permanently (e.g. expandlog); or should generate no or very few log
+entries (e.g. blankmsg, errormsg); or its logs are handled by other
+programs (e.g. skynet).
 
 Notes:      1)  All ".log" files will be in /opt/var/log/.
             2)  Unless otherwise noted, all filters are "final", meaning
@@ -18,9 +26,27 @@ Notes:      1)  All ".log" files will be in /opt/var/log/.
                 default messages file.
 
 The files in this directory are:
+    afpd        Filters out messages related to daemons supporting Apple
+                Time Machine, Apple Filing Protocal daemon (afpd) and
+                Catalog Node I/D databae (cnid_dbd).
+
+    ascd        Filters out messages from Broadcomm's Automatic Channel
+                Selector Daemon. 
+
+    blankmsg    Sends any blank messages to /dev/null.  Automatically placed
+                in /opt/etc/syslog-ng.d/ on installation.
+                
+    crash       Filters out most lines from the dcd_tainted crash messages
+                as well as most lines of other crash messages.
+
     diversion   If you are using the popular Diversion script by 
                 thelonelycoder, this will filter out messages from Diversion
                 and Jack Yaz's uiDivStats script to diversion.log.
+
+    errormsg    Filters out messages from the kernel that it encoutered an
+                error processing a log message.  Normally this shouldn't
+                happen, so there may not be a log file even if this is
+                copied to /opt/etc/syslog-ng.d/.
 
     ethernet    Filters out messages containing "eth1" thru "eth8" or "bro:"
                 to ethernet.log.
@@ -33,30 +59,49 @@ The files in this directory are:
                 this is not intended to be used except for testing.  This is
                 not a "final" filter.
 
-    firewall    If you are not using Skynet, be automatically copied to
-                /opt/etc/syslog-ng.d/ upon installation of scribe.  This
-                filters messages from the firmware firewall containing
+    firewall    If you are not using Skynet, this will be automatically
+                copied to /opt/etc/syslog-ng.d/ upon installation of scribe.
+                This filters messages from the firmware firewall containing
                 "ACCEPT IN=" or "DROP IN=" to firewall.log.  Do not use this
                 filter if you are using Skynet.
 
+    ioctl       Filters out I/O control messages.  These are mostly nuicesnce
+                messages.
+
+    jffs        Filters out messages about the jffs directory.  Useful when
+                certain errors with the jffs fiilesystem are encountered as
+                they quickly fill up the logfile.
+
+    logrotate   Gathers logrotate's messages from var/lib/logrotate.status
+                and /opt/tmp/logrotate.daily into a single log file in
+                /opt/var/log/logrotate.log.i  Automatically placed in
+                /opt/etc/syslog-ng.d/ on installation.
+
     openvpn     Filters out messages from "ovpn-server#" or "ovpn-client#" to
                 openvpn.log, where "#" is the server or client number.  Also
-                filters out messages from openvp-routing to the same file.
+                filters out messages from "openvp-routing" to the same file.
 
     pixelserv   Filters out messages from pixelserv-tls to pixelserv.log.
 
-    skynet      If you are using the popular Skynet script by Adamm, this will
-                be automatically copied to /opt/etc/syslog-ng.d/ upon
-                installation of scribe.  This filters any messages from Skynet
-                and messages that contain "BLOCKED -" or "DROP IN=" to
-                skynet-0.log.  On installing scribe, it also tells Skynet to
-                get its data from skynet-0.log.
+    skynet      If you are using the popular Skynet script by Adamm, this
+                will be automatically copied to /opt/etc/syslog-ng.d/ upon
+                installation of scribe.  This filters any messages from
+                Skynet and messages that contain "BLOCKED -" or "DROP IN=" to
+                skynet-0.log.  On installing scribe, scribe tells Skynet to
+                get its data from skynet-0.log.  This file should normally
+                not ever be copied manually to opt/etc/syslog-ng.d/
 
     syslog-ng.conf-opkg     DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
-                            This is a copy of the original syslog-ng.conf file
-                            that is provided by the Entware package, for
+                            This is a copy of the original syslog-ng.conf
+                            file that is provided by the Entware package, for
                             reference only.
 
     syslog-ng.conf-scribe   DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
                             This is a copy of the current syslog-ng.conf file
                             that is provided by scribe, for reference only.
+
+    syslogng    Filters out syslog-ng's messages and logging statistics.
+                Automatically placed in /opt/etc/syslog-ng.d/ on installation.
+
+    wlceventd   Filters out messages from the Wireless Lan Controller Daemon.
+                Automatically placed in /opt/etc/syslog-ng.d/ on installation.

@@ -20,7 +20,7 @@
 #   curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
 #
 # shellcheck disable=SC2009
-# SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt
+# SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt (exists in Entware procps-ng)
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
 
@@ -38,7 +38,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.1.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.2.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -56,9 +56,11 @@ readonly fwvers="$( nvram get buildno )"
 model="$( nvram get odmpid )"
 [ -z "$model" ] && model="$( nvram get productid )"
 readonly model
+readonly dcd_crash="AC86"
 readonly arch="$( uname -m )"
 
 # miscellaneous constants
+readonly header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
 readonly sng="syslog-ng"
 readonly sng_reqd="3.19"
 readonly lr="logrotate"
@@ -71,14 +73,17 @@ readonly sng_loc="/opt/sbin/$sng"
 readonly sngctl_loc="$sng_loc-ctl"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
-readonly sngconf_merged="$TMP/syslog-ng-complete.conf"
-readonly sngconf_error="$TMP/syslog-ng-error.conf"
+readonly scribe_debug_name=$scribe_name"_debug.log"
+readonly scribe_debug=$TMP/$scribe_debug_name
+readonly sngconf_merged="$TMP/$sng-complete.conf"
+readonly sngconf_error="$TMP/$sng-error.conf"
 readonly lr_conf="/opt/etc/$lr.conf"
 readonly lr_daily="/opt/tmp/logrotate.daily"
 readonly sngd_d="/opt/etc/$sng.d"
 readonly lrd_d="/opt/etc/$lr.d"
 readonly sng_share="/opt/share/$sng"
 readonly lr_share="/opt/share/$lr"
+readonly scribe_bakname="$TMP/$scribe_name-backup.tar.gz"
 readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
@@ -119,6 +124,10 @@ then
     fi
 fi
 
+# check if syslog-ng is running
+sng_rung=false
+[ -n "$( pidof $sng )" ] && sng_rung=true
+
 #### functions ####
 
 present(){ printf "$green present. $std\n"; }
@@ -139,8 +148,10 @@ dlt(){ rm -rf "$1"; }
 
 same_same(){ if [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ]; then true; else false; fi; }
 
+date_stamp(){ [ -e "$1" ] && mv "$1" "$1-$( date -Iseconds | cut -c 1-19 )"; }
+
 update_file(){
-    [ -e "$2" ] && mv "$2" "$2-$( date -Iseconds | cut -c 1-19 )"
+    date_stamp "$2"
     cp -pf "$1" "$2"
 }
 
@@ -177,6 +188,13 @@ logo(){
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
     printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_long"
+}
+
+warning_sign(){
+    printf "\n\n$white"
+    printf "                *********************\n"
+    printf "                ***$red W*A*R*N*I*N*G$white ***\n"
+    printf "                *********************\n\n"
 }
 
 get_zip(){
@@ -338,9 +356,11 @@ dir_links(){
 sync_conf(){
     printf "$white %34s" "$( basename $sng_conf ) version check ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    sng_conf_vers="$( grep -m1 "@version:" $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_vers="$( grep -m1 '@version:' $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    man_vers="$( grep -oE 'on\/[0-9]{1,2}([_.][0-9]{1,2})' $sng_conf )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
+        sed -i "s~$man_vers~on/$sng_vers~" $sng_conf
         sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
         printf "$cyan updated (%s). $std\n" "$sng_vers"
     else
@@ -400,7 +420,7 @@ setup_ddir(){
     do
         dfbase="$( basename "$dfile" )"
         ddfile="$d_dir/$dfbase"
-        { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && cp -pu "$dfile" "$ddfile"
+        { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && cp -p "$dfile" "$ddfile"
     done
     chmod 600 $d_dir/*
 }
@@ -547,7 +567,7 @@ install(){
 
 sky_filter(){
     printf " %s Skynet filter ..." "$sng"
-    cp -pu $sng_share/examples/skynet $sngd_d 
+    cp -p $sng_share/examples/skynet $sngd_d 
     printf "$blue setting Skynet log file location$white ..."
     skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
     sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
@@ -558,6 +578,7 @@ setup_scribe(){
     cp -pf $unzip_dir/$scribe_name $scribe_script
     chmod 0755 $scribe_script
     [ ! -e "/opt/bin/$scribe_name" ] && ln -s $scribe_script /opt/bin
+    # install correct firewall or skynet file, these are mutually exclusive
     if $skynet_inst
     then
         dlt $sngd_d/firewall
@@ -573,27 +594,51 @@ setup_scribe(){
         fi
     else
         dlt $sngd_d/skynet
+        dlt $lrd_d/skynet
         if [ ! -e "$sngd_d/firewall" ] || [ "$1" = "ALL" ]
         then
             printf "$white installing %s firewall filter ..." "$sng"
-            cp -pu $sng_share/examples/firewall $sngd_d
+            cp -p $sng_share/examples/firewall $sngd_d
         elif ! same_same "$sng_share/examples/firewall" "$sngd_d/firewall"
         then
             printf "$white updating %s firewall filter ..." "$sng"
-            cp -pu $sng_share/examples/firewall $sngd_d
+            cp -p $sng_share/examples/firewall $sngd_d
         fi
 
         if [ ! -e "$lrd_d/firewall" ] || [ "$1" = "ALL" ]
         then
-            printf "$white installing %s firewall log rotation ..." "$lr"
-            cp -pu $lr_share/examples/firewall $lrd_d
+            printf "$white installing firewall log rotation ..."
+            cp -p $lr_share/examples/firewall $lrd_d
         elif ! same_same "$lr_share/examples/firewall" "$lrd_d/firewall"
         then
-            printf "$white updating %s firewall log rotation ..." "$lr"
-            cp -pu $lr_share/examples/firewall $lrd_d
+            printf "$white updating firewall log rotation ..."
+            cp -p $lr_share/examples/firewall $lrd_d
         fi
     fi
     finis
+    # install script unique to AC86U (dcd_tainted)
+    if [ "$( echo "$model" | grep -oE 'AC[0-9]{2}' )" = "$dcd_crash" ]
+    then
+        printf "$white %s detected," "$model"
+        if [ ! -e "$sngd_d/crash" ] || [ "$1" = "ALL" ]
+        then
+            printf " installing %s \"dcd Tainted\" filter ..." "$sng"
+            cp -p $sng_share/examples/crash $sngd_d
+        else
+            printf " %s \"dcd Tainted\" filter already installed, skipping ..." "$sng"
+        fi
+        if [ ! -e "$lrd_d/crash" ] || [ "$1" = "ALL" ]
+        then
+            printf " installing \"dcd Tainted\" log rotation ..."
+            cp -p $lr_share/examples/crash $lrd_d
+        else
+            printf " %s \"dcd Tainted\" log rotation already installed, skipping ..." "$lr"
+        fi
+        finis
+    else
+        dlt $sngd_d/crash
+        dlt $lrd_d/crash
+    fi
 }
 
 setup_uisc(){
@@ -733,7 +778,6 @@ stop_sng(){
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
 
 menu_stop(){
-    if ! $sng_rung; then return; fi
     stop_sng
     stop_lr
 }
@@ -749,7 +793,7 @@ uninst_uisc(){
 
 uninstall(){
     printf "\n\n"
-    banner=false # use this suppress some messages
+    banner=false # suppress certain messages
     if [ -e $sng_loc ]
     then
         if $sng_rung; then stop_sng; fi
@@ -759,21 +803,11 @@ uninstall(){
         dlt $rcfunc_loc
         printf "\n$cyan"
         opkg remove "$sng"
-        if [ -e $sng_conf ]
-        then
-            if same_same "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
-            then
-                dlt $sng_conf
-            else
-                printf "\n$blue %s$yellow does not match$blue %s$yellow,\n" "$sng_conf" "$sng_share/examples/$sng.conf-scribe"
-                printf " not deleting$blue %s$yellow ..." "$sng_conf"
-            fi
-        fi
-        # need to look for non-scribe & changed filters here or just backup the directories
+        dlt $sng_conf
         dlt $sngd_d
         dlt $sng_share
 
-        if $skynet_inst
+        if $skynet_inst && ! $reinst
         then
             printf "$white restoring Skynet logging to %s ..." "$syslog_log"
             sh $skynet settings syslog $syslog_log > /dev/null 2>&1
@@ -788,17 +822,7 @@ uninstall(){
         sed -i "/cru a $lr/d" $postmount
         printf "\n$cyan"
         opkg remove "$lr"
-        if [ -e $lr_conf ]
-        then
-            if same_same "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
-            then
-                dlt $lr_conf
-            else
-                printf "\n$blue %s$yellow does not match$blue %s$yellow,\n" "$lr_conf" "$lr_share/examples/$lr.conf-opkg"
-                printf " not deleting$blue %s$yellow ..." "$lr_conf"
-            fi
-        fi
-        # need to look for non-scribe & changed filters here or just backup the directories
+        dlt $lr_conf
         dlt $lrd_d
         dlt $lr_share
         dlt $lr_daily
@@ -810,34 +834,41 @@ uninstall(){
     dlt $TMP/$scribe_name-$scribe_branch
     dlt /opt/bin/$scribe_name
     dlt $scribe_script
-    printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
-    printf " It is recommended to reboot the router at this time.  If you do not\n"
-    printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
-    enter_to "reboot"
-    service reboot; exit 0
+    is_inst=false
+    if ! $reinst
+    then
+        printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
+        printf " It is recommended to reboot the router at this time.  If you do not\n"
+        printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
+        enter_to "reboot"
+        service reboot; exit 0
+    fi
 }
 
 menu_uninstall(){
-    printf "\n\n$white"
-    printf "                *********************\n"
-    printf "                ***$red W*A*R*N*I*N*G$white ***\n"
-    printf "                *********************\n\n"
-    printf "    This will remove the $yellow $sng $white and $yellow $lr $white packages!!\n"
-    printf "    Ensure you have backed up any configuration files you wish\n"
-    printf "    to keep.  All configuration files in $yellow $sngd_d $white \n"
-    printf "    and $yellow $lrd_d $white will be deleted!\n\n"
-    printf "                *********************\n"
-    printf "                ***$red W*A*R*N*I*N*G$white ***\n"
-    printf "                *********************\n\n"
-    printf "Are you SURE you want to uninstall $scribe_name (type YES to uninstall)? $std"
+    andre="remove"
+    uni="UN"
+    if $reinst
+    then
+        andre="remove and reinstall"
+        uni="RE"
+    fi
+    warning_sign
+    printf "    This will completely$magenta %s$yellow %s$white and$yellow %s$white.\n" "$andre" "$sng" "$lr"
+    printf "    Ensure you have backed up any configuration files you wish to keep.\n"
+    printf "    All configuration files in$yellow %s$white,$yellow %s$white,\n" "$sngd_d" "$lrd_d"
+    printf "   $yellow %s$white, and$yellow %s$white will be deleted!\n" "$sng_share" "$lr_share"
+    warning_sign
+    printf "    Type YES to$magenta %s$yellow %s$white: $std" "$andre" "$scribe_name"
     read -r wipeit
     case "$wipeit" in
         YES)
-            uninst_uisc
+            if ! $reinst; then uninst_uisc; fi
             uninstall
             ;;
         *)
-            printf "\n\n$white *** UNINSTALL ABORTED! ***$std\n\n"
+            do_inst=false
+            printf "\n\n$white *** %sINSTALL ABORTED! ***$std\n\n" "$uni"
             ;;
     esac
 }
@@ -874,7 +905,7 @@ menu_update(){
         printf "\n$white    No new version available. (GitHub version"
         [ "$new_vers" = "none" ] && printf " equal to " || printf "$red LESS THAN $white"
         printf "local version)\n"
-        printf "    Do you wish to force re-installation of scribe script? [y|n] $std"
+        printf "    Do you wish to force re-installation of %s script? [y|n] $std" "$scribe_name"
     fi
     if yes_no
     then
@@ -898,8 +929,6 @@ menu_update(){
 }
 
 gather_debug(){
-    scribe_debug_name=$scribe_name"_debug.log"
-    scribe_debug=$TMP/$scribe_debug_name
     dlt $scribe_debug
     printf "\n$white gathering debugging information ..."
     get_vers
@@ -973,10 +1002,61 @@ gather_debug(){
     printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
 }
 
+menu_backup(){
+    printf "\n$white Backing up %s and %s Configurations ... \n" "$sng" "$lr"
+    date_stamp "$scribe_bakname"
+    tar -zcvf $scribe_bakname $sng_conf $sngd_d $lr_conf $lrd_d
+    printf "\n$std Backup data is stored in $cyan%s$std.\n\n" "$scribe_bakname"
+}
+
+menu_restore(){
+    warning_sign
+    printf " This will overwrite $yellow%s$white and $yellow%s$white,\n" "$sng_conf" "$lr_conf"
+    printf " and replace all files in $yellow%s$white and $yellow%s$white!!\n" "$sngd_d" "$lrd_d"
+    printf " The file must be named $cyan%s$white.\n\n" "$scribe_bakname"
+    if [ ! -e $scribe_bakname ]
+    then
+        printf "   Backup file $magenta%s$white missing!!\n\n" "$scribe_bakname"
+    else
+        printf " Are you SURE you want to restore from $cyan%s$white (type YES to restore)? $std" $scribe_bakname
+        read -r rstit
+        case "$rstit" in
+            YES)
+                printf "\n$white Restoring %s and %s Configurations ... \n" "$sng" "$lr"
+                dlt $sngd_d
+                dlt $lrd_d
+                tar -zxvf $scribe_bakname -C /
+                chmod 600 $sngd_d/*
+                chmod 600 $lrd_d/*
+                printf "\n$std Backup data has been restored from $cyan%s$std.\n" "$scribe_bakname"
+                menu_restart
+                menu_status
+                ;;
+            *)
+                printf "\n\n$white *** RESTORE ABORTED! ***$std\n\n"
+                ;;
+        esac
+    fi
+}
+
+ut_menu(){
+    printf "$magenta           Scribe Utilities $white\n\n"
+    printf "     bu.   Backup configuration files\n"
+    printf "     rt.   Restore configuration files\n\n"
+    printf "     d.    Generate debug info\n\n"
+    printf "     e.    Exit to Main Menu\n"
+}
+
 main_menu(){
     and_lr=" & $lr cron\n"
-    header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
-    printf "$white $header"
+    if $sng_rung
+    then
+        res="Res"
+        ins="Rei"
+    else
+        res="S"
+        ins="I"
+    fi
     if $is_inst
     then
         printf "     s.    Show scribe status\n"
@@ -984,9 +1064,6 @@ main_menu(){
         if $sng_rung
         then
             printf "     rl.   Reload syslog-ng.conf\n"
-            res="Res"
-        else
-            res="S"
         fi
         printf "     rs.   %start %s" "$res" "$sng"
         if ! $sng_rung
@@ -1001,13 +1078,11 @@ main_menu(){
             printf "\n     u.    Update scribe\n"
             printf "     uf.   Update filters\n"
         fi
-        printf "     d.    Generate debug info\n\n"
+        printf "     su.   Scribe Utilities\n"
     fi
     printf "     e.    Exit scribe\n\n"
-    printf "     is.   Install / Reinstall scribe\n"
-    printf "     zs.   Remove scribe\n\n"
-    printf "$white $header"
-    printf "$magenta Please select an option: $std"
+    printf "     is.   %snstall scribe\n" "$ins" 
+    printf "     zs.   Remove scribe\n"
 }
 
 scribe_menu(){
@@ -1016,10 +1091,18 @@ scribe_menu(){
         pause=true
         not_recog=false
         run_scribe=false
-        sng_rung=false
-        [ -n "$( pidof $sng )" ] && sng_rung=true
         logo
-        main_menu
+        printf "$white $header"
+        case "$menu_type" in
+            utils)
+                ut_menu
+                ;;
+            *)
+                main_menu
+                ;;
+        esac
+        printf "\n$white $header"
+        printf "$magenta Please select an option: $std"
         read -r choice
         if $is_inst || [ "$choice" = "e" ] || [ "$choice" = "is" ] || [ "$choice" = "zs" ]
         then
@@ -1077,18 +1160,45 @@ scribe_menu(){
                     printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
                     if yes_no; then pause=false; less "$scribe_debug"; fi
                     ;;
+                su)
+                    menu_type="utils"
+                    pause=false
+                    ;;
+                bu)
+                    menu_backup
+                    ;;
+                rt)
+                    menu_restore
+                    ;;
                 e)
-                    printf "\n$white Thanks for using scribe! $std\n\n\n"
-                    exit 0
+                    if [ "$menu_type" = "main" ]
+                    then
+                        printf "\n$white Thanks for using scribe! $std\n\n\n"
+                        exit 0
+                    else
+                        menu_type="main"
+                        pause=false
+                    fi
                     ;;
                 is)
-                    if ! $is_inst; then pre_install; fi
-                    get_zip
-                    menu_install
-                    sh "$scribe_script" status nologo
-                    run_scribe=true
+                    do_inst=true
+                    reinst=false
+                    if $is_inst
+                    then
+                        reinst=true
+                        menu_uninstall
+                    fi
+                    if $do_inst
+                    then
+                        pre_install
+                        get_zip
+                        menu_install
+                        sh "$scribe_script" status nologo
+                        run_scribe=true
+                    fi
                     ;;
                 zs)
+                    reinst=false
                     menu_uninstall
                     ;;
                 *)
@@ -1101,6 +1211,8 @@ scribe_menu(){
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then sh "$scribe_script"; exit 0; fi
+        sng_rung=false
+        [ -n "$( pidof $sng )" ] && sng_rung=true
     done
 }
 
@@ -1109,18 +1221,27 @@ scribe_menu(){
 #### MAIN ####
 ##############
 
-if [ "$action" = "menu" ]; then scribe_menu; else logo; fi
-
-sng_rung=false
-[ -n "$( pidof $sng )" ] && sng_rung=true
+if [ "$action" = "menu" ]
+then
+    menu_type="main"
+    scribe_menu
+else
+    logo
+fi
 
 case $action in
 
-# run logrotate and reload syslog-ng conf not yet implement in cli
+# run logrotate and reload syslog-ng conf not yet implemented in cli
 
-# (re-)install syslog-ng, logrotate, & scribe script
+# install syslog-ng, logrotate, & scribe script
     install)
-        if ! $is_inst; then pre_install; fi
+        if $is_inst
+        then
+            printf "\n$white     *** %s already installed! *** \n\n" "$scribe_name"
+            printf " Please use menu command 'is' to reinstall. $std\n\n"
+            exit 1
+        fi
+        pre_install
         get_zip
         menu_install
         sh "$scribe_script" status nologo
@@ -1128,16 +1249,19 @@ case $action in
 
 # uninstall scribe
     uninstall | remove)
+        reinst=false
         menu_uninstall
         ;;
 
 # update scribe
     update)
-        if ! $sng_rung; then exit 0; fi
-        run_scribe=false
-        get_vers
-        prt_vers
-        menu_update
+        if $sng_rung
+        then
+            run_scribe=false
+            get_vers
+            prt_vers
+            menu_update
+        fi
         ;;
 
 # update syslog-ng and logrotate filters
@@ -1147,8 +1271,10 @@ case $action in
 
 # show total combined config
     show-config | config)
-        if ! $is_inst; then exit 0; fi
-        if show_config; then sng_syntax; fi
+        if $is_inst
+        then
+            if show_config; then sng_syntax; fi
+        fi
         ;;
 
 # verify syslog-ng is running and logrotate is listed in 'cru l'
@@ -1158,9 +1284,11 @@ case $action in
 
 # restart (or start if not running) syslog-ng
     restart | start)
-        if ! $is_inst; then exit 0; fi
-        menu_restart
-        menu_status
+        if $is_inst
+        then
+            menu_restart
+            menu_status
+        fi
         ;;
 
 # stop syslog-ng & logrotate cron job
@@ -1204,5 +1332,14 @@ case $action in
         ;;
 esac
 
-printf "\n"
+if ! $is_inst
+then
+    printf "\n$yellow %s $white not installed, command \"%s\" not valid!$std\n\n" "$scribe_name" "$action"
+elif ! $sng_rung
+then
+    printf "\n$yellow %s $white not running, command \"%s\" not valid!$std\n\n" "$sng" "$action"
+else
+    printf "\n"
+fi
+
 #eof

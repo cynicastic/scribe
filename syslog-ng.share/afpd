@@ -1,0 +1,21 @@
+# log Apple Time Machine messages to /opt/var/log/afpd.log
+#   afpd = Apple Filing Protocal daemon
+#   cnid_dbd = Catalog Node ID database daemon
+
+destination d_afpd {
+    file("/opt/var/log/afpd.log");
+};
+
+filter f_afpd {
+    program("afpd") or
+    program("cnid_dbd");
+};
+
+log {
+    source(src);
+    filter(f_afpd);
+    destination(d_afpd);
+    flags(final);
+};
+
+#eof

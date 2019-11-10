@@ -1,7 +1,7 @@
 # this MUST BE the file configured in Skynet as the syslog.log location
 # DO NOT use /tmp/syslog.log or /opt/var/log/messages here!
 destination d_skynet { 
-	file("/opt/var/log/skynet-0.log");
+	file("/opt/var/log/skynet-0.log", time_reap(60));
 };
 
 # logs everything from Skynet to /opt/var/log/skynet-0.log

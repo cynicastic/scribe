@@ -1,7 +1,6 @@
 # don't log empty messages from kernel
 
 destination d_null { 
-#    file("/opt/var/log/blank.log"); # uncomment this list if you want to verify only blank messages are being filtered out
     file("/dev/null");
 };
 

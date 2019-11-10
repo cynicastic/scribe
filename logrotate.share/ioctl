@@ -1,7 +1,6 @@
-/opt/var/log/firewall.log {
-    daily
-    rotate 9
-    minsize 1024k
+/opt/var/log/ioctl.log {
+    monthly
+    rotate 1
     postrotate
         /usr/bin/killall -HUP syslog-ng
     endscript

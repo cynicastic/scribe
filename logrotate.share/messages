@@ -1,7 +1,7 @@
-/opt/var/log/firewall.log {
+/opt/var/log/messages {
+    minsize 1024k
     daily
     rotate 9
-    minsize 1024k
     postrotate
         /usr/bin/killall -HUP syslog-ng
     endscript
