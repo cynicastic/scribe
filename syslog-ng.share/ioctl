@@ -1,0 +1,20 @@
+# put ioctl messages into /opt/var/log/ioctl.log
+# s/b mostly 'Recv ioctl req with op 2'
+
+destination d_ioctl { 
+    file("/opt/var/log/ioctl.log");
+};
+
+filter f_ioctl {
+    program("kernel") and
+    message("ioctl");
+};
+
+log {
+    source(src);
+    filter(f_ioctl);
+    destination(d_ioctl);
+    flags(final);
+};
+
+#eof

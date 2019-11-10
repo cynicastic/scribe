@@ -1,0 +1,33 @@
+# log dcd crash dump to /opt/var/log/crash.log only
+
+destination d_crash { 
+    file("/opt/var/log/crash.log");
+};
+
+filter f_crash {
+    message("dcd") or
+    message("v8A") or
+    message("pgd = ") or
+    message("\\[00000000\\]") or
+    message("task: ") or
+    message("PC is at") or
+    message("LR is at") or
+    message("pc :") or
+    message("sp :") or
+    message("x12:") or
+    message("x11:") or
+    message("x9 :") or
+    message("x7 :") or
+    message("x5 :") or
+    message("x3 :") or
+    message("x1 :");
+};
+
+log {
+    source(src);
+    filter(f_crash);
+    destination(d_crash);
+    flags(final);
+};
+
+#eof

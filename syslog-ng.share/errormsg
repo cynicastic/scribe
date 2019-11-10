@@ -1,0 +1,19 @@
+# log errors processing kernel log messages
+
+destination d_errmsg { 
+    file("/opt/var/log/error.log");
+};
+
+filter f_errmsg {
+    program("kernel") and
+    message("^Error processing log message:");
+};
+
+log {
+    source(src);
+    filter(f_errmsg);
+    destination(d_errmsg);
+    flags(final);
+};
+
+#eof

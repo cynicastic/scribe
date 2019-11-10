@@ -1,0 +1,22 @@
+# gather logrotate logs together for unified log
+
+destination d_logrotate { 
+    file("/opt/var/log/logrotate.log");
+};
+
+source s_lr_status {
+    file("/var/lib/logrotate.status" program-override("logrotate") flags(no-parse));
+};
+
+source s_lr_daily {
+    file("/opt/tmp/logrotate.daily" program-override("logrotate") flags(no-parse));
+};
+
+log {
+    source(s_lr_status);
+    source(s_lr_daily);
+    destination(d_logrotate);
+    flags(final);
+};
+
+#eof
