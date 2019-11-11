@@ -8,7 +8,7 @@ filter f_wlceventd {
     ( program("WLCEVENTD") or
     program ("wlceventd") ) and
     ( message("ssoc") or
-    message("Auth") );
+    message("uth") );
 };
 
 log {
