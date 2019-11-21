@@ -874,11 +874,11 @@ menu_uninstall(){
 
 menu_filters(){
     printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "$cyan    * adds any new files to /opt/share/*/examples and updates any\n"
-    printf "    example files that have changed\n"
-    printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
-    printf "    modify any existing files\n"
-    printf "$yellow    If you are unsure, you should answer 'y' here\n"
+    printf "$cyan        * Adds any new files to /opt/share/*/examples and updates\n"
+    printf "          any example files that have changed\n"
+    printf "        * Adds any new files to /opt/etc/*.d directories but does\n"
+    printf "          not modify any existing files\n\n"
+    printf "$yellow    If you are unsure, you should answer 'y' here\n\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
     then
