@@ -125,8 +125,7 @@ then
 fi
 
 # check if syslog-ng is running
-sng_rung=false
-[ -n "$( pidof $sng )" ] && sng_rung=true
+[ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
 
 #### functions ####
 
@@ -913,19 +912,14 @@ menu_update(){
         setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
-        run_scribe=true
-    else
-        printf "\n$white %s$red not$white updated!$std\n" "$scribe_name"
-    fi
-
-    if $run_scribe
-    then
         sh "$scribe_script" filters gotzip nologo
         sh "$scribe_script" status nologo
+        run_scribe=true
     else
-        menu_filters
+        printf "\n$white        *** %s$red not$white updated! *** $std\n" "$scribe_name"
         menu_status
     fi
+
 }
 
 gather_debug(){
@@ -1211,8 +1205,7 @@ scribe_menu(){
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then sh "$scribe_script"; exit 0; fi
-        sng_rung=false
-        [ -n "$( pidof $sng )" ] && sng_rung=true
+        [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
     done
 }
 
@@ -1245,6 +1238,7 @@ case $action in
         get_zip
         menu_install
         sh "$scribe_script" status nologo
+        exit 0
         ;;
 
 # uninstall scribe
@@ -1257,7 +1251,6 @@ case $action in
     update)
         if $sng_rung
         then
-            run_scribe=false
             get_vers
             prt_vers
             menu_update
