@@ -38,7 +38,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
-scribe_ver="v2.2.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.2.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
