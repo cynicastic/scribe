@@ -917,7 +917,6 @@ menu_update(){
         run_scribe=true
     else
         printf "\n$white        *** %s$red not$white updated! *** $std\n" "$scribe_name"
-        menu_status
     fi
 
 }
