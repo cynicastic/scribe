@@ -38,7 +38,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.2.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.2.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -125,8 +125,7 @@ then
 fi
 
 # check if syslog-ng is running
-sng_rung=false
-[ -n "$( pidof $sng )" ] && sng_rung=true
+[ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
 
 #### functions ####
 
@@ -875,10 +874,11 @@ menu_uninstall(){
 
 menu_filters(){
     printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "$cyan    * adds any new files to /opt/share/*/examples and updates files\n"
-    printf "    that have changed\n"
-    printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
-    printf "    modify any existing files\n"
+    printf "$cyan        * Adds any new files to /opt/share/*/examples and updates\n"
+    printf "          any example files that have changed\n"
+    printf "        * Adds any new files to /opt/etc/*.d directories but does\n"
+    printf "          not modify any existing files\n\n"
+    printf "$yellow    If you are unsure, you should answer 'y' here\n\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
     then
@@ -913,19 +913,13 @@ menu_update(){
         setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
-        run_scribe=true
-    else
-        printf "\n$white %s$red not$white updated!$std\n" "$scribe_name"
-    fi
-
-    if $run_scribe
-    then
         sh "$scribe_script" filters gotzip nologo
         sh "$scribe_script" status nologo
+        run_scribe=true
     else
-        menu_filters
-        menu_status
+        printf "\n$white        *** %s$red not$white updated! *** $std\n\n" "$scribe_name"
     fi
+
 }
 
 gather_debug(){
@@ -1211,8 +1205,7 @@ scribe_menu(){
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then sh "$scribe_script"; exit 0; fi
-        sng_rung=false
-        [ -n "$( pidof $sng )" ] && sng_rung=true
+        [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
     done
 }
 
@@ -1245,6 +1238,7 @@ case $action in
         get_zip
         menu_install
         sh "$scribe_script" status nologo
+        exit 0
         ;;
 
 # uninstall scribe
@@ -1257,7 +1251,6 @@ case $action in
     update)
         if $sng_rung
         then
-            run_scribe=false
             get_vers
             prt_vers
             menu_update
