@@ -877,8 +877,8 @@ menu_filters(){
     printf "$cyan    * adds any new files to /opt/share/*/examples and updates any\n"
     printf "    example files that have changed\n"
     printf "    * adds any new files to /opt/etc/*.d directories but does not\n"
-    printf "    modify any existing files\n\n"
-    printf "    If you are unsure, you should answer 'y' here\n"
+    printf "    modify any existing files\n"
+    printf "$yellow    If you are unsure, you should answer 'y' here\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
     then
