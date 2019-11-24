@@ -876,7 +876,7 @@ menu_uninstall(){
 }
 
 menu_filters(){
-    printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
+    printf "\n$white    Do you want to update$yellow %s$white and$yellow %s$white filter files?\n" "$sng" "$lr"
     printf "$cyan        1) Adds any new files to$yellow %s$cyan directories\n" "$share_ex"
     printf "           and updates any example files that have changed.\n"
     printf "        2) Adds any new files to$yellow %s$cyan directories.\n" "$etc_d"
