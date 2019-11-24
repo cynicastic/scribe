@@ -900,9 +900,14 @@ menu_filters(){
             comp_dir="$( echo "$share_ex" | sed "s/\*/$pckg/" )"
             for upd_file in "$check_dir"/*
             do
-                comp_file="$comp_dir/$( basename $upd_file )"
+                comp_file="$comp_dir/$( basename "$upd_file" )"
                 echo "$check_dir $comp_dir $upd_file $comp_file"
-                #if !same_same "$upd_file" "$comp_file"
+                if ! same_same "$upd_file" "$comp_file"
+                then
+                    echo "different!"
+                else
+                    echo "same!"
+                fi
             done
         done
         printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
