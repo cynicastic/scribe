@@ -447,7 +447,7 @@ setup_exmpls(){
             update_file "$exmpl" "$shrfile"
         elif ! same_same "$exmpl" "$shrfile"
         then
-            printf "updating %s\n" "$shrfile"
+            printf " updating %s\n" "$shrfile"
             update_file "$exmpl" "$shrfile"
         fi
     done
@@ -534,7 +534,7 @@ sng_ver_chk(){
 }
 
 setup_sng(){
-    printf "\n$magenta setting up %s ...\n $std" "$sng"
+    printf "\n$magenta setting up %s ...\n$std" "$sng"
     copy_rcfunc
     sed_sng
     sed_srvc
@@ -900,6 +900,7 @@ menu_filters(){
             for upd_file in "$check_dir"/*
             do
                 comp_file="$comp_dir/$( basename "$upd_file" )"
+                printf "%s %s %s" "$upd_file" "$comp_file" "$( same_same "$upd_file" "$comp_file" )"
                 if ! same_same "$upd_file" "$comp_file"
                 then
                     processed=false
