@@ -567,14 +567,6 @@ install(){
     [ "$1" = "$lr"  ] && setup_lr
 }
 
-sky_filter(){
-    printf " %s Skynet filter ..." "$sng"
-    cp -p $sng_share/examples/skynet $sngd_d 
-    printf "$blue setting Skynet log file location$white ..."
-    skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
-    sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
-}
-
 setup_scribe(){
     printf "\n$white setting up %s ..." "$scribe_name"
     cp -pf $unzip_dir/$scribe_name $scribe_script
@@ -587,34 +579,21 @@ setup_scribe(){
         dlt $lrd_d/firewall
         if [ ! -e "$sngd_d/skynet" ] || [ "$1" = "ALL" ]
         then
-            printf "$white installing"
-            sky_filter
-        elif ! same_same "$sng_share/examples/skynet" "$sngd_d/skynet"
-        then
-            printf "$white updating"
-            sky_filter
+            printf "$white installing %s Skynet filter ..." "$sng"
+            cp -p "$sng_share/examples/skynet" "$sngd_d" 
         fi
+        printf "$blue setting Skynet log file location$white ..."
+        skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
+        sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
     else
         dlt $sngd_d/skynet
         dlt $lrd_d/skynet
         if [ ! -e "$sngd_d/firewall" ] || [ "$1" = "ALL" ]
         then
             printf "$white installing %s firewall filter ..." "$sng"
-            cp -p $sng_share/examples/firewall $sngd_d
-        elif ! same_same "$sng_share/examples/firewall" "$sngd_d/firewall"
-        then
-            printf "$white updating %s firewall filter ..." "$sng"
-            cp -p $sng_share/examples/firewall $sngd_d
-        fi
-
-        if [ ! -e "$lrd_d/firewall" ] || [ "$1" = "ALL" ]
-        then
+            cp -p "$sng_share/examples/firewall" "$sngd_d"
             printf "$white installing firewall log rotation ..."
-            cp -p $lr_share/examples/firewall $lrd_d
-        elif ! same_same "$lr_share/examples/firewall" "$lrd_d/firewall"
-        then
-            printf "$white updating firewall log rotation ..."
-            cp -p $lr_share/examples/firewall $lrd_d
+            cp -p "$lr_share/examples/firewall" "$lrd_d"
         fi
     fi
     finis
@@ -634,7 +613,7 @@ setup_scribe(){
             printf " installing \"dcd Tainted\" log rotation ..."
             cp -p $lr_share/examples/crash $lrd_d
         else
-            printf " %s \"dcd Tainted\" log rotation already installed, skipping ..." "$lr"
+            printf " \"dcd Tainted\" log rotation already installed, skipping ..."
         fi
         finis
     else
@@ -812,7 +791,7 @@ uninstall(){
         if $skynet_inst && ! $reinst
         then
             printf "$white restoring Skynet logging to %s ..." "$syslog_log"
-            sh $skynet settings syslog $syslog_log > /dev/null 2>&1
+            sh $skynet settings syslog "$syslog_log" > /dev/null 2>&1
         fi
     else
         not_installed "$sng"
@@ -886,7 +865,8 @@ menu_filters(){
     printf "$white           NOTE:$cyan You will be provided an opportunity to review\n"
     printf "           the differences between the existing file and the\n"
     printf "           proposed update.\n\n"
-    printf "$yellow    If you are unsure, you should answer 'y' here\n\n"
+    printf "$yellow    If you are unsure, you should answer 'y' here; any changes to\n"
+    printf "    the running configuration will require confirmation.\n\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
     then
