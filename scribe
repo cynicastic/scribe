@@ -154,7 +154,7 @@ same_same(){ if [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ]; then true; else
 date_stamp(){ [ -e "$1" ] && mv "$1" "$1-$( date -Iseconds | cut -c 1-19 )"; }
 
 update_file(){
-    date_stamp "$2"
+    [ -n "$3" ] && [ "$3" = "backup" ] && date_stamp "$2"
     cp -pf "$1" "$2"
 }
 
@@ -397,7 +397,7 @@ get_vers(){
 prt_vers(){
     printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
     printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
-    case $new_vers in
+    case "$new_vers" in
         older)
             printf "$red      Local scribe version greater than GitHub version!"
             ;;
@@ -441,8 +441,7 @@ setup_exmpls(){
 
     for exmpl in "$unzip_dir/$1.share"/*
     do
-        exbase="$( basename "$exmpl" )"
-        shrfile="$share/examples/$exbase"
+        shrfile="$share/examples/$( basename "$exmpl" )"
         if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
         then
             update_file "$exmpl" "$shrfile"
@@ -455,7 +454,7 @@ setup_exmpls(){
 
     if [ -e $conf_opkg ]
     then
-        update_file "$conf_opkg" "$share/examples/$opkg"
+        update_file "$conf_opkg" "$share/examples/$opkg" "backup"
         dlt $conf_opkg
     elif [ ! -e "$share/examples/$opkg" ]
     then
@@ -543,7 +542,7 @@ setup_sng(){
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
         printf "$white %34s" "updating $( basename $sng_conf ) ..."
-        update_file $sng_share/examples/$sng.conf-scribe $sng_conf
+        update_file $sng_share/examples/$sng.conf-scribe $sng_conf "backup"
         finis
     fi
     sync_conf
@@ -894,19 +893,41 @@ menu_filters(){
         get_zip
         for pckg in $sng $lr
         do
-            #setup_ddir "$pckg" "NEW"
-            #setup_exmpls "$pckg" "NEWER"
+            setup_ddir "$pckg" "NEW"
+            setup_exmpls "$pckg" "NEWER"
             check_dir="$( echo "$etc_d" | sed "s/\*/$pckg/" )"
             comp_dir="$( echo "$share_ex" | sed "s/\*/$pckg/" )"
             for upd_file in "$check_dir"/*
             do
                 comp_file="$comp_dir/$( basename "$upd_file" )"
-                echo "$check_dir $comp_dir $upd_file $comp_file"
                 if ! same_same "$upd_file" "$comp_file"
                 then
-                    echo "different!"
-                else
-                    echo "same!"
+                    processed=false
+                    printf "\n$white Update available for$yellow %s$white.\n" "$upd_file"
+                    while ! $processed
+                    do
+                        printf "    (a)ccept, (r)eject, or (v)iew diff for this file? "
+                        read -r dispo
+                        case "$dispo" in
+                            a)
+                                update_file "$comp_file" "$upd_file"
+                                printf "\n$green %s updated!$std\n" "$upd_file"
+                                processed=true
+                                ;;
+                            r)
+                                printf "\n$magenta %s not updated!$std\n" "$upd_file"
+                                processed=true
+                                ;;
+                            v)
+                                echo
+                                diff "$upd_file" "$comp_file" | more
+                                echo
+                                ;;
+                            *)
+                                echo
+                                ;;
+                        esac
+                    done
                 fi
             done
         done
@@ -1244,7 +1265,7 @@ else
     logo
 fi
 
-case $action in
+case "$action" in
 
 # run logrotate and reload syslog-ng conf not yet implemented in cli
 
