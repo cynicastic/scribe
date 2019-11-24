@@ -83,8 +83,10 @@ readonly lr_conf="/opt/etc/$lr.conf"
 readonly lr_daily="/opt/tmp/logrotate.daily"
 readonly sngd_d="/opt/etc/$sng.d"
 readonly lrd_d="/opt/etc/$lr.d"
+readonly etc_d="/opt/etc/*.d"
 readonly sng_share="/opt/share/$sng"
 readonly lr_share="/opt/share/$lr"
+readonly share_ex="/opt/share/*/examples"
 readonly scribe_bakname="$TMP/$scribe_name-backup.tar.gz"
 readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
@@ -876,10 +878,15 @@ menu_uninstall(){
 
 menu_filters(){
     printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "$cyan        * Adds any new files to /opt/share/*/examples and updates\n"
-    printf "          any example files that have changed\n"
-    printf "        * Adds any new files to /opt/etc/*.d directories but does\n"
-    printf "          not modify any existing files\n\n"
+    printf "$cyan        1) Adds any new files to$yellow %s$cyan directories\n" "$share_ex"
+    printf "           and updates any example files that have changed.\n"
+    printf "        2) Adds any new files to$yellow %s$cyan directories.\n" "$etc_d"
+    printf "        3) Asks to update existing files in$yellow %s$cyan directories\n" "$etc_d"
+    printf "$magenta           _IF_$cyan a corresponding file exists in$yellow %s$cyan,\n" "$share_ex"
+    printf "$magenta           _AND_$cyan it is different from the file in$yellow %s$cyan.\n" "$etc_d"
+    printf "$white           NOTE:$cyan You will be provided an opportunity to review\n"
+    printf "           the differences between the existing file and the\n"
+    printf "           proposed update.\n\n"
     printf "$yellow    If you are unsure, you should answer 'y' here\n\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
@@ -887,14 +894,22 @@ menu_filters(){
         get_zip
         for pckg in $sng $lr
         do
-            setup_ddir "$pckg" "NEW"
-            setup_exmpls "$pckg" "NEWER"
+            #setup_ddir "$pckg" "NEW"
+            #setup_exmpls "$pckg" "NEWER"
+            check_dir="$( echo "$etc_d" | sed "s/\*/$pckg/" )"
+            comp_dir="$( echo "$share_ex" | sed "s/\*/$pckg/" )"
+            for upd_file in "$check_dir"/*
+            do
+                comp_file="$comp_dir/$( basename $upd_file )"
+                echo "$check_dir $comp_dir $upd_file $comp_file"
+                #if !same_same "$upd_file" "$comp_file"
+            done
         done
         printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
+        rld_conf
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
     fi
-    rld_conf
 }
 
 menu_update(){
