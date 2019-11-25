@@ -880,8 +880,9 @@ menu_filters(){
             for upd_file in "$check_dir"/*
             do
                 comp_file="$comp_dir/$( basename "$upd_file" )"
-                    if same_same "$upd_file" "$comp_file"; then xxx=true; else xxx=false; fi
-                    printf "%s %s %s\n" "$upd_file" "$comp_file" "$xxx"
+                # Holding next two line for debugging.  Remove in future
+                #if same_same "$upd_file" "$comp_file"; then xxx="same"; else xxx="DIFF"; fi
+                #printf "%s %s %s\n" "$upd_file" "$comp_file" "$xxx"
                 if ! same_same "$upd_file" "$comp_file"
                 then
                     processed=false
