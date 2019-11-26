@@ -119,13 +119,11 @@ readonly std="\033[m"
 [ -e "$uiscribe" ] && uisc_inst=true || uisc_inst=false
 
 # check if Skynet is installed
-skynet_inst=false
-if [ -e $fire_start ]
+if [ -e "$fire_start" ] && grep -q "skynetloc" "$fire_start"
 then
-    if grep -q "skynetloc" $fire_start
-    then
-        skynet_inst=true
-    fi
+    skynet_inst=true
+else
+    skynet_inst=false
 fi
 
 # check if syslog-ng is running
@@ -883,7 +881,7 @@ menu_filters(){
                 # Holding next two line for debugging.  Remove in future
                 #if same_same "$upd_file" "$comp_file"; then xxx="same"; else xxx="DIFF"; fi
                 #printf "%s %s %s\n" "$upd_file" "$comp_file" "$xxx"
-                if ! same_same "$upd_file" "$comp_file"
+                if [ -e "$comp_file" ] && ! same_same "$upd_file" "$comp_file"
                 then
                     processed=false
                     printf "\n$white Update available for$yellow %s$white.\n" "$upd_file"
