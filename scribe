@@ -498,7 +498,7 @@ show_config(){
 run_logrotate(){
     dlt $lr_daily
     printf "\n$white %34s" "running $lr ..."
-    $lr_loc $lr_conf >> $lr_daily 2>&1
+    $lr_loc -v $lr_conf >> $lr_daily 2>&1
     finis
     printf "\n$magenta checking %s log for errors $cyan\n\n" "$lr"
     tail -v $lr_daily
