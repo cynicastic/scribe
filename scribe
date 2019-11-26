@@ -75,12 +75,14 @@ readonly sng_loc="/opt/sbin/$sng"
 readonly sngctl_loc="$sng_loc-ctl"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
+readonly debug_sep="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*="
 readonly scribe_debug_name=$scribe_name"_debug.log"
 readonly scribe_debug=$TMP/$scribe_debug_name
 readonly sngconf_merged="$TMP/$sng-complete.conf"
 readonly sngconf_error="$TMP/$sng-error.conf"
 readonly lr_conf="/opt/etc/$lr.conf"
 readonly lr_daily="/opt/tmp/logrotate.daily"
+readonly lr_temp="/opt/tmp/logrotate.temp"
 readonly sngd_d="/opt/etc/$sng.d"
 readonly lrd_d="/opt/etc/$lr.d"
 readonly etc_d="/opt/etc/*.d"
@@ -498,7 +500,7 @@ show_config(){
 run_logrotate(){
     dlt $lr_daily
     printf "\n$white %34s" "running $lr ..."
-    $lr_loc -v $lr_conf >> $lr_daily 2>&1
+    $lr_loc $lr_conf >> $lr_daily 2>&1
     finis
     printf "\n$magenta checking %s log for errors $cyan\n\n" "$lr"
     tail -v $lr_daily
@@ -953,34 +955,35 @@ gather_debug(){
 
     # everything between { } goes to $scribe_debug
     {
+        printf "%s\n" "$debug_sep"
         printf "### Scribe Version: %s\n" "$scribe_long"
         printf "###  Local Scribe md5: %s\n" "$scribe_md5"
         printf "### GitHub Version: %s\n" "$github_long"
         printf "### GitHub Scribe md5: %s\n" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
-        printf "\n### check running log processes:\n"
+        printf "\n%s\n### check running log processes:\n" "$debug_sep"
         ps | grep "log"
-        printf "\n### check crontab:\n"
+        printf "\n%s\n### check crontab:\n" "$debug_sep"
         cru l | grep $lr
-        printf "\n### directory check:\n"
+        printf "\n%s\n### directory check:\n" "$debug_sep"
         ls -ld /tmp/syslog*
         ls -ld /jffs/syslog*
-        printf "\n### top output:\n"
+        printf "\n%s\n### top output:\n" "$debug_sep"
         top -b -n1 | head
-        printf "\n### *log references in top:\n"
+        printf "\n%s\n### *log references in top:\n" "$debug_sep"
         top -b -n1 | grep log
-        printf "\n### init.d directory:\n"
+        printf "\n%s\n### init.d directory:\n" "$debug_sep"
         ls -l /opt/etc/init.d
-        printf "\n### contents of S01syslog-ng\n"
+        printf "\n%s\n### contents of S01syslog-ng\n" "$debug_sep"
         cat /opt/etc/init.d/S01syslog-ng
-        printf "\n### /opt/var/log directory:\n"
+        printf "\n%s\n### /opt/var/log directory:\n" "$debug_sep"
         ls -l /opt/var/log
-        printf "\n### installed packages:\n"
+        printf "\n%s\n### installed packages:\n" "$debug_sep"
         opkg list-installed
     } >> $scribe_debug
 
-    printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
+    printf "\n%s\n### syslog-ng syntax check:\n" "$debug_sep" >> $scribe_debug
     dlt $sngconf_merged
     dlt $sngconf_error
     $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
@@ -996,19 +999,22 @@ gather_debug(){
         printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
     fi
 
+    printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> $scribe_debug
+    $lr_loc -d $lr_conf >> $scribe_debug 2>&1
+
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
-            printf "\n### Skynet log locations:\n"
+            printf "\n%s\n### Skynet log locations:\n" "$debug_sep"
             grep "syslog" "$skynetcfg"
         } >> $scribe_debug
     else
-        printf "\n### Skynet not installed.\n" >> $scribe_debug
+        printf "\n%s\n### Skynet not installed.\n" "$debug_sep" >> $scribe_debug
     fi
 
-    printf "\n### end of output ###\n" >> $scribe_debug
+    printf "\n%s\n### end of output ###\n" "$debug_sep" >> $scribe_debug
     redact="$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
@@ -1061,7 +1067,8 @@ ut_menu(){
     printf "$magenta           Scribe Utilities $white\n\n"
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
-    printf "     d.    Generate debug info\n\n"
+    printf "     d.    Generate debug info\n"
+    printf "     dl.   Show logrotate debug info in less\n\n"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1173,11 +1180,6 @@ scribe_menu(){
                         not_recog=true
                     fi
                     ;;
-                d)
-                    gather_debug
-                    printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
-                    if yes_no; then pause=false; less "$scribe_debug"; fi
-                    ;;
                 su)
                     menu_type="utils"
                     pause=false
@@ -1187,6 +1189,18 @@ scribe_menu(){
                     ;;
                 rt)
                     menu_restore
+                    ;;
+                d)
+                    gather_debug
+                    printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
+                    if yes_no; then pause=false; less "$scribe_debug"; fi
+                    ;;
+                dl)
+                    dlt $lr_temp
+                    $lr_loc -d $lr_conf >> $lr_temp 2>&1
+                    less $lr_temp
+                    dlt $lr_temp
+                    pause=false
                     ;;
                 e)
                     if [ "$menu_type" = "main" ]
