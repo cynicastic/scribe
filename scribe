@@ -1068,7 +1068,7 @@ ut_menu(){
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug info\n"
-    printf "     dl.   Show logrotate debug info in less\n\n"
+    printf "     ld.   Show logrotate debug info in less\n\n"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1195,7 +1195,7 @@ scribe_menu(){
                     printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
                     if yes_no; then pause=false; less "$scribe_debug"; fi
                     ;;
-                dl)
+                ld)
                     dlt $lr_temp
                     $lr_loc -d $lr_conf >> $lr_temp 2>&1
                     less $lr_temp
