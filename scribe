@@ -38,11 +38,12 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.2.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.3.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
-readonly scribe_repo="https://raw.githubusercontent.com/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
+readonly raw_git="https://raw.githubusercontent.com"
+readonly scribe_repo="$raw_git/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
 readonly unzip_dir="$TMP/$scribe_name-$scribe_branch"
 readonly scribe_tmp="$TMP/scribe.tmp"
 readonly script_d="/jffs/scripts"
@@ -73,16 +74,20 @@ readonly sng_loc="/opt/sbin/$sng"
 readonly sngctl_loc="$sng_loc-ctl"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
+readonly debug_sep="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*="
 readonly scribe_debug_name=$scribe_name"_debug.log"
 readonly scribe_debug=$TMP/$scribe_debug_name
 readonly sngconf_merged="$TMP/$sng-complete.conf"
 readonly sngconf_error="$TMP/$sng-error.conf"
 readonly lr_conf="/opt/etc/$lr.conf"
 readonly lr_daily="/opt/tmp/logrotate.daily"
+readonly lr_temp="/opt/tmp/logrotate.temp"
 readonly sngd_d="/opt/etc/$sng.d"
 readonly lrd_d="/opt/etc/$lr.d"
+readonly etc_d="/opt/etc/*.d"
 readonly sng_share="/opt/share/$sng"
 readonly lr_share="/opt/share/$lr"
+readonly share_ex="/opt/share/*/examples"
 readonly scribe_bakname="$TMP/$scribe_name-backup.tar.gz"
 readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
@@ -93,7 +98,9 @@ readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
 readonly uisc_name="uiScribe"
-readonly uisc_repo="https://raw.githubusercontent.com/jackyaz/$uisc_name/master"
+readonly uisc_author="jackyaz"
+readonly uisc_branch="master"
+readonly uisc_repo="$raw_git/$uisc_author/$uisc_name/$uisc_branch/$uisc_name.sh"
 readonly uiscribe="$script_d/$uisc_name"
 
 # color constants
@@ -107,21 +114,17 @@ readonly white="\033[1;37m"
 readonly std="\033[m"
 
 # check if scribe is already installed by looking for link in /opt/bin
-is_inst=false
-[ -e "/opt/bin/$scribe_name" ] && is_inst=true
+[ -e "/opt/bin/$scribe_name" ] && is_inst=true || is_inst=false
 
 # test if uiScribe is installed
-uisc_inst=false
-[ -e "$uiscribe" ] && uisc_inst=true
+[ -e "$uiscribe" ] && uisc_inst=true || uisc_inst=false
 
 # check if Skynet is installed
-skynet_inst=false
-if [ -e $fire_start ]
+if [ -e "$fire_start" ] && grep -q "skynetloc" "$fire_start"
 then
-    if grep -q "skynetloc" $fire_start
-    then
-        skynet_inst=true
-    fi
+    skynet_inst=true
+else
+    skynet_inst=false
 fi
 
 # check if syslog-ng is running
@@ -150,7 +153,7 @@ same_same(){ if [ "$( md5_file "$1" )" = "$( md5_file "$2" )" ]; then true; else
 date_stamp(){ [ -e "$1" ] && mv "$1" "$1-$( date -Iseconds | cut -c 1-19 )"; }
 
 update_file(){
-    date_stamp "$2"
+    [ -n "$3" ] && [ "$3" = "backup" ] && date_stamp "$2"
     cp -pf "$1" "$2"
 }
 
@@ -393,7 +396,7 @@ get_vers(){
 prt_vers(){
     printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
     printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
-    case $new_vers in
+    case "$new_vers" in
         older)
             printf "$red      Local scribe version greater than GitHub version!"
             ;;
@@ -431,27 +434,26 @@ setup_exmpls(){
     opkg="$1.conf-opkg"
     conf_opkg="$conf-opkg"
 
-    [ "$2" != "ALL" ] && printf "\n $white"
+    [ "$2" != "ALL" ] && printf "\n$white"
     [ ! -d $share ] && mkdir $share
     [ ! -d $share/examples ] && mkdir $share/examples
 
     for exmpl in "$unzip_dir/$1.share"/*
     do
-        exbase="$( basename "$exmpl" )"
-        shrfile="$share/examples/$exbase"
+        shrfile="$share/examples/$( basename "$exmpl" )"
         if [ ! -e "$shrfile" ] || [ "$2" = "ALL" ]
         then
             update_file "$exmpl" "$shrfile"
         elif ! same_same "$exmpl" "$shrfile"
         then
-            printf "updating %s\n" "$shrfile"
+            printf " updating %s\n" "$shrfile"
             update_file "$exmpl" "$shrfile"
         fi
     done
 
     if [ -e $conf_opkg ]
     then
-        update_file "$conf_opkg" "$share/examples/$opkg"
+        update_file "$conf_opkg" "$share/examples/$opkg" "backup"
         dlt $conf_opkg
     elif [ ! -e "$share/examples/$opkg" ]
     then
@@ -531,7 +533,7 @@ sng_ver_chk(){
 }
 
 setup_sng(){
-    printf "\n$magenta setting up %s ...\n $std" "$sng"
+    printf "\n$magenta setting up %s ...\n$std" "$sng"
     copy_rcfunc
     sed_sng
     sed_srvc
@@ -539,7 +541,7 @@ setup_sng(){
     if [ "$( md5_file "$sng_share/examples/$sng.conf-scribe" )" != "$( md5_file "$sng_conf" )" ]
     then
         printf "$white %34s" "updating $( basename $sng_conf ) ..."
-        update_file $sng_share/examples/$sng.conf-scribe $sng_conf
+        update_file $sng_share/examples/$sng.conf-scribe $sng_conf "backup"
         finis
     fi
     sync_conf
@@ -564,14 +566,6 @@ install(){
     [ "$1" = "$lr"  ] && setup_lr
 }
 
-sky_filter(){
-    printf " %s Skynet filter ..." "$sng"
-    cp -p $sng_share/examples/skynet $sngd_d 
-    printf "$blue setting Skynet log file location$white ..."
-    skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
-    sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
-}
-
 setup_scribe(){
     printf "\n$white setting up %s ..." "$scribe_name"
     cp -pf $unzip_dir/$scribe_name $scribe_script
@@ -584,34 +578,21 @@ setup_scribe(){
         dlt $lrd_d/firewall
         if [ ! -e "$sngd_d/skynet" ] || [ "$1" = "ALL" ]
         then
-            printf "$white installing"
-            sky_filter
-        elif ! same_same "$sng_share/examples/skynet" "$sngd_d/skynet"
-        then
-            printf "$white updating"
-            sky_filter
+            printf "$white installing %s Skynet filter ..." "$sng"
+            cp -p "$sng_share/examples/skynet" "$sngd_d" 
         fi
+        printf "$blue setting Skynet log file location$white ..."
+        skynetlog="$( grep -m1 'file("' $sngd_d/skynet | awk -F\" '{ printf ( $2 ); }'; )"
+        sh $skynet settings syslog "$skynetlog" > /dev/null 2>&1
     else
         dlt $sngd_d/skynet
         dlt $lrd_d/skynet
         if [ ! -e "$sngd_d/firewall" ] || [ "$1" = "ALL" ]
         then
             printf "$white installing %s firewall filter ..." "$sng"
-            cp -p $sng_share/examples/firewall $sngd_d
-        elif ! same_same "$sng_share/examples/firewall" "$sngd_d/firewall"
-        then
-            printf "$white updating %s firewall filter ..." "$sng"
-            cp -p $sng_share/examples/firewall $sngd_d
-        fi
-
-        if [ ! -e "$lrd_d/firewall" ] || [ "$1" = "ALL" ]
-        then
+            cp -p "$sng_share/examples/firewall" "$sngd_d"
             printf "$white installing firewall log rotation ..."
-            cp -p $lr_share/examples/firewall $lrd_d
-        elif ! same_same "$lr_share/examples/firewall" "$lrd_d/firewall"
-        then
-            printf "$white updating firewall log rotation ..."
-            cp -p $lr_share/examples/firewall $lrd_d
+            cp -p "$lr_share/examples/firewall" "$lrd_d"
         fi
     fi
     finis
@@ -631,7 +612,7 @@ setup_scribe(){
             printf " installing \"dcd Tainted\" log rotation ..."
             cp -p $lr_share/examples/crash $lrd_d
         else
-            printf " %s \"dcd Tainted\" log rotation already installed, skipping ..." "$lr"
+            printf " \"dcd Tainted\" log rotation already installed, skipping ..."
         fi
         finis
     else
@@ -641,14 +622,14 @@ setup_scribe(){
 }
 
 setup_uisc(){
-    uisc_ver=$(/usr/sbin/curl -fsL --retry 3 "$uisc_repo/$uisc_name.sh" | grep "SCRIPT_VERSION=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([.][0-9]{1,2})')
+    uisc_ver=$(/usr/sbin/curl -fsL --retry 3 "$uisc_repo" | grep "SCRIPT_VERSION=" | grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([.][0-9]{1,2})')
     printf "\n$white Would you like to install$cyan %s %s$white, a script by Jack Yaz\n" "$uisc_name" "$uisc_ver"
     printf " that modifies the webui$yellow System Log$white page to show the various logs\n"
     printf " generated by %s in individual drop-down windows [y|n]? " "$sng"
     if yes_no
     then
         printf "\n"
-        /usr/sbin/curl --retry 3 "$uisc_repo/$uisc_name.sh" -o "$uiscribe" && chmod 0755 $uiscribe && $uiscribe install
+        /usr/sbin/curl --retry 3 "$uisc_repo" -o "$uiscribe" && chmod 0755 $uiscribe && $uiscribe install
     fi
 }
 
@@ -809,7 +790,7 @@ uninstall(){
         if $skynet_inst && ! $reinst
         then
             printf "$white restoring Skynet logging to %s ..." "$syslog_log"
-            sh $skynet settings syslog $syslog_log > /dev/null 2>&1
+            sh $skynet settings syslog "$syslog_log" > /dev/null 2>&1
         fi
     else
         not_installed "$sng"
@@ -873,12 +854,18 @@ menu_uninstall(){
 }
 
 menu_filters(){
-    printf "\n$white    Do you want to update %s and %s filter files?\n" "$sng" "$lr"
-    printf "$cyan        * Adds any new files to /opt/share/*/examples and updates\n"
-    printf "          any example files that have changed\n"
-    printf "        * Adds any new files to /opt/etc/*.d directories but does\n"
-    printf "          not modify any existing files\n\n"
-    printf "$yellow    If you are unsure, you should answer 'y' here\n\n"
+    printf "\n$white    Do you want to update$yellow %s$white and$yellow %s$white filter files?\n" "$sng" "$lr"
+    printf "$cyan        1) Adds any new files to$yellow %s$cyan directories\n" "$share_ex"
+    printf "           and updates any example files that have changed.\n"
+    printf "        2) Adds any new files to$yellow %s$cyan directories.\n" "$etc_d"
+    printf "        3) Asks to update existing files in$yellow %s$cyan directories\n" "$etc_d"
+    printf "$magenta           _IF_$cyan a corresponding file exists in$yellow %s$cyan,\n" "$share_ex"
+    printf "$magenta           _AND_$cyan it is different from the file in$yellow %s$cyan.\n" "$etc_d"
+    printf "$white           NOTE:$cyan You will be provided an opportunity to review\n"
+    printf "           the differences between the existing file and the\n"
+    printf "           proposed update.\n\n"
+    printf "$yellow    If you are unsure, you should answer 'y' here; any changes to\n"
+    printf "    the running configuration will require confirmation.\n\n"
     printf "$white        Update filter files? [y|n] $std"
     if yes_no
     then
@@ -887,12 +874,50 @@ menu_filters(){
         do
             setup_ddir "$pckg" "NEW"
             setup_exmpls "$pckg" "NEWER"
+            check_dir="$( echo "$etc_d" | sed "s/\*/$pckg/" )"
+            comp_dir="$( echo "$share_ex" | sed "s/\*/$pckg/" )"
+            for upd_file in "$check_dir"/*
+            do
+                comp_file="$comp_dir/$( basename "$upd_file" )"
+                # Holding next two line for debugging.  Remove in future
+                #if same_same "$upd_file" "$comp_file"; then xxx="same"; else xxx="DIFF"; fi
+                #printf "%s %s %s\n" "$upd_file" "$comp_file" "$xxx"
+                if [ -e "$comp_file" ] && ! same_same "$upd_file" "$comp_file"
+                then
+                    processed=false
+                    printf "\n$white Update available for$yellow %s$white.\n" "$upd_file"
+                    while ! $processed
+                    do
+                        printf "    (a)ccept, (r)eject, or (v)iew diff for this file? "
+                        read -r dispo
+                        case "$dispo" in
+                            a)
+                                update_file "$comp_file" "$upd_file"
+                                printf "\n$green %s updated!$std\n" "$upd_file"
+                                processed=true
+                                ;;
+                            r)
+                                printf "\n$magenta %s not updated!$std\n" "$upd_file"
+                                processed=true
+                                ;;
+                            v)
+                                echo
+                                diff "$upd_file" "$comp_file" | more
+                                echo
+                                ;;
+                            *)
+                                echo
+                                ;;
+                        esac
+                    done
+                fi
+            done
         done
         printf "\n$white %s and %s example files updated!$std\n" "$sng" "$lr"
+        rld_conf
     else
         printf "\n$white %s and %s example files$red not$white updated!$std\n" "$sng" "$lr"
     fi
-    rld_conf
 }
 
 menu_update(){
@@ -929,34 +954,35 @@ gather_debug(){
 
     # everything between { } goes to $scribe_debug
     {
+        printf "%s\n" "$debug_sep"
         printf "### Scribe Version: %s\n" "$scribe_long"
         printf "###  Local Scribe md5: %s\n" "$scribe_md5"
         printf "### GitHub Version: %s\n" "$github_long"
         printf "### GitHub Scribe md5: %s\n" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
-        printf "\n### check running log processes:\n"
+        printf "\n%s\n### check running log processes:\n" "$debug_sep"
         ps | grep "log"
-        printf "\n### check crontab:\n"
+        printf "\n%s\n### check crontab:\n" "$debug_sep"
         cru l | grep $lr
-        printf "\n### directory check:\n"
+        printf "\n%s\n### directory check:\n" "$debug_sep"
         ls -ld /tmp/syslog*
         ls -ld /jffs/syslog*
-        printf "\n### top output:\n"
+        printf "\n%s\n### top output:\n" "$debug_sep"
         top -b -n1 | head
-        printf "\n### *log references in top:\n"
+        printf "\n%s\n### *log references in top:\n" "$debug_sep"
         top -b -n1 | grep log
-        printf "\n### init.d directory:\n"
+        printf "\n%s\n### init.d directory:\n" "$debug_sep"
         ls -l /opt/etc/init.d
-        printf "\n### contents of S01syslog-ng\n"
+        printf "\n%s\n### contents of S01syslog-ng\n" "$debug_sep"
         cat /opt/etc/init.d/S01syslog-ng
-        printf "\n### /opt/var/log directory:\n"
+        printf "\n%s\n### /opt/var/log directory:\n" "$debug_sep"
         ls -l /opt/var/log
-        printf "\n### installed packages:\n"
+        printf "\n%s\n### installed packages:\n" "$debug_sep"
         opkg list-installed
     } >> $scribe_debug
 
-    printf "\n### syslog-ng syntax check:\n" >> $scribe_debug
+    printf "\n%s\n### syslog-ng syntax check:\n" "$debug_sep" >> $scribe_debug
     dlt $sngconf_merged
     dlt $sngconf_error
     $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
@@ -972,19 +998,22 @@ gather_debug(){
         printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
     fi
 
+    printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> $scribe_debug
+    $lr_loc -d $lr_conf >> $scribe_debug 2>&1
+
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
         {
-            printf "\n### Skynet log locations:\n"
+            printf "\n%s\n### Skynet log locations:\n" "$debug_sep"
             grep "syslog" "$skynetcfg"
         } >> $scribe_debug
     else
-        printf "\n### Skynet not installed.\n" >> $scribe_debug
+        printf "\n%s\n### Skynet not installed.\n" "$debug_sep" >> $scribe_debug
     fi
 
-    printf "\n### end of output ###\n" >> $scribe_debug
+    printf "\n%s\n### end of output ###\n" "$debug_sep" >> $scribe_debug
     redact="$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
     printf " taring the output ..."
@@ -1037,7 +1066,8 @@ ut_menu(){
     printf "$magenta           Scribe Utilities $white\n\n"
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
-    printf "     d.    Generate debug info\n\n"
+    printf "     d.    Generate debug info\n"
+    printf "     ld.   Show logrotate debug info in less\n\n"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1149,11 +1179,6 @@ scribe_menu(){
                         not_recog=true
                     fi
                     ;;
-                d)
-                    gather_debug
-                    printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
-                    if yes_no; then pause=false; less "$scribe_debug"; fi
-                    ;;
                 su)
                     menu_type="utils"
                     pause=false
@@ -1163,6 +1188,18 @@ scribe_menu(){
                     ;;
                 rt)
                     menu_restore
+                    ;;
+                d)
+                    gather_debug
+                    printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
+                    if yes_no; then pause=false; less "$scribe_debug"; fi
+                    ;;
+                ld)
+                    dlt $lr_temp
+                    $lr_loc -d $lr_conf >> $lr_temp 2>&1
+                    less $lr_temp
+                    dlt $lr_temp
+                    pause=false
                     ;;
                 e)
                     if [ "$menu_type" = "main" ]
@@ -1222,7 +1259,7 @@ else
     logo
 fi
 
-case $action in
+case "$action" in
 
 # run logrotate and reload syslog-ng conf not yet implemented in cli
 

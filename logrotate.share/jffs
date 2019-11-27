@@ -1,7 +1,7 @@
 /opt/var/log/jffs.log {
     minsize 1024k
-    rotate 1
     daily
+    rotate 1
     postrotate
         /usr/bin/killall -HUP syslog-ng
     endscript
