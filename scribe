@@ -37,8 +37,8 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-scribe_ver="v2.3.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_branch="gamma"
+scribe_ver="v2.3.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -1066,8 +1066,9 @@ ut_menu(){
     printf "$magenta           Scribe Utilities $white\n\n"
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
-    printf "     d.    Generate debug info\n"
-    printf "     ld.   Show logrotate debug info in less\n\n"
+    printf "     d.    Generate debug file\n"
+    printf "     c.    Show combined %s config\n" "$sng"
+    printf "     ld.   Show %s debug info\n\n" "$lr"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1084,11 +1085,11 @@ main_menu(){
     if $is_inst
     then
         printf "     s.    Show scribe status\n"
-        printf "     c.    Show combined syslog-ng config\n"
         if $sng_rung
         then
             printf "     rl.   Reload syslog-ng.conf\n"
         fi
+        printf "     lr.   Run logrotate now\n"
         printf "     rs.   %start %s" "$res" "$sng"
         if ! $sng_rung
         then
@@ -1096,13 +1097,12 @@ main_menu(){
         else
             printf "\n     st.   Stop %s$and_lr" "$sng"
         fi
-        printf "     lr.   Run logrotate now\n"
         if $sng_rung
         then
             printf "\n     u.    Update scribe\n"
             printf "     uf.   Update filters\n"
         fi
-        printf "     su.   Scribe Utilities\n"
+        printf "     su.   scribe utilities\n"
     fi
     printf "     e.    Exit scribe\n\n"
     printf "     is.   %snstall scribe\n" "$ins" 
@@ -1134,10 +1134,6 @@ scribe_menu(){
                 s)
                     menu_status
                     ;;
-                c)
-                    show_config
-                    pause=false
-                    ;;
                 rl)
                     if $sng_rung
                     then
@@ -1145,6 +1141,9 @@ scribe_menu(){
                     else
                         not_recog=true
                     fi
+                    ;;
+                lr)
+                    run_logrotate
                     ;;
                 rs)
                     menu_restart
@@ -1157,9 +1156,6 @@ scribe_menu(){
                     else
                         not_recog=true
                     fi
-                    ;;
-                lr)
-                    run_logrotate
                     ;;
                 u)
                     if $sng_rung
@@ -1193,6 +1189,10 @@ scribe_menu(){
                     gather_debug
                     printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
                     if yes_no; then pause=false; less "$scribe_debug"; fi
+                    ;;
+                c)
+                    show_config
+                    pause=false
                     ;;
                 ld)
                     dlt $lr_temp
