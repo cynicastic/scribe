@@ -1,4 +1,4 @@
-### README.1ST --- 9 Nov 2019
+### README.1ST --- 1 Dec 2019
 
 Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 
@@ -26,11 +26,19 @@ Notes:      1)  All ".log" files will be in /opt/var/log/.
                 default messages file.
 
 The files in this directory are:
+    A00remote   Sends _ALL_ messages to a remote logging facility before
+                processing by any of the filters below.  This is not a
+                blocking filter, all messages will still be processed by
+                the other filters to be logged to local log files.  See the
+                README_REMOTE file for further information on setting up
+                remote logging and other options for sending only certain
+                messages to a remote logging facility.
+    
     afpd        Filters out messages related to daemons supporting Apple
                 Time Machine, Apple Filing Protocal daemon (afpd) and
                 Catalog Node I/D databae (cnid_dbd).
 
-    ascd        Filters out messages from Broadcomm's Automatic Channel
+    acsd        Filters out messages from Broadcomm's Automatic Channel
                 Selector Daemon. 
 
     blankmsg    Sends any blank messages to /dev/null.  Automatically placed
