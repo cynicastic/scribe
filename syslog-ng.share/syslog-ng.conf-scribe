@@ -49,7 +49,8 @@ destination messages {
 };
 
 # uncomment these three lines to send udp log messages to local network
-# must also uncomment "destination(log_server);" below
+# must also uncomment "destination(log_server);" below for messages that
+# are not otherwise filtered out to be sent to the remote log server
 # destination log_server {
 #    udp("192.168.x.y" port(514));
 #};

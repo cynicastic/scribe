@@ -33,17 +33,17 @@ The files in this directory are:
                 README_REMOTE file for further information on setting up
                 remote logging and other options for sending only certain
                 messages to a remote logging facility.
-    
-    afpd        Filters out messages related to daemons supporting Apple
-                Time Machine, Apple Filing Protocal daemon (afpd) and
-                Catalog Node I/D databae (cnid_dbd).
 
     acsd        Filters out messages from Broadcomm's Automatic Channel
                 Selector Daemon. 
 
+    afpd        Filters out messages related to daemons supporting Apple
+                Time Machine, Apple Filing Protocal daemon (afpd) and
+                Catalog Node I/D databae (cnid_dbd).
+
     blankmsg    Sends any blank messages to /dev/null.  Automatically placed
                 in /opt/etc/syslog-ng.d/ on installation.
-                
+
     crash       Filters out most lines from the dcd_tainted crash messages
                 as well as most lines of other crash messages.
 
