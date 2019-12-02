@@ -1,4 +1,4 @@
-/opt/var/log/ascd.log {
+/opt/var/log/acsd.log {
    rotate 2
    postrotate
        /usr/bin/killall -HUP syslog-ng

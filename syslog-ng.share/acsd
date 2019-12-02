@@ -1,0 +1,18 @@
+# log all acsd logs to /opt/var/log/acsd.log and stop processing acsd logs
+
+destination d_acsd {
+   file("/opt/var/log/acsd.log");
+};
+
+filter f_acsd {
+   program("acsd");
+};
+
+log {
+   source(src);
+   filter(f_acsd);
+   destination(d_acsd);
+   flags(final);
+};
+
+#eof
