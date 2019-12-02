@@ -36,8 +36,8 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="master"
-scribe_ver="v2.3.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_branch="gamma"
+scribe_ver="v2.3.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -937,6 +937,8 @@ menu_update(){
         setup_scribe "NEWER"
         copy_rcfunc
         printf "\n$white %s updated!$std\n" "$scribe_name"
+        # Need a routine to update /opt/etc/logrotate.conf & /opt/etc/syslog-ng.conf
+        # sh "$scribe_script" ?????  Think about where to put this ?????
         sh "$scribe_script" filters gotzip nologo
         sh "$scribe_script" status nologo
         run_scribe=true
