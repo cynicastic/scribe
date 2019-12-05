@@ -93,6 +93,7 @@ readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
 readonly unmount="$script_d/unmount"
 readonly skynet="$script_d/firewall"
+readonly sky_req="6.9.2"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
@@ -636,7 +637,7 @@ pre_install(){
     # check for required components
     okay=true
 
-    # require Entware
+    # check if Entware & ASUSWRT-Merlin are installed and Merlin version number
     if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
     then
         printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
@@ -659,9 +660,21 @@ pre_install(){
         fi
     fi
 
-    # check if Skynet is installed
-    if ! $skynet_inst 
+    # check if Skynet is installed and version number
+    if $skynet_inst 
     then
+        printf "\n\n$white Skynet detected, checking version ..."
+        sky_ver="$( grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([.][0-9]{1,2})' "$skynet" )"
+        printf " version %s detected ..." "$sky_ver"
+        if [ "$( ver_num "$sky_ver" )" -lt "$( ver_num "$sky_req" )" ]
+        then
+            printf "$red update required!\n"
+            printf " Skynet %s or later is required! $std\n" "$sky_req"
+            okay=false
+        else
+            printf "$green okay! $std\n"
+        fi
+    else
         printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
         printf " If you plan to install Skynet, it is recommended\n"
         printf " to stop %s installation now and install Skynet\n" "$scribe_name"
