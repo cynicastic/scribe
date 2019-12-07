@@ -62,7 +62,7 @@ readonly arch="$( uname -m )"
 # miscellaneous constants
 readonly header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
 readonly sng="syslog-ng"
-readonly sng_reqd="3.23"
+readonly sng_reqd="3.19"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_init="$init_d/S01$sng"
