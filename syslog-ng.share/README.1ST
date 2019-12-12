@@ -85,6 +85,13 @@ The files in this directory are:
                 /opt/var/log/logrotate.log.i  Automatically placed in
                 /opt/etc/syslog-ng.d/ on installation.
 
+    ntpd        Entware ntpd sends log messages to /opt/var/spool/ntp/ntp.log
+                instead of the system logging facility.  This gathers those
+                log messages, formats them in the standard syslog-ng format,
+                and puts them in /opt/var/log/ntp.log.  Note that the busybox
+                firmware ntpd does not appear to send log messages anywhere
+                at all, not even through the system logging facility.
+
     openvpn     Filters out messages from "ovpn-server#" or "ovpn-client#" to
                 openvpn.log, where "#" is the server or client number.  Also
                 filters out messages from "openvp-routing" to the same file.

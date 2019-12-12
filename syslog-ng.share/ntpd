@@ -1,0 +1,21 @@
+# put Entware's ntpd logging into /opt/var/log/ntp.log
+
+source s_ntpd {
+    file("/opt/var/spool/ntp/ntp.log");
+};
+
+template t_ntpd {
+    template("${DATE} ${HOST} $(substr \"${MESSAGE}\" \"13\")\n");
+};
+
+destination d_ntpd { 
+    file("/opt/var/log/ntp.log" template(t_ntpd));
+};
+
+log {
+    source(s_ntpd);
+    destination(d_ntpd);
+    flags(final);
+};
+
+#eof
