@@ -496,6 +496,12 @@ show_config(){
     fi
 }
 
+show_loaded(){
+    dlt $sngconf_merged
+    $sngctl_loc config --preprocessed > $sngconf_merged
+    less $sngconf_merged
+}
+
 run_logrotate(){
     dlt $lr_daily
     printf "\n$white %34s" "running $lr ..."
@@ -996,7 +1002,7 @@ gather_debug(){
         opkg list-installed
     } >> $scribe_debug
 
-    printf "\n%s\n### syslog-ng syntax check:\n" "$debug_sep" >> $scribe_debug
+    printf "\n%s\n### syslog-ng on-disk syntax check:\n" "$debug_sep" >> $scribe_debug
     dlt $sngconf_merged
     dlt $sngconf_error
     $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
@@ -1081,7 +1087,11 @@ ut_menu(){
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug file\n"
-    printf "     c.    Show combined %s config\n" "$sng"
+    printf "     c.    Check on-disk %s config\n" "$sng"
+    if $sng_rung
+    then
+        printf "     lc.   Show loaded %s config\n" "$sng"
+    fi
     printf "     ld.   Show %s debug info\n\n" "$lr"
     printf "     e.    Exit to Main Menu\n"
 }
@@ -1208,6 +1218,15 @@ scribe_menu(){
                     show_config
                     pause=false
                     ;;
+                lc)
+                    if $sng_rung
+                    then
+                        show_loaded
+                        pause=false
+                    else
+                        not_recog=true
+                    fi
+                    ;;
                 ld)
                     dlt $lr_temp
                     $lr_loc -d $lr_conf >> $lr_temp 2>&1
@@ -1308,11 +1327,6 @@ case "$action" in
         fi
         ;;
 
-# update syslog-ng and logrotate filters
-    update-filters | filters)
-        if $sng_rung; then menu_filters; fi
-        ;;
-
 # show total combined config
     show-config | config)
         if $is_inst
@@ -1371,7 +1385,7 @@ case "$action" in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | remove | update | [update-]filters | [show-]config | status | [re]start | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( install | uninstall | remove | update | [show-]config | status | [re]start | debug )$std\n\n"
         exit 1
         ;;
 esac
