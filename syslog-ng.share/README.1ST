@@ -41,6 +41,9 @@ The files in this directory are:
                 Time Machine, Apple Filing Protocal daemon (afpd) and
                 Catalog Node I/D databae (cnid_dbd).
 
+    bcm63xx     Filters out messages containing "bcm63xx" to bcm63.log.
+                These appear to be mostly nusiance messages.
+
     blankmsg    Sends any blank messages to /dev/null.  Automatically placed
                 in /opt/etc/syslog-ng.d/ on installation.
 
