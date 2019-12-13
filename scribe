@@ -1294,8 +1294,6 @@ fi
 
 case "$action" in
 
-# run logrotate and reload syslog-ng conf not yet implemented in cli
-
 # install syslog-ng, logrotate, & scribe script
     install)
         if $is_inst
@@ -1338,6 +1336,11 @@ case "$action" in
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
         if $is_inst; then menu_status; fi
+        ;;
+
+# reload syslog-ng configuration
+    reload)
+        if $sng_rung; then rld_conf; fi
         ;;
 
 # restart (or start if not running) syslog-ng
@@ -1385,7 +1388,7 @@ case "$action" in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | remove | update | [show-]config | status | [re]start | debug )$std\n\n"
+    printf "\n$white Usage: $0 ( uninstall | update | [show-]config | status | reload | [re]start | debug )$std\n\n"
         exit 1
         ;;
 esac
