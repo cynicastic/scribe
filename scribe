@@ -1000,6 +1000,8 @@ gather_debug(){
         ls -l /opt/var/log
         printf "\n%s\n### installed packages:\n" "$debug_sep"
         opkg list-installed
+        printf "\n%s\n### syslog-ng running configuration:\n" "$debug_sep"
+        $sngctl_loc config --preprocessed
     } >> $scribe_debug
 
     printf "\n%s\n### syslog-ng on-disk syntax check:\n" "$debug_sep" >> $scribe_debug
@@ -1010,17 +1012,15 @@ gather_debug(){
     if [ -s $sngconf_error ]
     then
         {
-            printf "#### SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ####\n"
+            printf "#### SYSLOG-NG SYNTAX ON-DISK CHECK FAILED! SEE BELOW ####\n"
             cat $sngconf_error
-            printf "###### END SYSLOG-NG SYNTAX FAILURE OUTPUT ######\n"
+            printf "###### END SYSLOG-NG ON-DISK SYNTAX FAILURE OUTPUT ######\n"
         } >> $scribe_debug
     else
-        printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
+        printf "#### syslog-ng on-disk syntax check okay! ####\n" >> $scribe_debug
     fi
-
     printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> $scribe_debug
     $lr_loc -d $lr_conf >> $scribe_debug 2>&1
-
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
@@ -1032,14 +1032,28 @@ gather_debug(){
     else
         printf "\n%s\n### Skynet not installed.\n" "$debug_sep" >> $scribe_debug
     fi
-
     printf "\n%s\n### end of output ###\n" "$debug_sep" >> $scribe_debug
-    redact="$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )"
+
+    printf " redacting username and USB drive names ..."
+    redact="$( echo "$USER" | awk  '{ print substr($0, 1, 8); }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
+    mntnum=1
+    for usbmnt in /tmp/mnt/*
+    do
+        usbdrv="$( echo "$usbmnt" | awk -F/ '{ printf( $4 ); }' )"
+        # note that if the usb drive name has a comma in it, the sed will fail
+        if [ "X$( echo "$usbmnt" | grep ',' )" = "X" ]
+        then
+            sed -i "s,$usbdrv,USB#$mntnum,g" "$scribe_debug"
+        else
+            printf "\n\n    USB drive $cyan%s$white has a comma in the drive name,$red unable to redact!$white\n\n" "$usbdrv"
+        fi
+        mntnum=$(( mntnum + 1 ))
+    done
+
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
-
     printf "\n$std Debug output stored in $cyan%s$std, please review this file\n" "$scribe_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
     printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
