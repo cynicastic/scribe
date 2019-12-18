@@ -1,5 +1,6 @@
 # put Entware's ntpd logging into /opt/var/log/ntp.log
 
+# Entware normally puts logs in spool subdirectory
 source s_ntpd {
     file("/opt/var/spool/ntp/ntp.log");
 };
@@ -8,12 +9,29 @@ template t_ntpd {
     template("${DATE} ${HOST} $(substr \"${MESSAGE}\" \"13\")\n");
 };
 
-destination d_ntpd { 
-    file("/opt/var/log/ntp.log" template(t_ntpd));
+destination dt_ntpd { 
+    file("/opt/var/log/ntp.log" template(t_ntpd) persist-name("dt_ntpd"));
 };
 
 log {
     source(s_ntpd);
+    destination(dt_ntpd);
+    flags(final);
+};
+
+# redirect messages sent through logging facility
+# (ntpd startup and/or logfile not set in ntp.conf)
+filter f_ntpd {
+    program("ntpd");
+};
+
+destination d_ntpd {
+    file("/opt/var/log/ntp.log" persist-name("d_ntpd"));
+};
+
+log {
+    source(src);
+    filter(f_ntpd);
     destination(d_ntpd);
     flags(final);
 };
