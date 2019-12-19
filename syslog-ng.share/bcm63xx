@@ -1,0 +1,19 @@
+# put messages with 'bcm63xx' into /opt/var/log/bcm63.log
+
+destination d_bcm63 { 
+    file("/opt/var/log/bcm63.log");
+};
+
+filter f_bcm63 {
+    program("kernel") and
+    message("bcm63xx");
+};
+
+log {
+    source(src);
+    filter(f_bcm63);
+    destination(d_bcm63);
+    flags(final);
+};
+
+#eof

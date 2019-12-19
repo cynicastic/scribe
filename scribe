@@ -37,7 +37,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.3.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.4.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -62,7 +62,7 @@ readonly arch="$( uname -m )"
 # miscellaneous constants
 readonly header="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=$std\n\n"
 readonly sng="syslog-ng"
-readonly sng_reqd="3.23"
+readonly sng_reqd="3.19"
 readonly lr="logrotate"
 readonly init_d="/opt/etc/init.d"
 readonly S01sng_init="$init_d/S01$sng"
@@ -93,6 +93,7 @@ readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
 readonly unmount="$script_d/unmount"
 readonly skynet="$script_d/firewall"
+readonly sky_req="6.9.2"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
@@ -495,6 +496,12 @@ show_config(){
     fi
 }
 
+show_loaded(){
+    dlt $sngconf_merged
+    $sngctl_loc config --preprocessed > $sngconf_merged
+    less $sngconf_merged
+}
+
 run_logrotate(){
     dlt $lr_daily
     printf "\n$white %34s" "running $lr ..."
@@ -636,7 +643,7 @@ pre_install(){
     # check for required components
     okay=true
 
-    # require Entware
+    # check if Entware & ASUSWRT-Merlin are installed and Merlin version number
     if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
     then
         printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
@@ -659,9 +666,21 @@ pre_install(){
         fi
     fi
 
-    # check if Skynet is installed
-    if ! $skynet_inst 
+    # check if Skynet is installed and version number
+    if $skynet_inst 
     then
+        printf "\n\n$white Skynet detected, checking version ..."
+        sky_ver="$( grep -m1 -oE 'v[0-9]{1,2}([.][0-9]{1,2})([.][0-9]{1,2})' "$skynet" )"
+        printf " version %s detected ..." "$sky_ver"
+        if [ "$( ver_num "$sky_ver" )" -lt "$( ver_num "$sky_req" )" ]
+        then
+            printf "$red update required!\n"
+            printf " Skynet %s or later is required! $std\n" "$sky_req"
+            okay=false
+        else
+            printf "$green okay! $std\n"
+        fi
+    else
         printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
         printf " If you plan to install Skynet, it is recommended\n"
         printf " to stop %s installation now and install Skynet\n" "$scribe_name"
@@ -878,9 +897,6 @@ menu_filters(){
             for upd_file in "$check_dir"/*
             do
                 comp_file="$comp_dir/$( basename "$upd_file" )"
-                # Holding next two line for debugging.  Remove in future
-                #if same_same "$upd_file" "$comp_file"; then xxx="same"; else xxx="DIFF"; fi
-                #printf "%s %s %s\n" "$upd_file" "$comp_file" "$xxx"
                 if [ -e "$comp_file" ] && ! same_same "$upd_file" "$comp_file"
                 then
                     processed=false
@@ -943,7 +959,6 @@ menu_update(){
     else
         printf "\n$white        *** %s$red not$white updated! *** $std\n\n" "$scribe_name"
     fi
-
 }
 
 gather_debug(){
@@ -979,9 +994,11 @@ gather_debug(){
         ls -l /opt/var/log
         printf "\n%s\n### installed packages:\n" "$debug_sep"
         opkg list-installed
+        printf "\n%s\n### syslog-ng running configuration:\n" "$debug_sep"
+        $sngctl_loc config --preprocessed
     } >> $scribe_debug
 
-    printf "\n%s\n### syslog-ng syntax check:\n" "$debug_sep" >> $scribe_debug
+    printf "\n%s\n### syslog-ng on-disk syntax check:\n" "$debug_sep" >> $scribe_debug
     dlt $sngconf_merged
     dlt $sngconf_error
     $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
@@ -989,17 +1006,15 @@ gather_debug(){
     if [ -s $sngconf_error ]
     then
         {
-            printf "#### SYSLOG-NG SYNTAX CHECK FAILED! SEE BELOW ####\n"
+            printf "#### SYSLOG-NG SYNTAX ON-DISK CHECK FAILED! SEE BELOW ####\n"
             cat $sngconf_error
-            printf "###### END SYSLOG-NG SYNTAX FAILURE OUTPUT ######\n"
+            printf "###### END SYSLOG-NG ON-DISK SYNTAX FAILURE OUTPUT ######\n"
         } >> $scribe_debug
     else
-        printf "#### syslog-ng syntax check okay! ####\n" >> $scribe_debug
+        printf "#### syslog-ng on-disk syntax check okay! ####\n" >> $scribe_debug
     fi
-
     printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> $scribe_debug
     $lr_loc -d $lr_conf >> $scribe_debug 2>&1
-
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
@@ -1011,14 +1026,28 @@ gather_debug(){
     else
         printf "\n%s\n### Skynet not installed.\n" "$debug_sep" >> $scribe_debug
     fi
-
     printf "\n%s\n### end of output ###\n" "$debug_sep" >> $scribe_debug
-    redact="$( echo "$USER" | awk  '{ string=substr($0, 1, 8); print string; }' )"
+
+    printf " redacting username and USB drive names ..."
+    redact="$( echo "$USER" | awk  '{ print substr($0, 1, 8); }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
+    mntnum=0
+    for usbmnt in /tmp/mnt/*
+    do
+        usbdrv="$( echo "$usbmnt" | awk -F/ '{ printf( $4 ); }' )"
+        # note that if the usb drive name has a comma in it, the sed will fail
+        if [ "X$( echo "$usbmnt" | grep ',' )" = "X" ]
+        then
+            sed -i "s,$usbdrv,usb#$mntnum,g" "$scribe_debug"
+        else
+            printf "\n\n    USB drive $cyan%s$white has a comma in the drive name,$red unable to redact!$white\n\n" "$usbdrv"
+        fi
+        mntnum=$(( mntnum + 1 ))
+    done
+
     printf " taring the output ..."
     tar -zcvf $scribe_debug.tar.gz -C $TMP $scribe_debug_name > /dev/null 2>&1
     finis
-
     printf "\n$std Debug output stored in $cyan%s$std, please review this file\n" "$scribe_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
     printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
@@ -1066,7 +1095,11 @@ ut_menu(){
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug file\n"
-    printf "     c.    Show combined %s config\n" "$sng"
+    printf "     c.    Check on-disk %s config\n" "$sng"
+    if $sng_rung
+    then
+        printf "     lc.   Show loaded %s config\n" "$sng"
+    fi
     printf "     ld.   Show %s debug info\n\n" "$lr"
     printf "     e.    Exit to Main Menu\n"
 }
@@ -1193,6 +1226,15 @@ scribe_menu(){
                     show_config
                     pause=false
                     ;;
+                lc)
+                    if $sng_rung
+                    then
+                        show_loaded
+                        pause=false
+                    else
+                        not_recog=true
+                    fi
+                    ;;
                 ld)
                     dlt $lr_temp
                     $lr_loc -d $lr_conf >> $lr_temp 2>&1
@@ -1260,8 +1302,6 @@ fi
 
 case "$action" in
 
-# run logrotate and reload syslog-ng conf not yet implemented in cli
-
 # install syslog-ng, logrotate, & scribe script
     install)
         if $is_inst
@@ -1293,11 +1333,6 @@ case "$action" in
         fi
         ;;
 
-# update syslog-ng and logrotate filters
-    update-filters | filters)
-        if $sng_rung; then menu_filters; fi
-        ;;
-
 # show total combined config
     show-config | config)
         if $is_inst
@@ -1309,6 +1344,11 @@ case "$action" in
 # verify syslog-ng is running and logrotate is listed in 'cru l'
     status)
         if $is_inst; then menu_status; fi
+        ;;
+
+# reload syslog-ng configuration
+    reload)
+        if $sng_rung; then rld_conf; fi
         ;;
 
 # restart (or start if not running) syslog-ng
@@ -1329,6 +1369,12 @@ case "$action" in
     debug)
         if $is_inst; then gather_debug; fi
         ;;
+
+# update syslog-ng and logrotate filters - only used in update process
+    filters)
+        if $sng_rung; then menu_filters; fi
+        ;;
+
 
 # kill syslogd & klogd - only available via cli
     kill-logger)
@@ -1356,7 +1402,7 @@ case "$action" in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( install | uninstall | remove | update | [update-]filters | [show-]config | status | [re]start | debug )$std\n\n"
+    printf "\n$white Usage: $0 ( uninstall | update | [show-]config | status | reload | [re]start | debug )$std\n\n"
         exit 1
         ;;
 esac

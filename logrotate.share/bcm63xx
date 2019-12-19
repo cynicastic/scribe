@@ -1,0 +1,7 @@
+/opt/var/log/bcm63.log {
+    monthly
+    rotate 1
+    postrotate
+        /usr/bin/killall -HUP syslog-ng
+    endscript
+}
