@@ -964,7 +964,6 @@ menu_update(){
     else
         printf "\n$white        *** %s$red not$white updated! *** $std\n\n" "$scribe_name"
     fi
-
 }
 
 gather_debug(){
@@ -1037,14 +1036,14 @@ gather_debug(){
     printf " redacting username and USB drive names ..."
     redact="$( echo "$USER" | awk  '{ print substr($0, 1, 8); }' )"
     sed -i "s/$redact/redacted/g" "$scribe_debug"
-    mntnum=1
+    mntnum=0
     for usbmnt in /tmp/mnt/*
     do
         usbdrv="$( echo "$usbmnt" | awk -F/ '{ printf( $4 ); }' )"
         # note that if the usb drive name has a comma in it, the sed will fail
         if [ "X$( echo "$usbmnt" | grep ',' )" = "X" ]
         then
-            sed -i "s,$usbdrv,USB#$mntnum,g" "$scribe_debug"
+            sed -i "s,$usbdrv,usb#$mntnum,g" "$scribe_debug"
         else
             printf "\n\n    USB drive $cyan%s$white has a comma in the drive name,$red unable to redact!$white\n\n" "$usbdrv"
         fi
@@ -1375,6 +1374,12 @@ case "$action" in
     debug)
         if $is_inst; then gather_debug; fi
         ;;
+
+# update syslog-ng and logrotate filters - only used in update process
+    filters)
+        if $sng_rung; then menu_filters; fi
+        ;;
+
 
 # kill syslogd & klogd - only available via cli
     kill-logger)
