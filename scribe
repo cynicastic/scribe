@@ -395,20 +395,20 @@ get_vers(){
 }
 
 prt_vers(){
-    printf "\n$white %34s$green %s \n" "scribe installed version:" "$scribe_long"
-    printf "$white %34s$green %s $std\n" "scribe GitHub version:" "$github_long"
+    printf "\n$white %34s$green %s \n" "$scribe_name installed version:" "$scribe_long"
+    printf "$white %34s$green %s $std\n" "$scribe_name GitHub version:" "$github_long"
     case "$new_vers" in
         older)
-            printf "$red      Local scribe version greater than GitHub version!"
+            printf "$red      Local %s version greater than GitHub version!" "$scribe_name"
             ;;
         major)
-            printf "$yellow %45s" "New scribe version available"
+            printf "$yellow %45s" "New $scribe_name version available"
             ;;
         minor)
-            printf "$blue %45s" "Minor scribe update available"
+            printf "$blue %45s" "Minor $scribe_name update available"
             ;;
         none)
-            printf "$green %40s" "scribe is up to date!"
+            printf "$green %40s" "$scribe_name is up to date!"
             ;;
     esac
     printf "$std\n\n"
@@ -532,7 +532,7 @@ sng_ver_chk(){
     if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
     then
         printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
-        printf "Please update your Entware packages and run scribe install again.$cyan\n\n"
+        printf "Please update your Entware packages and run %s install again.$cyan\n\n" "$scribe_name"
         opkg remove "$sng"
         printf "$std\n\n"
         exit 1
@@ -970,10 +970,10 @@ gather_debug(){
     # everything between { } goes to $scribe_debug
     {
         printf "%s\n" "$debug_sep"
-        printf "### Scribe Version: %s\n" "$scribe_long"
-        printf "###  Local Scribe md5: %s\n" "$scribe_md5"
+        printf "### %s Version: %s\n" "$scribe_name" "$scribe_long"
+        printf "###  Local %s md5: %s\n" "$scribe_name" "$scribe_md5"
         printf "### GitHub Version: %s\n" "$github_long"
-        printf "### GitHub Scribe md5: %s\n" "$github_md5"
+        printf "### GitHub %s md5: %s\n" "$scribe_name" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n%s\n### check running log processes:\n" "$debug_sep"
@@ -995,11 +995,15 @@ gather_debug(){
         ls -l /opt/var/log
         printf "\n%s\n### installed packages:\n" "$debug_sep"
         opkg list-installed
-        printf "\n%s\n### syslog-ng running configuration:\n" "$debug_sep"
-        $sngctl_loc config --preprocessed
+        printf "\n%s\n### %s running configuration:\n" "$debug_sep" "$sng"
     } >> $scribe_debug
-
-    printf "\n%s\n### syslog-ng on-disk syntax check:\n" "$debug_sep" >> $scribe_debug
+    if $sng_rung
+    then
+        $sngctl_loc config --preprocessed >> $scribe_debug
+    else
+        printf "#### %s not running! ####\n%s\n" "$sng" "$debug_sep"
+    fi
+    printf "\n%s\n### %s on-disk syntax check:\n" "$debug_sep" "$sng" >> $scribe_debug
     dlt $sngconf_merged
     dlt $sngconf_error
     $sng_loc --preprocess-into=$sngconf_merged 2> $sngconf_error
@@ -1016,16 +1020,14 @@ gather_debug(){
     fi
     printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> $scribe_debug
     $lr_loc -d $lr_conf >> $scribe_debug 2>&1
+    printf "\n%s\n### Skynet log locations:\n" "$debug_sep"
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
-        {
-            printf "\n%s\n### Skynet log locations:\n" "$debug_sep"
-            grep "syslog" "$skynetcfg"
-        } >> $scribe_debug
+        grep "syslog" "$skynetcfg" >> $scribe_debug
     else
-        printf "\n%s\n### Skynet not installed.\n" "$debug_sep" >> $scribe_debug
+        printf "#### Skynet not installed! ####\n%s\n" "$debug_sep" >> $scribe_debug
     fi
     printf "\n%s\n### end of output ###\n" "$debug_sep" >> $scribe_debug
 
@@ -1092,7 +1094,7 @@ menu_restore(){
 }
 
 ut_menu(){
-    printf "$magenta           Scribe Utilities $white\n\n"
+    printf "$magenta           %s Utilities $white\n\n" "$scribe_name"
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug file\n"
@@ -1117,7 +1119,7 @@ main_menu(){
     fi
     if $is_inst
     then
-        printf "     s.    Show scribe status\n"
+        printf "     s.    Show %s status\n" "$scribe_name"
         if $sng_rung
         then
             printf "     rl.   Reload syslog-ng.conf\n"
@@ -1135,11 +1137,11 @@ main_menu(){
             printf "\n     u.    Update scribe\n"
             printf "     uf.   Update filters\n"
         fi
-        printf "     su.   scribe utilities\n"
+        printf "     su.   %s utilities\n" "$scribe_name"
     fi
-    printf "     e.    Exit scribe\n\n"
-    printf "     is.   %snstall scribe\n" "$ins" 
-    printf "     zs.   Remove scribe\n"
+    printf "     e.    Exit %s\n\n" "$scribe_name"
+    printf "     is.   %snstall %s\n" "$ins" "$scribe_name" 
+    printf "     zs.   Remove %s\n" "$scribe_name"
 }
 
 scribe_menu(){
