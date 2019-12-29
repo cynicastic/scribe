@@ -1,4 +1,4 @@
-### README.1ST --- 1 Dec 2019
+### README.1ST --- 29 Dec 2019
 
 Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 
@@ -108,6 +108,9 @@ The files in this directory are:
                 skynet-0.log.  On installing scribe, scribe tells Skynet to
                 get its data from skynet-0.log.  This file should normally
                 not ever be copied manually to opt/etc/syslog-ng.d/
+
+    spdmerlin   Filters out spdMerlin's twice-hourly connection speed test
+                results to /opt/var/log/spdmerlin.log
 
     syslog-ng.conf-opkg     DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
                             This is a copy of the original syslog-ng.conf
