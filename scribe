@@ -989,6 +989,7 @@ menu_forgrnd(){
     fi
     $sng_loc -Fevd
     if $restrt
+    then
         printf "$white restarting %s ..." "$sng"
         $S01sng_init start
     fi
@@ -1273,6 +1274,7 @@ scribe_menu(){
                     ;;
                 sd)
                     menu_forgrnd
+                    ;;
                 ld)
                     dlt $lr_temp
                     $lr_loc -d $lr_conf >> $lr_temp 2>&1
