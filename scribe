@@ -240,14 +240,17 @@ check_sng(){
         printf "$green alive. $std\n"
     else
         printf "$red dead. $std\n"
-        printf "$yellow    type '%s restart' at shell prompt or\n" "$scribe_name"
-        printf "    select rs from %s menu to start %s\n" "$scribe_name" "$sng"
-        printf "    * the system logger (syslogd)"
+        printf "$white %34s" "the system logger (syslogd) ..."
         if [ -n "$( pidof syslogd )" ]
         then
-            printf "$green is running. $std\n"
+            printf "$green is running. $std\n\n"
+            printf "$yellow    Type$red %s restart$yellow at shell prompt or select$red rs$yellow\n" "$scribe_name"
+            printf "    from %s main menu to start %s.\n" "$scribe_name" "$sng"
         else
-            printf "$red is not running! $std\n"
+            printf "$red is not running! $std\n\n"
+            printf "$white    Type$red %s -Fevd$white at shell prompt or select$red sd$white\n" "$sng"
+            printf "    from %s utilities menu ($red%s$white) to view %s\n" "$scribe_name" "su" "$sng" 
+            printf "    debugging data.\n"
         fi
     fi
 }
@@ -373,7 +376,7 @@ sync_conf(){
 
 sng_syntax(){
     printf "$white %34s" "$( basename $sng_conf ) syntax check ..."
-    if syslog-ng -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
+    if $sng_loc -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
 get_vers(){
@@ -962,6 +965,35 @@ menu_update(){
     fi
 }
 
+menu_forgrnd(){
+    restrt=false
+    if $sng_rung
+    then
+        warning_sign
+        printf " %s is currently running; starting the debugging\n" "$sng"
+        printf " mode is usually not necessary if %s is running.\n" "$sng"
+        printf " Debugging mode is intended for troubleshooting when\n"
+        printf " %s will not start.\n\n" "$sng"
+        printf " Are you certain you wish to start debugging mode [y|n]? $std"
+        if ! yes_no; then return; fi
+        restrt=true
+    fi
+    printf " NOTE: If there are no errors, debugging mode will\n"
+    printf "       continue indefinitely.  If this happens, type\n"
+    printf "       ctrl-c to halt debugging mode output\n"
+    enter_to "start"
+    if $restrt
+    then
+        printf "$white stopping %s ..." "$sng"
+        $S01sng_init stop
+    fi
+    $sng_loc -Fevd
+    if $restrt
+        printf "$white restarting %s ..." "$sng"
+        $S01sng_init start
+    fi
+}
+
 gather_debug(){
     dlt $scribe_debug
     printf "\n$white gathering debugging information ..."
@@ -1103,6 +1135,7 @@ ut_menu(){
     then
         printf "     lc.   Show loaded %s config\n" "$sng"
     fi
+    printf "     sd.   Run %s debugging mode\n" "$sng"
     printf "     ld.   Show %s debug info\n\n" "$lr"
     printf "     e.    Exit to Main Menu\n"
 }
@@ -1122,7 +1155,7 @@ main_menu(){
         printf "     s.    Show %s status\n" "$scribe_name"
         if $sng_rung
         then
-            printf "     rl.   Reload syslog-ng.conf\n"
+            printf "     rl.   Reload %s.conf\n" "$sng"
         fi
         printf "     lr.   Run logrotate now\n"
         printf "     rs.   %start %s" "$res" "$sng"
@@ -1238,6 +1271,8 @@ scribe_menu(){
                         not_recog=true
                     fi
                     ;;
+                sd)
+                    menu_forgrnd
                 ld)
                     dlt $lr_temp
                     $lr_loc -d $lr_conf >> $lr_temp 2>&1
