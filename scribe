@@ -36,8 +36,8 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-#readonly scribe_branch="master"
 readonly scribe_branch="gamma"
+#readonly scribe_branch="master"
 scribe_ver="v2.4.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
@@ -383,7 +383,7 @@ get_vers(){
     # only get scribe from github once 
     scribe_md5="$( md5_file "$scribe_script")"
     dlt $scribe_tmp
-    curl -fsL --retry 3 "$scribe_repo"  -o "$scribe_tmp"
+    curl -fsL --retry 3 "$scribe_repo" -o "$scribe_tmp"
     [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
     github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
     github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
@@ -982,17 +982,12 @@ menu_forgrnd(){
     printf "       continue indefinitely.  If this happens, type\n"
     printf "       ctrl-c to halt debugging mode output\n\n"
     enter_to "start"
-    if $restrt
-    then
-        printf "$white stopping %s ..." "$sng"
-        $S01sng_init stop
-    fi
+    if $restrt; then $S01sng_init stop; printf "\n"; fi
+    trap '' 2
     $sng_loc -Fevd
-    if $restrt
-    then
-        printf "$white restarting %s ..." "$sng"
-        $S01sng_init start
-    fi
+    trap - 2
+    if $restrt; then printf "\n"; $S01sng_init start; fi
+    printf "\n"
 }
 
 gather_debug(){
