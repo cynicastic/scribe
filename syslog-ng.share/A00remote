@@ -1,7 +1,7 @@
 # send _ALL_ messages to a remote logging facility; it is recommended to set the remote log
 # server here instead of in syslog-ng.conf if you are using this method to keep all remote
-# informaiton in one file - if you do set the log_server destination in syslog-ng.conf, 
-# you will need to comment out the three lines here that definie it
+# information in one file - if you do set the log_server destination in syslog-ng.conf, 
+# you will need to comment out the three lines here that define it
 
 destination log_server {
     udp("192.168.x.y" port(514));

@@ -24,7 +24,7 @@ Logging only some messages remotely:
     the remote server.  Copy the 'destination(log_server);' line
     to the log section of any filer in /opt/etc/syslog-ng.d that
     you wish to send those messages to the remote server.  It is
-    recommended to copy the line either just before or just after
+    recommended to insert the line either just before or just after
     the existing 'destination(d_xxxxx);' line in that file.
 
 
