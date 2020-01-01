@@ -978,9 +978,9 @@ menu_forgrnd(){
         if ! yes_no; then return; fi
         restrt=true
     fi
-    printf " NOTE: If there are no errors, debugging mode will\n"
+    printf "\n$yellow NOTE: If there are no errors, debugging mode will\n"
     printf "       continue indefinitely.  If this happens, type\n"
-    printf "       ctrl-c to halt debugging mode output\n"
+    printf "       ctrl-c to halt debugging mode output\n\n"
     enter_to "start"
     if $restrt
     then
