@@ -1,9 +1,5 @@
 # don't log empty messages from kernel
 
-destination d_null { 
-    file("/dev/null");
-};
-
 filter f_blank {
     program("kernel") and
     message("^ *$");
@@ -12,7 +8,6 @@ filter f_blank {
 log {
     source(src);
     filter(f_blank);
-    destination(d_null);
     flags(final);
 };
 
