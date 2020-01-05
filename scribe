@@ -1132,6 +1132,9 @@ ut_menu(){
     fi
     printf "     sd.   Run %s debugging mode\n" "$sng"
     printf "     ld.   Show %s debug info\n\n" "$lr"
+    printf "     ui.   "
+    if $uisc_inst; then printf "Run"; else printf "Install"; fi
+    printf " %s\n" "$uisc_name"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1275,6 +1278,14 @@ scribe_menu(){
                     less $lr_temp
                     dlt $lr_temp
                     pause=false
+                    ;;
+                ui)
+                    if $uisc_inst
+                    then
+                        $uiscribe
+                    else
+                        setup_uisc
+                    fi
                     ;;
                 e)
                     if [ "$menu_type" = "main" ]
