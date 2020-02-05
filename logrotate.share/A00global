@@ -1,11 +1,17 @@
 # global variable overrides from /opt/etc/logrotate.conf
 
-maxsize 4096k # large logs make webui unresponsive with uiScribe
-sharedscripts # if multiple logs run the same postrotate script, only run it once
+# if multiple logs run the same postrotate script, only run it once
+sharedscripts
 
 # compress, but not first rotation due to file handling
 compress
 delaycompress
 
-missingok # no error is log file is missing
-notifempty # don't rotate an empty logfile
+# large logs make webui unresponsive with uiScribe
+maxsize 4096k
+
+# no error is log file is missing
+missingok
+
+# don't rotate an empty logfile
+notifempty
