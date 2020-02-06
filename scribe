@@ -1467,7 +1467,7 @@ esac
 if ! $is_inst
 then
     printf "\n$yellow %s $white not installed, command \"%s\" not valid!$std\n\n" "$scribe_name" "$action"
-elif ! $sng_rung
+elif ! $sng_rung && [ $action != "stop" ]
 then
     printf "\n$yellow %s $white not running, command \"%s\" not valid!$std\n\n" "$sng" "$action"
 else
