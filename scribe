@@ -1431,19 +1431,21 @@ case "$action" in
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
         count=120
-        found=false
+        foundk=false
+        founds=false
         while [ $count -gt 0 ]
         do
             sleep 1 # give them a moment to start up
             if [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]
             then
                 kill_logger
-                found=true
-                count=6 # drop count to 6 if found in case lag between starting
+                [ -z "$( pidof klogd )" ] && foundk=true
+                [ -z "$( pidof syslogd )" ] && founds=true
+                if $foundk && $founds; then count=-1; fi
             fi
             count=$(( count - 1 ))
         done
-        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
+        if [ $count -eq 0 ]; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
         ;;
         
 # unrecognized command
