@@ -5,7 +5,7 @@ destination d_spdmerlin {
 };
 
 filter f_spdmerlin {
-    program("spdMerlin")
+    program("spdMerlin");
 };
 
 log {

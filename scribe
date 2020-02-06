@@ -37,7 +37,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.4.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.4.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -365,11 +365,19 @@ sync_conf(){
     man_vers="$( grep -oE 'on\/[0-9]{1,2}([_.][0-9]{1,2})' $sng_conf )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
+        printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
+        $S01sng_init stop
+        sng_rung=false
         sed -i "s~$man_vers~on/$sng_vers~" $sng_conf
         sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
-        printf "$cyan updated (%s). $std\n" "$sng_vers"
+        $S01sng_init start
+        hup_uisc
+        [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
+        printf "$white %34s" "$( basename $sng_conf ) version ..."
+        printf "$cyan updated! (%s) $std\n" "$sng_vers"
+        logger -t "$scribe_name" "$( basename $sng_conf ) version number updated ($sng_vers)!"
     else
-        printf "$green in sync. $std\n"
+        printf "$green in sync. (%s) $std\n" "$sng_vers"
     fi
 }
 
@@ -1132,6 +1140,9 @@ ut_menu(){
     fi
     printf "     sd.   Run %s debugging mode\n" "$sng"
     printf "     ld.   Show %s debug info\n\n" "$lr"
+    printf "     ui.   "
+    if $uisc_inst; then printf "Run"; else printf "Install"; fi
+    printf " %s\n" "$uisc_name"
     printf "     e.    Exit to Main Menu\n"
 }
 
@@ -1276,6 +1287,15 @@ scribe_menu(){
                     dlt $lr_temp
                     pause=false
                     ;;
+                ui)
+                    if $uisc_inst
+                    then
+                        $uiscribe
+                        pause=false
+                    else
+                        setup_uisc
+                    fi
+                    ;;
                 e)
                     if [ "$menu_type" = "main" ]
                     then
@@ -1419,19 +1439,22 @@ case "$action" in
         # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
         . $rcfunc_loc
         count=120
-        found=false
+        foundk=false
+        founds=false
         while [ $count -gt 0 ]
         do
             sleep 1 # give them a moment to start up
             if [ -n "$( pidof klogd )" ] || [ -n "$( pidof syslogd )" ]
             then
                 kill_logger
-                found=true
-                count=6 # drop count to 6 if found in case lag between starting
+                [ -z "$( pidof klogd )" ] && foundk=true
+                [ -z "$( pidof syslogd )" ] && founds=true
+                if $foundk && $founds; then count=-1; fi
             fi
             count=$(( count - 1 ))
         done
-        if ! $found; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
+        if [ $count -eq 0 ]; then logger -t "$scribe_name" "kill-logger FAILED! check if klogd or syslogd running."; fi
+        sync_conf
         ;;
         
 # unrecognized command
@@ -1444,7 +1467,7 @@ esac
 if ! $is_inst
 then
     printf "\n$yellow %s $white not installed, command \"%s\" not valid!$std\n\n" "$scribe_name" "$action"
-elif ! $sng_rung
+elif ! $sng_rung && [ $action != "stop" ]
 then
     printf "\n$yellow %s $white not running, command \"%s\" not valid!$std\n\n" "$sng" "$action"
 else
