@@ -365,6 +365,7 @@ sync_conf(){
     man_vers="$( grep -oE 'on\/[0-9]{1,2}([_.][0-9]{1,2})' $sng_conf )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
+        printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
         $S01sng_init stop
         sng_rung=false
         sed -i "s~$man_vers~on/$sng_vers~" $sng_conf
@@ -372,10 +373,11 @@ sync_conf(){
         $S01sng_init start
         hup_uisc
         [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
-        printf "$cyan updated (%s). $std\n" "$sng_vers"
+        printf "$white %34s" "$( basename $sng_conf ) version ..."
+        printf "$cyan updated! (%s) $std\n" "$sng_vers"
         logger -t "$scribe_name" "$( basename $sng_conf ) version number updated ($sng_vers)!"
     else
-        printf "$green in sync. $std\n"
+        printf "$green in sync. (%s) $std\n" "$sng_vers"
     fi
 }
 
