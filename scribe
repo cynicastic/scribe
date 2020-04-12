@@ -366,6 +366,7 @@ sync_conf(){
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
         printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
+        printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( basename $sng_conf )" "$sng"
         $S01sng_init stop
         sng_rung=false
         sed -i "s~$man_vers~on/$sng_vers~" $sng_conf
@@ -374,7 +375,7 @@ sync_conf(){
         hup_uisc
         [ -n "$( pidof $sng )" ] && sng_rung=true || sng_rung=false
         printf "$white %34s" "$( basename $sng_conf ) version ..."
-        printf "$cyan updated! (%s) $std\n" "$sng_vers"
+        printf "$yellow updated! (%s) $std\n" "$sng_vers"
         logger -t "$scribe_name" "$( basename $sng_conf ) version number updated ($sng_vers)!"
     else
         printf "$green in sync. (%s) $std\n" "$sng_vers"
