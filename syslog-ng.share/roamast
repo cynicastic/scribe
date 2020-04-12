@@ -1,0 +1,18 @@
+# log all roaming assistant logs to /opt/var/log/roamast.log and stop processing roaming assistant logs
+
+destination d_roamast { 
+    file("/opt/var/log/roamast.log");
+};
+
+filter f_roamast {
+    program("roamast");
+};
+
+log {
+    source(src);
+    filter(f_roamast);
+    destination(d_roamast);
+    flags(final);
+};
+
+#eof
