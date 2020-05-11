@@ -5,8 +5,8 @@ destination d_diversion {
 };
 
 filter f_diversion {
-    program("Diversion") or
-    program("uiDivStats");
+    program("uiDivStats") or
+    program("Diversion");
 };
 
 log {
