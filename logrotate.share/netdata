@@ -1,0 +1,8 @@
+/opt/var/log/netdata.log {
+    minsize 1024k
+    daily
+    rotate 9
+    postrotate
+        /usr/bin/killall -HUP syslog-ng
+    endscript
+}
