@@ -1460,7 +1460,7 @@ case "$action" in
         
 # unrecognized command
     *)
-    printf "\n$white Usage: $0 ( uninstall | update | [show-]config | status | reload | [re]start | debug )$std\n\n"
+        printf "\n$white Usage: $0 ( uninstall | update | [show-]config | status | reload | [re]start | debug )$std\n\n"
         exit 1
         ;;
 esac
