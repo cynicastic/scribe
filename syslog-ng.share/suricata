@@ -1,4 +1,4 @@
-# @ttgapers
+# Created by SNBForums user @ttgapers
 # log all suricata logs to suricata.log
 
 destination d_suricata { 

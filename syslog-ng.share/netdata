@@ -1,4 +1,4 @@
-# @ttgapers
+# Created by SNBForums user @ttgapers
 # log all netdata logs to netdata.log
 
 destination d_netdata { 
