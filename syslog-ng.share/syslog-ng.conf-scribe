@@ -2,11 +2,11 @@
 # syslog-ng.conf customized for scribe on Asuswrt-Merlin firmware
 # compare to /opt/share/syslog-ng/examples/syslog-ng.conf-opkg for differences from Entware distribution
 #
-# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.23/administration-guide
+# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.27/administration-guide
 #
 # Release notes: https://github.com/syslog-ng/syslog-ng/releases 
 
-@version: 3.23
+@version: 3.27
 #@include "scl.conf" # uncomment this line to for additional functionality, see syslog-ng documentation
 @include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
 
