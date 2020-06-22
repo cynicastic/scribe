@@ -1,4 +1,4 @@
-### README.1ST --- 29 Dec 2019
+### README.1ST --- 22 June 2020
 
 Please READ before copying any of these files to /opt/etc/syslog-ng.d/
 
@@ -44,7 +44,7 @@ The files in this directory are:
     bcm63xx     Filters out messages containing "bcm63xx" to bcm63.log.
                 These appear to be mostly nusiance messages.
 
-    blankmsg    Sends any blank messages to /dev/null.  Automatically placed
+    blankmsg    Drops any blank messages.  Automatically placed
                 in /opt/etc/syslog-ng.d/ on installation.
 
     crash       Filters out most lines from the dcd_tainted crash messages
@@ -81,25 +81,35 @@ The files in this directory are:
 
     jffs        Filters out messages about the jffs directory.  Useful when
                 certain errors with the jffs fiilesystem are encountered as
-                they quickly fill up the logfile.
+                they quickly fill up the logfile. Normally this shouldn't
+                happen, so there may not be a log file even if this is
+                copied to /opt/etc/syslog-ng.d/.
 
     logrotate   Gathers logrotate's messages from var/lib/logrotate.status
                 and /opt/tmp/logrotate.daily into a single log file in
                 /opt/var/log/logrotate.log.i  Automatically placed in
                 /opt/etc/syslog-ng.d/ on installation.
 
+    netdata     Filters messages from Netdata (available in Entware).  User-
+                contributed by @ttgapers
+
     ntpd        Entware ntpd sends log messages to /opt/var/spool/ntp/ntp.log
                 instead of the system logging facility.  This gathers those
                 log messages, formats them in the standard syslog-ng format,
-                and puts them in /opt/var/log/ntp.log.  Note that the busybox
-                firmware ntpd does not appear to send log messages anywhere
-                at all, not even through the system logging facility.
+                and puts them in /opt/var/log/ntp.log.  Messages from Jack
+                Yaz's ntpmerlin will also be copied to this log file.
+                Note that the busybox firmware ntpd does not appear to send
+                log messages anywhere at all, not even through the system
+                logging facility.
 
     openvpn     Filters out messages from "ovpn-server#" or "ovpn-client#" to
                 openvpn.log, where "#" is the server or client number.  Also
                 filters out messages from "openvp-routing" to the same file.
 
     pixelserv   Filters out messages from pixelserv-tls to pixelserv.log.
+
+    roamast     Filters out messages from the roaming assistant daemon.  These
+                are generally associated with an AiMesh setup
 
     skynet      If you are using the popular Skynet script by Adamm, this
                 will be automatically copied to /opt/etc/syslog-ng.d/ upon
@@ -111,6 +121,9 @@ The files in this directory are:
 
     spdmerlin   Filters out spdMerlin's twice-hourly connection speed test
                 results to /opt/var/log/spdmerlin.log
+
+    suricata    Filters messages from the Suricata IDS / IPS/ NSM engine
+                (available in Entware).  User-contributed by @ttgapers
 
     syslog-ng.conf-opkg     DO NOT COPY THIS FILE TO /opt/etc/syslog-ng.d/!!!
                             This is a copy of the original syslog-ng.conf
