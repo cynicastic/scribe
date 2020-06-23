@@ -1,0 +1,7 @@
+/opt/var/log/roamast.log {
+    daily
+    rotate 7
+    postrotate
+        /usr/bin/killall -HUP syslog-ng
+    endscript
+}

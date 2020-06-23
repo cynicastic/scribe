@@ -22,7 +22,8 @@ log {
 # redirect messages sent through logging facility
 # (ntpd startup and/or logfile not set in ntp.conf)
 filter f_ntpd {
-    program("ntpd");
+    program("ntpd") or
+    program("ntpMerlin");
 };
 
 destination d_ntpd {

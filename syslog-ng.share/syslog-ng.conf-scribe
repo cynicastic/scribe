@@ -1,21 +1,13 @@
 #############################################################################
-# OpenWrt syslog-ng.conf specific file
-# which collects all local logs into a single file called /var/log/messages.
+# syslog-ng.conf customized for scribe on Asuswrt-Merlin firmware
+# compare to /opt/share/syslog-ng/examples/syslog-ng.conf-opkg for differences from Entware distribution
 #
-# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.23/administration-guide
+# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.27/administration-guide
 #
 # Release notes: https://github.com/syslog-ng/syslog-ng/releases 
-#
-# non-scl version with "@include "scl.conf"" and call to default-network-drivers function (part of scl) removed
-#   moved sourcing /proc/kmsg from "source kernel" to "source src" and added directives to /proc/kmsg and /dev/log sourcing
-#   log_msg_size increased to 16K to ensure even large messages are completely captured
-#   stats_freq changed to every 6 hours
-#   source net function to get udp log messages from local network commented out
-#   destination log_server function added (commented out) to illustrate sending udp log messages to server on local network
-#
-#   NB: time_reap default behaviour was changed significantly in version 3.23; this causes problems with Skynet, but must be corrected in the skynet file in the syslog-ng.d directory  *** sigh ***
 
-@version: 3.23
+@version: 3.27
+#@include "scl.conf" # uncomment this line to for additional functionality, see syslog-ng documentation
 @include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
 
 options {
@@ -36,24 +28,19 @@ source src {
     unix-dgram("/dev/log" so_rcvbuf(65536) flags(syslog-protocol));
     file("/proc/kmsg" program_override("kernel") flags(kernel));
     internal();
+#    udp(ip(192.168.x.y) port(514)); # uncomment this line to pass all network messages through syslog-ng filters
 };
 
-# uncomment these three lines to get udp log messages from local network
-# must also uncomment "source(net);" below
-#source net {
-#    udp(ip(192.168.x.y) port(514));
-#};
+# if you only want to pass network messages through some syslog-ng filters, uncomment the source line below
+# then add "soource(net);" to the log statement in any filter you want to pass network messages through
+#source net { udp(ip(192.168.x.y) port(514)); };
 
-destination messages {
-    file("/opt/var/log/messages");
-};
+# set the filename for the default log file - anything not filtered out will end up here
+destination messages { file("/opt/var/log/messages"); };
 
-# uncomment these three lines to send udp log messages to local network
-# must also uncomment "destination(log_server);" below for messages that
-# are not otherwise filtered out to be sent to the remote log server
-# destination log_server {
-#    udp("192.168.x.y" port(514));
-#};
+# to send log messages to the local network, uncomment the destination line below
+# then add "destination(log_server);" to the log statement in any filter you want to pass network messages through
+#destination log_server { udp("192.168.x.y" port(514)); };
 
 log {
     source(src);

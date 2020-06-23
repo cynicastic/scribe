@@ -5,10 +5,12 @@ destination d_wlceventd {
 };
 
 filter f_wlceventd {
-    ( program("WLCEVENTD") or
-    program ("wlceventd") ) and
+    ( ( program("WLCEVENTD") or
+    program("wlceventd") ) and
     ( message("ssoc") or
-    message("uth") );
+    message("uth") ) ) or
+    ( program("syslog") and
+    message("wlceventd") );
 };
 
 log {

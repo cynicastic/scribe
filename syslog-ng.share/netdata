@@ -1,0 +1,20 @@
+# Created by SNBForums user @ttgapers
+# log all netdata logs to netdata.log
+
+destination d_netdata { 
+    file("/opt/var/log/netdata.log");
+};
+
+filter f_netdata {
+    program("S60netdata") or
+    program("netdata");
+};
+
+log {
+    source(src);
+    filter(f_netdata);
+    destination(d_netdata);
+    flags(final);
+};
+
+#eof

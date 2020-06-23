@@ -2,10 +2,21 @@
 # server here instead of in syslog-ng.conf if you are using this method to keep all remote
 # information in one file - if you do set the log_server destination in syslog-ng.conf, 
 # you will need to comment out the three lines here that define it
+#
+# it is strongly recommended to use IP addresess instead of hostnames for the destination
+# server, as logging will stall if the nameserver is unavailable
+#
+# the following definition will send messages to a remote syslog-ng server in RFC 3164 (BSD / legacy) format
+# RFC 3164 will be compatibile with a wider range of syslog servers
 
-destination log_server {
-    udp("192.168.x.y" port(514));
-};
+destination log_server { udp("192.168.x.y" port(514)); };
+
+# the alternate definition below will send messages to a remote server in RFC 5424 (IETF) format,
+# to use this format, comment out the above log_server definition and uncomment the one below
+# for this defintion, the default transport protocol is tcp, and the default port is 601
+# trasport protocal and port may be changed, and TLS encryption may be used; see the manual
+
+#destination log_server { syslog("10.1.2.3"); };
 
 log {
     source(src);
