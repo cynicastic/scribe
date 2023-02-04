@@ -25,10 +25,17 @@ kill_logger (){
         rm -rf /jffs/syslog.log /jffs/syslog.log-1
         mkdir /jffs/syslog.log /jffs/syslog.log-1
     fi
-}
 
-# export timezone if not already set
-[ -z "$TZ" ] && export TZ=$( cat /etc/TZ )
+    # create /opt/var/run/syslog-ng/ directory if it doesn't exist
+    # not needed for older versions of syslog-ng, but doesn't hurt anything
+    if [ ! -d "/opt/var/run/syslog-ng" ]
+    then
+        mkdir /opt/var/run/syslog-ng
+    fi
+
+    # export timezone if not already set
+    [ -z "$TZ" ] && export TZ=$( cat /etc/TZ )
+}
 
 PRECMD="kill_logger"
 # enabling the below can be useful when having problems,
