@@ -8,7 +8,7 @@
 # (____/`\____)(_)   (_)(_,__/'`\____)
 # syslog-ng and logrotate installer for Asuswrt-Merlin
 #
-# Coded by cynicastic
+# Coded by cmkelley (nee cynicastic)
 #
 # Original interest in syslog-ng on Asuswrt-Merlin inspired by tomsk & kvic
 # Good ideas and code borrowed heavily from Adamm, Jack Yaz, thelonelycoder, & Xentrx
@@ -37,7 +37,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v2.4.3" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v2.4.4" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 readonly scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly scribe_long="$scribe_ver ($scribe_branch)"
 readonly scribe_author="cynicastic"
@@ -189,7 +189,7 @@ logo(){
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
-    printf "    $green %-15s $blue Coded by cynicastic $std\n\n" "$scribe_long"
+    printf "    $green %-17s $blue Coded by cmkelley $std\n\n" "$scribe_long"
 }
 
 warning_sign(){
@@ -233,7 +233,7 @@ copy_rcfunc(){
 }
 
 check_sng(){
-	printf "\n$white %34s" "checking $sng daemon ..."
+    printf "\n$white %34s" "checking $sng daemon ..."
     if $sng_rung
     then
         printf "$green alive. $std\n"
@@ -344,7 +344,7 @@ lr_cron(){
 
 dir_links(){
 	printf "$white %34s" "checking directory links ..."
-    if [ ! -L "/tmp/syslog.log" ] || [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
+    if [ ! -L "/tmp/syslog.log" ] || [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ] || [ ! -d "/opt/var/run/syslog-ng" ]
     then
         # load kill_logger() function to reset system path links/hacks
         # keep shellcheck from barfing on sourcing $rcfunc_loc
@@ -362,7 +362,7 @@ sync_conf(){
     printf "$white %34s" "$( basename $sng_conf ) version check ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     sng_conf_vers="$( grep -m1 '@version:' $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    man_vers="$( grep -oE 'on\/[0-9]{1,2}([_.][0-9]{1,2})' $sng_conf )"
+    man_vers="$( grep -oE 'on/[0-9]{1,2}([_.][0-9]{1,2})' $sng_conf )"
     if [ "$sng_vers" != "$sng_conf_vers" ]
     then
         printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
