@@ -32,7 +32,7 @@ source src {
 };
 
 # if you only want to pass network messages through some syslog-ng filters, uncomment the source line below
-# then add "soource(net);" to the log statement in any filter you want to pass network messages through
+# then add "source(net);" to the log statement in any filter you want to pass network messages through
 #source net { udp(ip(192.168.x.y) port(514)); };
 
 # set the filename for the default log file - anything not filtered out will end up here
