@@ -1,6 +1,8 @@
 #!/bin/sh
 #tof
 
+# Any changes to this file will be lost at the next upgrade
+
 kill_logger (){
     # kill any/all running klogd and/or syslogd
     [ -n "$( pidof klogd )" ] && killall klogd
