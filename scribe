@@ -14,7 +14,7 @@
 # Good ideas and code borrowed heavily from Adamm, Jack Yaz, thelonelycoder, & Xentrx
 # Bad ideas and code are entirely mine
 #
-# Good or bad, all externals except [, true, false, cru, printf, less, echo, and tail should explictly point to the busybox versions
+# Good or bad, all externals except [, true, false, printf, less, and echo should explictly point to the busybox versions
 # opkg of course explictly points to the entware opkg
 # I may have gone overboard in this, and/or I may have missed some
 #
@@ -309,7 +309,7 @@ lr_post(){
     fi
     if ! /bin/grep -q $lr $postmount
     then
-        echo "cru a $lr \"5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1\" # added by scribe" >> $postmount
+        echo "/usr/sbin/cru a $lr \"5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1\" # added by scribe" >> $postmount
         updated
     else
         present
@@ -341,9 +341,9 @@ sed_umnt(){
 
 lr_cron(){
 	printf "$white %34s" "checking $lr cron job ..."
-    if ! cru l | /bin/grep -q $lr
+    if ! /usr/sbin/cru l | /bin/grep -q $lr
     then
-        cru a $lr "5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1"
+        /usr/sbin/cru a $lr "5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1"
         updated
     else
         present
@@ -528,7 +528,7 @@ run_logrotate(){
     $lr_loc $lr_conf >> $lr_daily 2>&1
     finis
     printf "\n$magenta checking %s log for errors $cyan\n\n" "$lr"
-    tail -v $lr_daily
+    /usr/bin/tail -v $lr_daily
 }
 
 menu_status(){
@@ -793,7 +793,7 @@ stop_sng(){
     printf " select rs from %s menu to restart %s $std\n\n" "$scribe_name" "$sng"
 }
 
-stop_lr(){ if cru l | /bin/grep -q $lr; then cru d $lr; fi; }
+stop_lr(){ if /usr/sbin/cru l | /bin/grep -q $lr; then /usr/sbin/cru d $lr; fi; }
 
 menu_stop(){
     stop_sng
@@ -1023,7 +1023,7 @@ gather_debug(){
         printf "\n%s\n### check running log processes:\n" "$debug_sep"
         /bin/ps | /bin/grep "log"
         printf "\n%s\n### check crontab:\n" "$debug_sep"
-        cru l | /bin/grep $lr
+        /usr/sbin/cru l | /bin/grep $lr
         printf "\n%s\n### directory check:\n" "$debug_sep"
         /bin/ls -ld /tmp/syslog*
         /bin/ls -ld /jffs/syslog*
