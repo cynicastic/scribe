@@ -1,0 +1,19 @@
+# log ethernet change to /opt/var/log/ethernet.log only
+
+destination d_meshUDB {
+    file("/opt/var/log/meshUDB.log");
+};
+
+filter f_meshUDB {
+    message("not mesh client") or
+    message("exist in UDB");
+};
+
+log {
+    source(src);
+    filter(f_meshUDB);
+    destination(d_meshUDB);
+    flags(final);
+};
+
+#eof
