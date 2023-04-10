@@ -1,42 +1,69 @@
-#!/bin/sh
-#tof
-
-# Any changes to this file will be lost at the next upgrade
+#!/bin/sh -
 
 kill_logger (){
-    # kill any/all running klogd and/or syslogd
-    [ -n "$( pidof klogd )" ] && killall klogd
-    [ -n "$( pidof syslogd )" ] && killall syslogd
+    syslogloc="/tmp/syslog.log" # default guess
+    isjffs=false
+    optmsg="/opt/var/log/messages"
+    jffslog="/jffs/syslog.log"
 
-    # if syslog-ng was stopped by scribe, messages will be symlink to syslog.log
-    [ -L /opt/var/log/messages ] && rm -f /opt/var/log/messages
-
-    # webGUI System Log = /tmp/syslog.log
-    if [ ! -L "/tmp/syslog.log" ]
+    # figure out where syslogd expects log file to live
+    #look for config file
+    sconf="/opt/jffs/addons/scribe/config"
+    if [ -f "$sconf" ]
     then
-        cat /tmp/syslog.log >> /opt/var/log/messages
-        rm -f /tmp/syslog.log /tmp/syslog.log-1
-        ln -s /opt/var/log/messages /tmp/syslog.log
-        echo "### Top of Log File ###" >> /tmp/syslog.log-1
+        syslogloc="$( /bin/grep "SYSLOG_LOC" "$sconf" | /usr/bin/cut -f2 -d"=" )"
+    elif [ -n "$( /bin/pidof syslogd )" ] # no config file, check if syslogd is running
+    then
+        if /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -qF "$jffslog"
+        then
+            syslogloc="$jffslog"
+        fi
+    fi
+    [ "$syslogloc" = "$jffslog" ] && isjffs=true
+
+    # kill any/all running klogd and/or syslogd
+    [ -n "$( /bin/pidof klogd )" ] && killall klogd
+    [ -n "$( /bin/pidof syslogd )" ] && killall syslogd
+    count=30
+    klgk=false
+    sldk=false
+    while [ $count -gt 0 ]
+    do
+        sleep 1 # give them a moment to shut down
+        [ -z "$( /bin/pidof klogd )" ] && klgk=true
+        [ -z "$( /bin/pidof syslogd )" ] && sldk=true
+        if $klgk && $sldk; then count=-1; fi
+        count=$(( count - 1 ))
+    done
+    [ $count -eq 0 ] && exit 1
+
+    # if syslog-ng was stopped by scribe, /opt/var/log/messages will symlink to $syslogloc
+    [ -L "$optmsg" ] && /bin/rm -f "$optmsg"
+
+    # if syslog-ng is running, $syslogloc will symlink to "$optmsg"
+    if [ ! -L "$syslogloc" ]
+    then
+        /bin/cat "$syslogloc" >> "$optmsg"
+        /bin/rm -f "$syslogloc" "$syslogloc-1"
+        /bin/ln -s "$optmsg" "$syslogloc"
+        echo "### Top of Log File ###" >> "$syslogloc-1"
     fi
 
-    # make /jffs/syslog.log and log-1 directories if not already
-    # prevents system log saver from writing to jffs
-    if [ ! -d "/jffs/syslog.log" ] || [ ! -d "/jffs/syslog.log-1" ]
+    # make /jffs/syslog.log and log-1 directories if default syslog is not at /jffs
+    # prevents system log saver from writing to jffs (not strictly neecessary on newer routers)
+    if [ ! $isjffs ] && [ ! -d "$jffslog" ]
     then
-        rm -rf /jffs/syslog.log /jffs/syslog.log-1
-        mkdir /jffs/syslog.log /jffs/syslog.log-1
+        /bin/rm -rf "$jffslog" "$jffslog-1"
+        /bin/mkdir "$jffslog" "$jffslog-1"
     fi
 
     # create /opt/var/run/syslog-ng/ directory if it doesn't exist
     # not needed for older versions of syslog-ng, but doesn't hurt anything
-    if [ ! -d "/opt/var/run/syslog-ng" ]
-    then
-        mkdir /opt/var/run/syslog-ng
-    fi
+    [ ! -d "/opt/var/run/syslog-ng" ] && mkdir "/opt/var/run/syslog-ng"
 
     # export timezone if not already set
-    [ -z "$TZ" ] && export TZ=$( cat /etc/TZ )
+    TZ="$( /bin/cat "/etc/TZ" )"
+    [ -z "$TZ" ] && export TZ
 }
 
 PRECMD="kill_logger"
