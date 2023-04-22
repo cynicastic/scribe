@@ -1,4 +1,5 @@
 # log ethernet change to /opt/var/log/ethernet.log only
+# certain devices don't play nice with mesh routers; log gets spammed
 
 destination d_meshUDB {
     file("/opt/var/log/meshUDB.log");
