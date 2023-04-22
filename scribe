@@ -24,8 +24,7 @@
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
 #
-# TODO: don't assume location of syslog.log if not /jffs (sounds like a job for awk)
-#       example 'ps ww' entry: [PID] [USER] [VSZ] [STAT] /sbin/syslogd -m 0 -S -O /tmp/syslog.log -s 256 -l 7
+# TODO: add a help / about screen
 #
 
 # parse parameters
