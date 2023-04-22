@@ -1,25 +1,41 @@
 #!/bin/sh -
+#
+# NB: PRECMD only runs on "start"
+#  => kill_logger only runs if starting syslog-ng or firmware has restarted unwanted syslogd 
 
-kill_logger (){
-    syslogloc="/tmp/syslog.log" # default guess
-    isjffs=false
-    optmsg="/opt/var/log/messages"
-    jffslog="/jffs/syslog.log"
+kill_logger(){
+    # these will be set if coming from scribe; on bootup, these will not be set
+    [ -z "$scribe_conf" ] && scribe_conf="/opt/jffs/addons/scribe/config"
+    [ -z "$optmsg" ] && optmsg="/opt/var/log/messages"
+    [ -z "$jffslog" ] && jffslog="/jffs/syslog.log"
+    [ -z "$tmplog" ] && tmplog="/tmp/syslog.log"
+    [ -z "$isjffs" ] && isjffs=false
 
     # figure out where syslogd expects log file to live
-    #look for config file
-    sconf="/opt/jffs/addons/scribe/config"
-    if [ -f "$sconf" ]
+    if [ -z "$syslog_loc" ] # don't look for config file if $syslog_loc is defined
     then
-        syslogloc="$( /bin/grep "SYSLOG_LOC" "$sconf" | /usr/bin/cut -f2 -d"=" )"
-    elif [ -n "$( /bin/pidof syslogd )" ] # no config file, check if syslogd is running
-    then
-        if /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -qF "$jffslog"
+        # $syslog_loc not set, look for config file
+        if [ -f "$scribe_conf" ]
         then
-            syslogloc="$jffslog"
+            syslog_loc="$( /bin/grep "SYSLOG_LOC" "$scribe_conf" | /usr/bin/cut -f2 -d"=" )"
+        # no config file and $syslog_loc is not set; check if syslogd is running 
+        elif [ -n "$( /bin/pidof syslogd )" ]
+        then # awk to the rescue
+            sld_ps="$( /bin/ps ww | /bin/grep "/sbin/syslogd" )"
+            syslog_loc="$( /usr/bin/awk -v psww="$sld_ps" 'BEGIN {
+                           n=split (psww, psary)
+                           for (i = 1; i <= n; i++) 
+                               if ( psary[i] ~ "-O" ) break
+                           print psary[i+1] }'
+                         )"
+        else # no config file, $syslog_loc not set, & syslogd not running!!! 
+            syslog_loc="$tmplog" # no-man's land, so make a guess
         fi
     fi
-    [ "$syslogloc" = "$jffslog" ] && isjffs=true
+
+    echo "syslog_loc: $syslog_loc" > /tmp/scribelog
+
+    [ "$syslog_loc" = "$jffslog" ] && isjffs=true
 
     # kill any/all running klogd and/or syslogd
     [ -n "$( /bin/pidof klogd )" ] && killall klogd
@@ -37,24 +53,31 @@ kill_logger (){
     done
     [ $count -eq 0 ] && exit 1
 
-    # if syslog-ng was stopped by scribe, /opt/var/log/messages will symlink to $syslogloc
-    [ -L "$optmsg" ] && /bin/rm -f "$optmsg"
-
-    # if syslog-ng is running, $syslogloc will symlink to "$optmsg"
-    if [ ! -L "$syslogloc" ]
+    # if syslog-ng was stopped by scribe, /opt/var/log/messages will symlink to $syslog_loc
+    if [ -L "$optmsg" ]
     then
-        /bin/cat "$syslogloc" >> "$optmsg"
-        /bin/rm -f "$syslogloc" "$syslogloc-1"
-        /bin/ln -s "$optmsg" "$syslogloc"
-        echo "### Top of Log File ###" >> "$syslogloc-1"
+        /bin/rm -f "$optmsg"
+    elif [ -e "$syslog_loc" ] && [ ! -L "$syslog_loc" ]
+    # if syslogd was running, $syslog_loc will exist and be a regular file (not a link)
+        then
+            /bin/cat "$syslog_loc" >> "$optmsg"
+            /bin/rm -f "$syslog_loc" "$syslog_loc-1"
+            /bin/ln -s "$optmsg" "$syslog_loc"
+            echo "### Top of Log File ###" >> "$syslog_loc-1"
     fi
 
-    # make /jffs/syslog.log and log-1 directories if default syslog is not at /jffs
+    # make /jffs/syslog.log and log-1 directories if default syslog location is not at /jffs
     # prevents system log saver from writing to jffs (not strictly neecessary on newer routers)
-    if [ ! $isjffs ] && [ ! -d "$jffslog" ]
+    if ! $isjffs && [ ! -d "$jffslog" ]
     then
         /bin/rm -rf "$jffslog" "$jffslog-1"
         /bin/mkdir "$jffslog" "$jffslog-1"
+    elif $isjffs
+    then
+        # if syslogd is writing to /jffs, then ensure logfiles in /tmp
+        # are properly linked in case something goes looking there
+        [ ! -L "$tmplog" ] && /bin/ln -s "$optmsg" "$tmplog"
+        [ ! -L "$tmplog-1" ] && /bin/ln -s "$syslog_loc-1" "$tmplog-1"
     fi
 
     # create /opt/var/run/syslog-ng/ directory if it doesn't exist

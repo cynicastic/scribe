@@ -59,6 +59,8 @@ readonly scribe_script="$script_d/$scribe_name"
 readonly conf_d="/jffs/addons/$scribe_name.d"
 readonly scribe_conf="$conf_d/config"
 readonly optmsg="/opt/var/log/messages"
+readonly jffslog="/jffs/syslog.log"
+readonly tmplog="/tmp/syslog.log"
 
 # router details
 readonly merlin="ASUSWRT-Merlin"
@@ -128,19 +130,6 @@ readonly cyan="\033[1;36m"
 readonly white="\033[1;37m"
 readonly std="\033[m"
 
-# create config dir & file if they don't exist
-[ ! -d $conf_d ] && mkdir $conf_d
-if [ ! -f $scribe_conf ]
-then
-    {
-        echo "SYSLOG_LOC=#"
-    } > $scribe_conf
-    /bin/chmod 644 $scribe_conf
-fi
-
-# read config file
-syslog_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
-
 # check if scribe is already installed by looking for link in /opt/bin
 [ -e "/opt/bin/$scribe_name" ] && is_inst=true || is_inst=false
 
@@ -161,7 +150,7 @@ present(){ printf "$green present. $std\n"; }
 
 updated(){ printf "$yellow updated. $std\n"; }
 
-finis (){ printf "$green done. $std\n"; }
+finis(){ printf "$green done. $std\n"; }
 
 not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
@@ -183,9 +172,28 @@ sng_rng(){ if [ -n "$( /bin/pidof $sng )" ]; then true; else false; fi; }
 
 sld_rng(){ if [ -n "$( /bin/pidof $sld )" ]; then true; else false; fi; }
 
+# NB: ensure system log is backed up before doing this!
+clear_loglocs(){
+    dlt $tmplog
+    dlt $tmplog-1
+    dlt $jffslog
+    dlt $jffslog-1
+}
+
+# function assume syslogd is running!
+start_syslogd(){
+    /sbin/service start_logger
+    count=30
+    while [ -z "$( /bin/pidof $sld )" ] && [ $count -gt 0 ]
+    do
+        sleep 1 # give syslogd time to start up
+        count=$(( count - 1 ))
+    done
+    if [ $count -eq 0 ]; then printf "\n$red UNABLE TO START SYSLOGD!  ABORTING!\n$std"; exit 1; fi
+}
+
 # Use caution if adding new variables to existing config file
-write_conf()
-{
+write_conf(){
     if /bin/grep -q "SYSLOG_LOC" "$scribe_conf"
     then
         /bin/sed -i "s~SYSLOG_LOC=.*~SYSLOG_LOC=$syslog_loc~" $scribe_conf
@@ -198,55 +206,29 @@ write_conf()
 
 # random routers point syslogd at /jffs instead of /tmp
 # figure out where default syslog.log location is
-# function assumes syslogd (and not syslog-ng) is running!
-where_syslogd()
-{
-    if /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -qF /jffs/syslog.log
+# function assumes syslogd is running!
+where_syslogd(){
+    sld_ps="$( /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -q "$jffslog" )"
+    syslog_loc="$( awk -v psww="$sld_ps" 'BEGIN { n=split (psww, psary); for (i = 1; i <= n; i++) if ( psary[i] ~ "-O" ) break; print psary[i+1] }' )"
+    echo $syslog_loc
+    exit
+    write_conf
+#    if /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -q "$jffslog" 
+#    then
+#        syslog_loc="$jffslog"
+#        write_conf
+#    else # assumes if not /jffs then /tmp
+#        syslog_loc="$tmplog"
+#        write_conf
+#    fi    
+}
+
+create_conf(){
+    printf "\n$white Detecting default syslog location "
+    [ ! -d $conf_d ] && mkdir $conf_d
+    if [ -n "$( /bin/pidof $sng )" ]
     then
-        syslog_loc="/jffs/syslog.log"
-        write_conf
-    else # assumes if not /jffs then /tmp
-        syslog_loc="/tmp/syslog.log"
-        write_conf
-    fi    
-}
-
-clear_loglocs()
-{
-    dlt /tmp/syslog.log
-    dlt /tmp/syslog-1.log
-    dlt /jffs/syslog.log
-    dlt /jffs/syslog.log-1
-}
-
-start_syslogd()
-{
-    service start_logger
-    count=30
-    while [ -z "$( /bin/pidof $sld )" ] && [ $count -gt 0 ]
-    do
-        sleep 1 # give syslogd time to start up
-        count=$(( count - 1 ))
-    done
-    if [ $count -eq 0 ]; then printf "\n$red UNABLE TO START SYSLOGD!  ABORTING!\n$std"; exit 1; fi
-}
-
-hup_uisc(){
-    if $uisc_inst
-    then
-        printf "$white Restarting uiScribe ..."
-        $uiscribe startup
-    fi
-}
-
-read_conf()
-{
-    syslog_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
-
-    # fix config file if scribe started w/syslog-ng running and no config file
-    if [ "$syslog_loc" = "#" ]
-    then
-        printf "\n$white Detecting default syslog location "
+        slg_was_rng=true
         killall $sng 2>/dev/null
         count=10
         while [ -n "$( /bin/pidof $sng )" ] && [ "$count" -gt 0 ]
@@ -254,15 +236,30 @@ read_conf()
             sleep 1
             count=$(( count - 1 ))
         done
-        clear_loglocs
-        start_syslogd
-        where_syslogd
-        # now we know where the webgui is expecting syslog.log to be,
-        # kill syslogd and restart syslog-ng
-        $S01sng_init start
-        echo "### Top of Log File ###" >> "$syslog_loc-1"
-        hup_uisc
-        [ -n "$( /bin/pidof $sng )" ] && sng_rung=true || sng_rung=false
+    else
+        slg_was_rng=false
+    fi
+
+    clear_loglocs
+    if [ -z "$( /bin/pidof $sng )" ]; then start_syslogd; fi
+    where_syslogd
+    # now we know where the webgui is expecting syslog.log to be,
+    # prepend /opt/var/messages to syslog & create link
+    cat "$syslog_loc" >> "$optmsg" && mv -f "$optmsg" "$syslog_loc"
+    ln -s "$syslog_loc" "$optmsg"
+    # kill syslogd and restart syslog-ng (if it was running)
+    if $slg_was_rng; then $S01sng_init start; fi
+    echo "### Top of Log File ###" >> "$syslog_loc-1"
+    # nothing here should have stopped uiscribe if it was running, so
+    # assume it is still running if it was before stopping syslog-ng
+}
+
+read_conf(){
+    if [ -f $scribe_conf ]
+    then # assumes if $scribe_conf exists, it is correctly formatted
+        syslog_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
+    else # scribe started with no config file
+        create_conf
     fi
 }
 
@@ -320,6 +317,14 @@ get_zip(){
             printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
             exit 1
         fi
+    fi
+}
+
+hup_uisc(){
+    if $uisc_inst
+    then
+        printf "$white Restarting uiScribe ..."
+        $uiscribe startup
     fi
 }
 
@@ -948,7 +953,7 @@ uninstall(){
         printf " It is recommended to reboot the router at this time.  If you do not\n"
         printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
         enter_to "reboot"
-        service reboot; exit 0
+        /sbin/service reboot; exit 0
     fi
 }
 
@@ -1445,7 +1450,15 @@ scribe_menu(){
 #### MAIN ####
 ##############
 
-if sld_rng; then where_syslogd; else read_conf; fi
+if ! sld_rng && ! sng_rng
+then
+    printf "\n\n$red WARNING: $white No system logger was running!!\n"
+    printf "Starting system loggers ..."
+    start_syslogd
+fi
+
+# read or create config file
+read_conf
 
 if [ "$action" = "menu" ]
 then
