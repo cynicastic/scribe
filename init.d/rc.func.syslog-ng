@@ -1,7 +1,7 @@
 #!/bin/sh -
 #
 # NB: PRECMD only runs on "start"
-#  => kill_logger only runs if starting syslog-ng or firmware has restarted unwanted syslogd 
+#  => kill_logger only runs if starting syslog-ng or kill_logger called directly in scribe
 
 kill_logger(){
     # these will be set if coming from scribe; on bootup, these will not be set
@@ -54,16 +54,15 @@ kill_logger(){
     [ $count -eq 0 ] && exit 1
 
     # if syslog-ng was stopped by scribe, /opt/var/log/messages will symlink to $syslog_loc
-    if [ -L "$optmsg" ]
-    then
-        /bin/rm -f "$optmsg"
-    elif [ -e "$syslog_loc" ] && [ ! -L "$syslog_loc" ]
+    [ -L "$optmsg" ] && /bin/rm -f "$optmsg"
+
     # if syslogd was running, $syslog_loc will exist and be a regular file (not a link)
-        then
-            /bin/cat "$syslog_loc" >> "$optmsg"
-            /bin/rm -f "$syslog_loc" "$syslog_loc-1"
-            /bin/ln -s "$optmsg" "$syslog_loc"
-            echo "### Top of Log File ###" >> "$syslog_loc-1"
+    if [ ! -L "$syslog_loc" ]
+    then
+        /bin/cat "$syslog_loc" >> "$optmsg"
+        /bin/rm -f "$syslog_loc" "$syslog_loc-1"
+        /bin/ln -s "$optmsg" "$syslog_loc"
+        echo "### Top of Log File ###" >> "$syslog_loc-1"
     fi
 
     # make /jffs/syslog.log and log-1 directories if default syslog location is not at /jffs

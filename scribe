@@ -13,9 +13,8 @@
 # Good ideas and code borrowed heavily from Adamm, Jack Yaz, thelonelycoder, & Xentrx
 # Bad ideas and code are entirely mine
 #
-# Good or bad, all externals except [, true, false, printf, less, and echo should explictly point to the busybox versions
+# Good or bad, explictly point all externals except [, true, false, printf, less, and echo to the busybox versions
 # opkg of course explictly points to the entware opkg
-# I may have gone overboard in this, and/or I may have missed some
 #
 # install command:
 #   /usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && /bin/chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
@@ -180,11 +179,10 @@ clear_loglocs(){
     dlt $jffslog-1
 }
 
-# function assume syslogd is running!
 start_syslogd(){
     /sbin/service start_logger
     count=30
-    while [ -z "$( /bin/pidof $sld )" ] && [ $count -gt 0 ]
+    while ! sld_rng && [ $count -gt 0 ]
     do
         sleep 1 # give syslogd time to start up
         count=$(( count - 1 ))
@@ -194,13 +192,14 @@ start_syslogd(){
 
 # Use caution if adding new variables to existing config file
 write_conf(){
+    [ ! -d $conf_d ] && /bin/mkdir $conf_d
+    [ ! -e $scribe_conf ] && /bin/touch $scribe_conf
+
     if /bin/grep -q "SYSLOG_LOC" "$scribe_conf"
     then
         /bin/sed -i "s~SYSLOG_LOC=.*~SYSLOG_LOC=$syslog_loc~" $scribe_conf
-    else # user has deleted config file or erased entry, since only 1 config now, not a problem to overwrite config file
-        {
-            echo "SYSLOG_LOC=$syslog_loc"
-        } > $scribe_conf
+    else
+        echo "SYSLOG_LOC=$syslog_loc" > $scribe_conf
     fi
 }
 
@@ -208,50 +207,37 @@ write_conf(){
 # figure out where default syslog.log location is
 # function assumes syslogd is running!
 where_syslogd(){
-    sld_ps="$( /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -q "$jffslog" )"
-    syslog_loc="$( awk -v psww="$sld_ps" 'BEGIN { n=split (psww, psary); for (i = 1; i <= n; i++) if ( psary[i] ~ "-O" ) break; print psary[i+1] }' )"
-    echo $syslog_loc
-    exit
+    sld_ps="$( /bin/ps ww | /bin/grep "/sbin/syslogd" )"
+    syslog_loc="$( /usr/bin/awk -v psww="$sld_ps" 'BEGIN { n=split (psww, psary); for (i = 1; i <= n; i++) if ( psary[i] ~ "-O" ) break; print psary[i+1] }' )"
     write_conf
-#    if /bin/ps ww | /bin/grep "/sbin/syslogd" | /bin/grep -q "$jffslog" 
-#    then
-#        syslog_loc="$jffslog"
-#        write_conf
-#    else # assumes if not /jffs then /tmp
-#        syslog_loc="$tmplog"
-#        write_conf
-#    fi    
 }
 
 create_conf(){
     printf "\n$white Detecting default syslog location "
-    [ ! -d $conf_d ] && mkdir $conf_d
-    if [ -n "$( /bin/pidof $sng )" ]
+    if sng_rng
     then
         slg_was_rng=true
+        printf "\n Briefly shutting down %s" "$sng"
         killall $sng 2>/dev/null
         count=10
-        while [ -n "$( /bin/pidof $sng )" ] && [ "$count" -gt 0 ]
+        while sng_rng && [ "$count" -gt 0 ]
         do
             sleep 1
             count=$(( count - 1 ))
         done
+        clear_loglocs
     else
         slg_was_rng=false
     fi
 
-    clear_loglocs
-    if [ -z "$( /bin/pidof $sng )" ]; then start_syslogd; fi
+    if ! sld_rng; then start_syslogd; fi
     where_syslogd
-    # now we know where the webgui is expecting syslog.log to be,
     # prepend /opt/var/messages to syslog & create link
     cat "$syslog_loc" >> "$optmsg" && mv -f "$optmsg" "$syslog_loc"
     ln -s "$syslog_loc" "$optmsg"
-    # kill syslogd and restart syslog-ng (if it was running)
+    # if syslog-ng was running, kill syslogd and restart
     if $slg_was_rng; then $S01sng_init start; fi
-    echo "### Top of Log File ###" >> "$syslog_loc-1"
-    # nothing here should have stopped uiscribe if it was running, so
-    # assume it is still running if it was before stopping syslog-ng
+    # assume uiscribe is still running if it was before stopping syslog-ng
 }
 
 read_conf(){
@@ -350,7 +336,7 @@ check_sng(){
     else
         printf "$red dead. $std\n"
         printf "$white %34s" "the system logger (syslogd) ..."
-        if [ -n "$( /bin/pidof syslogd )" ]
+        if sld_rng
         then
             printf "$green is running. $std\n\n"
             printf "$yellow    Type$red %s restart$yellow at shell prompt or select$red rs$yellow\n" "$scribe_name"
@@ -456,6 +442,11 @@ dir_links(){
     printf "$white %34s" "checking directory links ..."
     if [ ! -L "$syslog_loc" ] || [ ! -d "/opt/var/run/syslog-ng" ]
     then
+        # load kill_logger() function to reset system path links/hacks
+        # keep shellcheck from barfing on sourcing $rcfunc_loc
+        # shellcheck disable=SC1091
+        # shellcheck source=/opt/etc/init.d/rc.func.syslog-ng
+        . $rcfunc_loc
         kill_logger
         updated
     else
@@ -473,12 +464,10 @@ sync_conf(){
         printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
         printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path $sng_conf )" "$sng"
         $S01sng_init stop
-        sng_rung=false
         /bin/sed -i "s~$man_vers~on/$sng_vers~" $sng_conf
         /bin/sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
         $S01sng_init start
         hup_uisc
-        [ -n "$( /bin/pidof $sng )" ] && sng_rung=true || sng_rung=false
         printf "$white %34s" "$( strip_path $sng_conf ) version ..."
         printf "$yellow updated! (%s) $std\n" "$sng_vers"
         logger -t "$scribe_name" "$( strip_path $sng_conf ) version number updated ($sng_vers)!"
@@ -552,8 +541,8 @@ setup_exmpls(){
     conf_opkg="$conf-opkg"
 
     [ "$2" != "ALL" ] && printf "\n$white"
-    [ ! -d "$share" ] && mkdir "$share"
-    [ ! -d "$share/examples" ] && mkdir "$share/examples"
+    [ ! -d "$share" ] && /bin/mkdir "$share"
+    [ ! -d "$share/examples" ] && /bin/mkdir "$share/examples"
 
     for exmpl in "$unzip_dir/$1.share"/*
     do
@@ -629,6 +618,7 @@ run_logrotate(){
 }
 
 menu_status(){
+    # probably should verify $syslog_loc agrees with config file here
     check_sng
     printf "\n$magenta checking system for necessary %s hooks ...\n\n" "$scribe_name"
     sed_sng
@@ -869,7 +859,6 @@ menu_restart(){
         $S01sng_init start
     fi
     hup_uisc
-    [ -n "$( /bin/pidof $sng )" ] && sng_rung=true || sng_rung=false
 }
 
 stop_sng(){
@@ -1441,7 +1430,6 @@ scribe_menu(){
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
         if $run_scribe; then /bin/sh "$scribe_script"; exit 0; fi
-        [ -n "$( /bin/pidof $sng )" ] && sng_rung=true || sng_rung=false
     done
 }
 
@@ -1546,7 +1534,7 @@ case "$action" in
 
 # kill syslogd & klogd - only available via cli
     kill-logger)
-        [ "$sng_rung" = "false" ] || [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; } && exit 0
+        if ! sng_rng || [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; }; then exit 0; fi
         # load kill_logger() function to reset system path links/hacks
         # keep shellcheck from barfing on sourcing $rcfunc_loc
         # shellcheck disable=SC1091
