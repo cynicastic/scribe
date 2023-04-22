@@ -530,8 +530,8 @@ setup_ddir(){
         dfbase="$( strip_path "$dfile" )"
         ddfile="$d_dir/$dfbase"
         { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && /bin/cp -p "$dfile" "$ddfile"
-        /bin/chmod 600 "$ddfile"
     done
+    /bin/chmod 600 "$d_dir"/*
 }
 
 # install example files in /usr/share/$1/examples
@@ -573,7 +573,7 @@ setup_exmpls(){
             printf " by the Entware package has been moved to $cyan%s$white.\n" "$share/examples/$opkg"
         fi
     fi
-    /bin/chmod 600 "$share/examples/*"
+    /bin/chmod 600 "$share/examples"/*
     printf "$std"
 }
 
@@ -1209,8 +1209,8 @@ menu_restore(){
                 dlt "$sngd_d"
                 dlt "$lrd_d"
                 /bin/tar -zxvf "$scribe_bakname" -C /
-                /bin/chmod 600 "$sngd_d/*"
-                /bin/chmod 600 "$lrd_d/*"
+                /bin/chmod 600 "$sngd_d"/*
+                /bin/chmod 600 "$lrd_d"/*
                 printf "\n$std Backup data has been restored from $cyan%s$std.\n" "$scribe_bakname"
                 menu_restart
                 menu_status
