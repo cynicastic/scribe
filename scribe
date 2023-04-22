@@ -530,8 +530,8 @@ setup_ddir(){
         dfbase="$( strip_path "$dfile" )"
         ddfile="$d_dir/$dfbase"
         { [ ! -e "$ddfile" ] || [ "$2" = "ALL" ]; } && /bin/cp -p "$dfile" "$ddfile"
+        /bin/chmod 600 "$ddfile"
     done
-    /bin/chmod 600 "$d_dir/*"
 }
 
 # install example files in /usr/share/$1/examples
