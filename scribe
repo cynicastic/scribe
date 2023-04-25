@@ -25,6 +25,8 @@
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
 #
 # TODO: add a help / about screen
+#       ensure debug captures syslog.log links
+#       include syslog location in status check
 #
 
 # parse parameters
@@ -42,8 +44,8 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
-scribe_ver="v2.5.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+readonly scribe_branch="master"
+scribe_ver="v3.0.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver
 readonly scribe_long="$scribe_ver ($scribe_branch)"
@@ -268,7 +270,7 @@ yes_no(){
 
 logo(){
     if ! $banner; then return; fi
-#    /usr/bin/clear 
+    /usr/bin/clear 
     printf "$white                            _\n"
     printf "                         _ ( )            \n"
     printf "       ___    ___  _ __ (_)| |_      __   \n"

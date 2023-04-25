@@ -33,8 +33,6 @@ kill_logger(){
         fi
     fi
 
-    echo "syslog_loc: $syslog_loc" > /tmp/scribelog
-
     [ "$syslog_loc" = "$jffslog" ] && isjffs=true
 
     # kill any/all running klogd and/or syslogd
