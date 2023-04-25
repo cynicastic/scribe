@@ -59,8 +59,8 @@ The files in this directory are:
                 happen, so there may not be a log file even if this is
                 copied to /opt/etc/syslog-ng.d/.
 
-    ethernet    Filters out messages containing "eth1" thru "eth8" or "bro:"
-                to ethernet.log.
+    ethernet    Filters out messages containing "eth1" thru "eth8", "bro:",
+                and "br1:" to ethernet.log.
 
     expandlog   This should be used for testing purposes only.  This breaks
                 out every log message into multiple lines, with each part of
@@ -89,6 +89,13 @@ The files in this directory are:
                 and /opt/tmp/logrotate.daily into a single log file in
                 /opt/var/log/logrotate.log.i  Automatically placed in
                 /opt/etc/syslog-ng.d/ on installation.
+
+    meshUDB     Filters "nuisance" messages when you have devices on your
+                wifi network that are non-cooperative with mesh.  Such
+                messages contain "not mesh client" or "exist in UDB".  These
+                messages may coincide with connectivity issues with said
+                devices.  No idea why some devices do not work well with
+                mesh networks.
 
     netdata     Filters messages from Netdata (available in Entware).  User-
                 contributed by @ttgapers

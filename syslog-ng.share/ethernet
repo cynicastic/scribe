@@ -17,7 +17,8 @@ filter f_ethernet {
     message("eth6") or
     message("eth7") or
     message("eth8") or
-    message("br0:");
+    message("br0:") or
+    message("br1:");
 };
 
 log {

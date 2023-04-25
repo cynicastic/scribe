@@ -2,7 +2,7 @@
 # syslog-ng.conf customized for scribe on Asuswrt-Merlin firmware
 # compare to /opt/share/syslog-ng/examples/syslog-ng.conf-opkg for differences from Entware distribution
 #
-# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.38/administration-guide
+# syslog-ng documentation: https://www.syslog-ng.com/technical-documents/list/syslog-ng-open-source-edition
 #
 # Release notes: https://github.com/syslog-ng/syslog-ng/releases 
 

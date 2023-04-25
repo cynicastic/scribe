@@ -1,0 +1,20 @@
+# log AiMesh error messages to /opt/var/log/meshUDB
+# certain devices don't play nice with mesh routers; log gets spammed
+
+destination d_meshUDB {
+    file("/opt/var/log/meshUDB.log");
+};
+
+filter f_meshUDB {
+    message("not mesh client") or
+    message("exist in UDB");
+};
+
+log {
+    source(src);
+    filter(f_meshUDB);
+    destination(d_meshUDB);
+    flags(final);
+};
+
+#eof
