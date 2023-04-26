@@ -57,7 +57,7 @@ kill_logger(){
 
     # if syslogd was running, $syslog_loc will exist and be a regular file (not a link)
     # this might be bootup, or starting scribe 
-    if [ -L "$syslog_loc" ]
+    if [ ! -L "$syslog_loc" ]
     then
         /bin/cat "$syslog_loc" >> "$optmsg"
         /bin/rm -f "$syslog_loc" "$syslog_loc-1"
