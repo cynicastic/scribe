@@ -1,7 +1,8 @@
 #!/bin/sh -
 #
 # NB: PRECMD only runs on "start"
-#  => kill_logger only runs if starting syslog-ng or kill_logger called directly in scribe
+#  => kill_logger only runs if (re)starting syslog-ng, or if
+#     syslogd is detected to be running when it shouldn't
 
 kill_logger(){
     # these will be set if coming from scribe; on bootup, these will not be set
@@ -55,7 +56,8 @@ kill_logger(){
     [ -L "$optmsg" ] && /bin/rm -f "$optmsg"
 
     # if syslogd was running, $syslog_loc will exist and be a regular file (not a link)
-    if [ ! -L "$syslog_loc" ]
+    # this might be bootup, or starting scribe 
+    if [ -f "$syslog_loc" ]
     then
         /bin/cat "$syslog_loc" >> "$optmsg"
         /bin/rm -f "$syslog_loc" "$syslog_loc-1"
