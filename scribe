@@ -45,7 +45,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v3.0.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.0.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver
 readonly scribe_long="$scribe_ver ($scribe_branch)"
