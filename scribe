@@ -855,8 +855,7 @@ menu_restart(){
     if sng_rng
     then
         printf "\n$yellow Restarting %s... $std\n" "$sng"
-        $S01sng_init stop
-        $S01sng_init start
+        $S01sng_init restart
     else
         printf "\n$white %s$red NOT$white running! $yellow Starting %s ... $std\n" "$sng"
         $S01sng_init start
@@ -1316,6 +1315,10 @@ scribe_menu(){
                     run_logrotate
                     ;;
                 rs)
+                    if sng_rng
+                    then
+                        menu_stop
+                    fi
                     menu_restart
                     menu_status
                     ;;
@@ -1514,6 +1517,10 @@ case "$action" in
     restart | start)
         if $is_inst
         then
+            if sng_rng
+            then
+                menu_stop
+            fi
             menu_restart
             menu_status
         fi
