@@ -27,7 +27,6 @@
 # TODO: add a help / about screen
 #       ensure debug captures syslog.log links
 #       include syslog location in status check
-#
 
 # parse parameters
 # NOTE "gotzip" or "nologo" must be the second parameter
@@ -45,7 +44,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v3.0.3" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.0.5" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver
 readonly scribe_long="$scribe_ver ($scribe_branch)"
@@ -114,6 +113,7 @@ readonly sky_req="6.9.2"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
+#uiScribe constants
 readonly uisc_name="uiScribe"
 readonly uisc_author="jackyaz"
 readonly uisc_branch="master"
@@ -1315,10 +1315,6 @@ scribe_menu(){
                     run_logrotate
                     ;;
                 rs)
-                    if sng_rng
-                    then
-                        menu_stop
-                    fi
                     menu_restart
                     menu_status
                     ;;
@@ -1517,10 +1513,6 @@ case "$action" in
     restart | start)
         if $is_inst
         then
-            if sng_rng
-            then
-                menu_stop
-            fi
             menu_restart
             menu_status
         fi

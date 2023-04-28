@@ -6,7 +6,7 @@
 
 kill_logger(){
     # these will be set if coming from scribe; on bootup, these will not be set
-    [ -z "$scribe_conf" ] && scribe_conf="/opt/jffs/addons/scribe/config"
+    [ -z "$scribe_conf" ] && scribe_conf="/jffs/addons/scribe.d/config"
     [ -z "$optmsg" ] && optmsg="/opt/var/log/messages"
     [ -z "$jffslog" ] && jffslog="/jffs/syslog.log"
     [ -z "$tmplog" ] && tmplog="/tmp/syslog.log"
