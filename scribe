@@ -43,10 +43,9 @@ banner=true
 [ -z "$TMP" ] && TMP=/opt/tmp
 
 # scribe constants
-#
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
-scribe_ver="v3.0.4" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.0.5" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver
 readonly scribe_long="$scribe_ver ($scribe_branch)"
@@ -1317,10 +1316,6 @@ scribe_menu(){
                     run_logrotate
                     ;;
                 rs)
-                    if sng_rng
-                    then
-                        menu_stop
-                    fi
                     menu_restart
                     menu_status
                     ;;
@@ -1519,10 +1514,6 @@ case "$action" in
     restart | start)
         if $is_inst
         then
-            if sng_rng
-            then
-                menu_stop
-            fi
             menu_restart
             menu_status
         fi
