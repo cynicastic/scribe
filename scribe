@@ -42,7 +42,7 @@ banner=true
 [ -n "$2" ] && [ "$2" = "nologo" ] && banner=false && shift
 [ -z "$TMP" ] && TMP=/opt/tmp
 
-# scribe constants 
+# scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="gamma"
 scribe_ver="v3.0.4" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
@@ -114,6 +114,7 @@ readonly sky_req="6.9.2"
 readonly divers="/opt/bin/diversion"
 readonly div_req="4.1"
 
+#uiScribe constants
 readonly uisc_name="uiScribe"
 readonly uisc_author="jackyaz"
 readonly uisc_branch="master"
