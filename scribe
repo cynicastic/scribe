@@ -27,7 +27,6 @@
 # TODO: add a help / about screen
 #       ensure debug captures syslog.log links
 #       include syslog location in status check
-#
 
 # parse parameters
 # NOTE "gotzip" or "nologo" must be the second parameter
@@ -44,7 +43,7 @@ banner=true
 
 # scribe constants
 readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
+readonly scribe_branch="master"
 scribe_ver="v3.0.5" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver

@@ -5,15 +5,6 @@
 #     syslogd is detected to be running when it shouldn't
 
 kill_logger(){
-{
-  echo "  scribe_conf = $scribe_conf"
-  echo "       optmsg = $optmsg"
-  echo "      jffslog = $jffslog"
-  echo "       tmplog = $tmplog"
-  echo "       isjffs = $isjffs"
-  echo "   syslog_loc = $syslog_loc"
-} > /tmp/scribelog
-
     # these will be set if coming from scribe; on bootup, these will not be set
     [ -z "$scribe_conf" ] && scribe_conf="/jffs/addons/scribe.d/config"
     [ -z "$optmsg" ] && optmsg="/opt/var/log/messages"
@@ -24,16 +15,13 @@ kill_logger(){
     # figure out where syslogd expects log file to live
     if [ -z "$syslog_loc" ] # don't look for config file if $syslog_loc is defined
     then
-echo "syslog_loc is null" >> /tmp/scribelog
         # $syslog_loc not set, look for config file
         if [ -f "$scribe_conf" ]
         then
-echo "Found scribe_conf" >> /tmp/scribelog
             syslog_loc="$( /bin/grep "SYSLOG_LOC" "$scribe_conf" | /usr/bin/cut -f2 -d"=" )"
         # no config file and $syslog_loc is not set; check if syslogd is running 
         elif [ -n "$( /bin/pidof syslogd )" ]
         then # awk to the rescue
-echo "syslogd is running, thankfully" >> /tmp/scribelog
             sld_ps="$( /bin/ps ww | /bin/grep "/sbin/syslogd" )"
             syslog_loc="$( /usr/bin/awk -v psww="$sld_ps" 'BEGIN {
                            n=split (psww, psary)
@@ -42,22 +30,11 @@ echo "syslogd is running, thankfully" >> /tmp/scribelog
                            print psary[i+1] }'
                          )"
         else # no config file, $syslog_loc not set, & syslogd not running!!! 
-echo "MAYDAY, having to guess at syslog_loc" >> /tmp/scribelog
             syslog_loc="$tmplog" # no-man's land, so make a guess
         fi
-else echo "syslog_loc was set" >> /tmp/scribelog
     fi
 
     [ "$syslog_loc" = "$jffslog" ] && isjffs=true
-
-{
-  echo "  scribe_conf = $scribe_conf"
-  echo "       optmsg = $optmsg"
-  echo "      jffslog = $jffslog"
-  echo "       tmplog = $tmplog"
-  echo "       isjffs = $isjffs"
-  echo "   syslog_loc = $syslog_loc"
-} >> /tmp/scribelog
 
     # kill any/all running klogd and/or syslogd
     [ -n "$( /bin/pidof klogd )" ] && killall klogd
@@ -75,22 +52,8 @@ else echo "syslog_loc was set" >> /tmp/scribelog
     done
     [ $count -eq 0 ] && exit 1
 
-if [ -L "$optmsg" ]
-then
-  echo "optmsg is a link" >> /tmp/scribelog
-else
-  echo "optmsg is NOT a link" >> /tmp/scribelog
-fi 
-
     # if syslog-ng was stopped by scribe, /opt/var/log/messages will symlink to $syslog_loc
     [ -L "$optmsg" ] && /bin/rm -f "$optmsg"
-
-if [ -L "$syslog_loc" ]
-then
-  echo "syslog_loc is a link" >> /tmp/scribelog
-else
-  echo "syslog_loc is NOT a link" >> /tmp/scribelog
-fi 
 
     # if syslogd was running, $syslog_loc will exist and be a regular file (not a link)
     # this might be bootup, or starting scribe 
@@ -101,27 +64,6 @@ fi
         /bin/ln -s "$optmsg" "$syslog_loc"
         echo "### Top of Log File ###" >> "$syslog_loc-1"
     fi
-
-if [ -L "$syslog_loc" ]
-then
-  echo "syslog_loc is a link" >> /tmp/scribelog
-else
-  echo "syslog_loc is NOT a link" >> /tmp/scribelog
-fi 
-
-if [ -d "$jffslog" ]
-then
-  echo "jffslog is a directory" >> /tmp/scribelog
-else
-  echo "jffslog is NOT a directory" >> /tmp/scribelog
-fi 
-
-if [ -L "$tmplog" ]
-then
-  echo "tmplog is a link" >> /tmp/scribelog
-else
-  echo "tmplog is NOT a link" >> /tmp/scribelog
-fi 
 
     # make /jffs/syslog.log and log-1 directories if default syslog location is not at /jffs
     # prevents system log saver from writing to jffs (not strictly neecessary on newer routers)
@@ -136,20 +78,6 @@ fi
         [ ! -L "$tmplog" ] && /bin/ln -s "$optmsg" "$tmplog"
         [ ! -L "$tmplog-1" ] && /bin/ln -s "$syslog_loc-1" "$tmplog-1"
     fi
-
-if [ -d "$jffslog" ]
-then
-  echo "jffslog is a directory" >> /tmp/scribelog
-else
-  echo "jffslog is NOT a directory" >> /tmp/scribelog
-fi 
-
-if [ -L "$tmplog" ]
-then
-  echo "tmplog is a link" >> /tmp/scribelog
-else
-  echo "tmplog is NOT a link" >> /tmp/scribelog
-fi 
 
     # create /opt/var/run/syslog-ng/ directory if it doesn't exist
     # not needed for older versions of syslog-ng, but doesn't hurt anything
