@@ -48,7 +48,9 @@ The files in this directory are:
                 in /opt/etc/syslog-ng.d/ on installation.
 
     crash       Filters out most lines from the dcd_tainted crash messages
-                as well as most lines of other crash messages.
+                as well as most lines of other crash messages.  dcd_tainted
+                crash occurs when users enable pixelserv-tls or exclude
+                devices from ad-blocking within Diversion.
 
     diversion   If you are using the popular Diversion script by 
                 thelonelycoder, this will filter out messages from Diversion

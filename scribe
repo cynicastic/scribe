@@ -14,6 +14,7 @@
 # Bad ideas and code are entirely mine
 #
 # Good or bad, explictly point all externals except [, true, false, printf, less, and echo to the busybox versions
+# Note: nvram may be in different places depending on software version; so can't explicitly point to it
 # opkg of course explictly points to the entware opkg
 #
 # install command:
@@ -27,6 +28,7 @@
 # TODO: add a help / about screen
 #       ensure debug captures syslog.log links
 #       include syslog location in status check
+#       compare notes on location of firmware binaries
 
 # parse parameters
 # NOTE "gotzip" or "nologo" must be the second parameter
@@ -44,7 +46,7 @@ banner=true
 # scribe constants
 readonly scribe_name="scribe"
 readonly scribe_branch="master"
-scribe_ver="v3.0.5" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.0.6" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 scribe_ver="$( echo $scribe_ver | /bin/sed 's/\./_/2' )"
 readonly scribe_ver
 readonly scribe_long="$scribe_ver ($scribe_branch)"
@@ -66,10 +68,10 @@ readonly merlin="ASUSWRT-Merlin"
 readonly fwreqd="380.68"
 fwname="$( /bin/uname -o )"
 readonly fwname
-fwvers="$( /bin/nvram get buildno )"
+fwvers="$( nvram get buildno )"
 readonly fwvers
-model="$( /bin/nvram get odmpid )"
-[ -z "$model" ] && model="$( /bin/nvram get productid )"
+model="$( nvram get odmpid )"
+[ -z "$model" ] && model="$( nvram get productid )"
 readonly model
 readonly dcd_crash="AC86"
 arch="$( /bin/uname -m )"
