@@ -10,7 +10,7 @@ kill_logger(){
     [ -z "$optmsg" ] && optmsg="/opt/var/log/messages"
     [ -z "$jffslog" ] && jffslog="/jffs/syslog.log"
     [ -z "$tmplog" ] && tmplog="/tmp/syslog.log"
-    [ -z "$isjffs" ] && isjffs=false
+    isjffs=false
 
     # figure out where syslogd expects log file to live
     if [ -z "$syslog_loc" ] # don't look for config file if $syslog_loc is defined
