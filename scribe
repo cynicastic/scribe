@@ -1,7 +1,5 @@
 #!/bin/sh -
 #
-export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
-
 #                        _            
 #                     _ ( )           
 #   ___    ___  _ __ (_)| |_      __  
@@ -26,8 +24,9 @@ export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
 #
 # TODO: add a help / about screen
 #       ensure debug captures syslog.log links
-#       include syslog location in status check
 #       add 'rd' to utilities menu to redected syslog.log location 
+
+export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
 
 # parse parameters
 # NOTE "gotzip" or "nologo" must be the second parameter
@@ -367,6 +366,37 @@ sed_sng(){
     fi
 }
 
+rd_warn(){
+    printf "    $yellow Use utility menu option 'rd' to re-detect! $std\n"
+}
+
+syslogd_check(){
+    printf "$white %34s" "syslog.log default location ..."
+    if [ "$syslog_loc" != "$jffslog" ] && [ "$syslog_loc" != "$tmplog" ]
+    then
+        printf "$red NOT SET!\n"
+        rd_warn
+    else
+        printf "$green %s $std\n" "$syslog_loc"
+    fi
+    printf "$white %34s" "... & agrees with config file ..."
+    checksys_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
+    if [ ! -f $scribe_conf ]
+    then # scribe started with no config file
+        printf "$red NO CONFIG FILE!\n"
+        rd_warn
+    # assumes if $scribe_conf exists, it is correctly formatted
+    elif [ "$syslog_loc" = "$checksys_loc" ]
+    then
+        printf "$green okay! $std\n"
+    else
+        printf "$red DOES NOT MATCH!\n"
+        rd_warn
+    fi
+}
+
+    CHeck
+
 sed_srvc(){
     printf "$white %34s" "checking $( strip_path $srvc_event ) ..."
     if [ -f $srvc_event ]
@@ -625,8 +655,8 @@ run_logrotate(){
 }
 
 menu_status(){
-    # probably should verify $syslog_loc agrees with config file here
     check_sng
+    syslogd_check
     printf "\n$magenta checking system for necessary %s hooks ...\n\n" "$scribe_name"
     sed_sng
     if sng_rng; then sed_srvc; fi
