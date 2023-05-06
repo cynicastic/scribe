@@ -24,7 +24,6 @@
 #
 # TODO: add a help / about screen
 #       ensure debug captures syslog.log links
-#       add 'rd' to utilities menu to redected syslog.log location 
 
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
 
@@ -236,11 +235,15 @@ create_conf(){
 
     if ! sld_rng; then start_syslogd; fi
     where_syslogd
-    # prepend /opt/var/messages to syslog & create link
-    cat "$syslog_loc" >> "$optmsg" && mv -f "$optmsg" "$syslog_loc"
-    ln -s "$syslog_loc" "$optmsg"
-    # if syslog-ng was running, kill syslogd and restart
-    if $slg_was_rng; then $S01sng_init start; fi
+    if $slg_was_rng
+    then
+        # if syslog-ng was running, kill syslogd and restart
+        $S01sng_init start
+    else
+        # prepend /opt/var/messages to syslog & create link
+        cat "$syslog_loc" >> "$optmsg" && mv -f "$optmsg" "$syslog_loc"
+        ln -s "$syslog_loc" "$optmsg"
+    fi
     # assume uiscribe is still running if it was before stopping syslog-ng
 }
 
@@ -367,7 +370,7 @@ sed_sng(){
 }
 
 rd_warn(){
-    printf "    $yellow Use utility menu option 'rd' to re-detect! $std\n"
+    printf "$yellow Use utility menu (su) option 'rd' to re-detect! $std\n"
 }
 
 syslogd_check(){
@@ -376,6 +379,7 @@ syslogd_check(){
     then
         printf "$red NOT SET!\n"
         rd_warn
+        return 1
     else
         printf "$green %s $std\n" "$syslog_loc"
     fi
@@ -392,10 +396,9 @@ syslogd_check(){
     else
         printf "$red DOES NOT MATCH!\n"
         rd_warn
+        return 1
     fi
 }
-
-    CHeck
 
 sed_srvc(){
     printf "$white %34s" "checking $( strip_path $srvc_event ) ..."
@@ -1240,6 +1243,7 @@ ut_menu(){
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug file\n"
+    printf "     rd.   Re-detect syslog.log location\n"
     printf "     c.    Check on-disk %s config\n" "$sng"
     if sng_rng
     then
@@ -1374,6 +1378,9 @@ scribe_menu(){
                 c)
                     show_config
                     pause=false
+                    ;;
+                rd)
+                    create_conf
                     ;;
                 lc)
                     if sng_rng
