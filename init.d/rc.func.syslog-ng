@@ -83,6 +83,9 @@ kill_logger(){
     # not needed for older versions of syslog-ng, but doesn't hurt anything
     [ ! -d "/opt/var/run/syslog-ng" ] && mkdir "/opt/var/run/syslog-ng"
 
+    # touch logroatat.status if it doesn't exist so syslog-ng doesn't whine
+    [ ! -f "/var/lib/logrotate.status" ] && touch "/var/lib/logrotate.status"
+
     # export timezone if not already set
     TZ="$( /bin/cat "/etc/TZ" )"
     [ -z "$TZ" ] && export TZ
