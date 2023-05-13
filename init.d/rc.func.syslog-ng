@@ -6,19 +6,19 @@
 
 kill_logger(){
     # these will be set if coming from scribe; on bootup, these will not be set
-    [ -z "$scribe_conf" ] && scribe_conf="/jffs/addons/scribe.d/config"
+    [ -z "$script_conf" ] && script_conf="/jffs/addons/scribe.d/config"
     [ -z "$optmsg" ] && optmsg="/opt/var/log/messages"
     [ -z "$jffslog" ] && jffslog="/jffs/syslog.log"
     [ -z "$tmplog" ] && tmplog="/tmp/syslog.log"
-    [ -z "$isjffs" ] && isjffs=false
+    isjffs=false
 
     # figure out where syslogd expects log file to live
     if [ -z "$syslog_loc" ] # don't look for config file if $syslog_loc is defined
     then
         # $syslog_loc not set, look for config file
-        if [ -f "$scribe_conf" ]
+        if [ -f "$script_conf" ]
         then
-            syslog_loc="$( /bin/grep "SYSLOG_LOC" "$scribe_conf" | /usr/bin/cut -f2 -d"=" )"
+            syslog_loc="$( /bin/grep "SYSLOG_LOC" "$script_conf" | /usr/bin/cut -f2 -d"=" )"
         # no config file and $syslog_loc is not set; check if syslogd is running 
         elif [ -n "$( /bin/pidof syslogd )" ]
         then # awk to the rescue
@@ -82,6 +82,9 @@ kill_logger(){
     # create /opt/var/run/syslog-ng/ directory if it doesn't exist
     # not needed for older versions of syslog-ng, but doesn't hurt anything
     [ ! -d "/opt/var/run/syslog-ng" ] && mkdir "/opt/var/run/syslog-ng"
+
+    # touch logroatat.status if it doesn't exist so syslog-ng doesn't whine
+    [ ! -f "/var/lib/logrotate.status" ] && touch "/var/lib/logrotate.status"
 
     # export timezone if not already set
     TZ="$( /bin/cat "/etc/TZ" )"
