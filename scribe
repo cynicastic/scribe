@@ -11,8 +11,8 @@
 # Coded by cmkelley (nee cynicastic)
 #
 # Original interest in syslog-ng on Asuswrt-Merlin inspired by tomsk & kvic
-# Good ideas and code borrowed heavily from Adamm, Jack Yaz, thelonelycoder, & Xentrx
-# Bad ideas and code are entirely mine
+# Good ideas and code borrowed heavily from Adamm, dave14305, Jack Yaz, thelonelycoder, & Xentrx
+# Bugs, bad ideas, and sloppy code are entirely mine
 #
 # install command:
 #   curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
@@ -22,44 +22,58 @@
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
 #
-# TODO: add a help / about screen
-#       ensure debug captures syslog.log links
 
+# ensure firmware binaries are used, not Entware
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
 
+# set TMP if not set
+[ -z "$TMP" ] && export TMP=/opt/tmp
+
 # parse parameters
-# NOTE "gotzip" or "nologo" must be the second parameter
-#      if both are used, "gotzip" must be the second and "nologo" must be the third
-#      maybe someday I'll expand this so they are position independent
-action="$1"
-[ "X$action" = "X" ] && action="menu"
+action="X"
 got_zip=false
-[ -n "$2" ] && [ "$2" = "gotzip" ] && got_zip=true && shift
 banner=true
-[ "$SCRIBE_LOGO" = "nologo" ] && banner=false
-[ -n "$2" ] && [ "$2" = "nologo" ] && banner=false && shift
-[ -z "$TMP" ] && TMP=/opt/tmp
+[ "$SCRIBE_LOGO" = "nologo"  ] && banner=false
+while [ -n "$1" ]
+do
+    case "$1" in
+        gotzip)
+            got_zip=true
+            shift
+            ;;
+        nologo)
+            banner=false
+            shift
+            ;;
+        *)
+            action="$1"
+            shift
+            ;;
+    esac
+done
+[ "$action" = "X" ] && action="menu"
 
 # scribe constants
-readonly scribe_name="scribe"
-readonly scribe_branch="gamma"
+readonly script_name="scribe"
+scribe_branch="gamma"
+readonly script_branch="$scribe_branch"
 scribe_ver="v3.1.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
-scribe_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
-readonly scribe_ver
-readonly scribe_long="$scribe_ver ($scribe_branch)"
-readonly scribe_author="cynicastic"
+script_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
+readonly script_ver
+readonly script_long="$script_ver ($script_branch)"
+readonly script_author="cynicastic"
 readonly raw_git="https://raw.githubusercontent.com"
-readonly scribe_repo="$raw_git/$scribe_author/$scribe_name/$scribe_branch/$scribe_name"
-readonly unzip_dir="$TMP/$scribe_name-$scribe_branch"
-readonly scribe_tmp="$TMP/scribe.tmp"
+readonly script_repo="$raw_git/$script_author/$script_name/$script_branch/$script_name"
+readonly unzip_dir="$TMP/$script_name-$script_branch"
+readonly script_tmp="$TMP/$script_name.tmp"
 readonly script_d="/jffs/scripts"
-readonly scribe_script="$script_d/$scribe_name"
-readonly conf_d="/jffs/addons/$scribe_name.d"
-readonly scribe_conf="$conf_d/config"
+readonly script_loc="$script_d/$script_name"
+readonly conf_d="/jffs/addons/$script_name.d"
+readonly script_conf="$conf_d/config"
 readonly optmsg="/opt/var/log/messages"
 readonly jffslog="/jffs/syslog.log"
 readonly tmplog="/tmp/syslog.log"
-export scribe_conf
+export script_conf
 export optmsg
 export jffslog
 export tmplog
@@ -92,8 +106,8 @@ readonly sngctl_loc="$sng_loc-ctl"
 readonly lr_loc="/opt/sbin/$lr"
 readonly sng_conf="/opt/etc/$sng.conf"
 readonly debug_sep="=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*="
-readonly scribe_debug_name=$scribe_name"_debug.log"
-readonly scribe_debug="$TMP/$scribe_debug_name"
+readonly script_debug_name=$script_name"_debug.log"
+readonly script_debug="$TMP/$script_debug_name"
 readonly sngconf_merged="$TMP/$sng-complete.conf"
 readonly sngconf_error="$TMP/$sng-error.conf"
 readonly lr_conf="/opt/etc/$lr.conf"
@@ -105,7 +119,7 @@ readonly etc_d="/opt/etc/*.d"
 readonly sng_share="/opt/share/$sng"
 readonly lr_share="/opt/share/$lr"
 readonly share_ex="/opt/share/*/examples"
-readonly scribe_bakname="$TMP/$scribe_name-backup.tar.gz"
+readonly script_bakname="$TMP/$script_name-backup.tar.gz"
 readonly fire_start="$script_d/firewall-start"
 readonly srvc_event="$script_d/service-event"
 readonly postmount="$script_d/post-mount"
@@ -133,7 +147,7 @@ readonly white="\033[1;37m"
 readonly std="\033[m"
 
 # check if scribe is already installed by looking for link in /opt/bin
-[ -e "/opt/bin/$scribe_name" ] && is_inst=true || is_inst=false
+[ -e "/opt/bin/$script_name" ] && is_inst=true || is_inst=false
 
 # check if uiScribe is installed
 [ -e "$uiscribe" ] && uisc_inst=true || uisc_inst=false
@@ -196,13 +210,13 @@ start_syslogd(){
 # Use caution if adding new variables to existing config file
 write_conf(){
     [ ! -d $conf_d ] && mkdir $conf_d
-    [ ! -e $scribe_conf ] && touch $scribe_conf
+    [ ! -e $script_conf ] && touch $script_conf
 
-    if grep -q "SYSLOG_LOC" "$scribe_conf"
+    if grep -q "SYSLOG_LOC" "$script_conf"
     then
-        sed -i "s~SYSLOG_LOC=.*~SYSLOG_LOC=$syslog_loc~" $scribe_conf
+        sed -i "s~SYSLOG_LOC=.*~SYSLOG_LOC=$syslog_loc~" $script_conf
     else
-        echo "SYSLOG_LOC=$syslog_loc" > $scribe_conf
+        echo "SYSLOG_LOC=$syslog_loc" > $script_conf
     fi
 }
 
@@ -248,9 +262,9 @@ create_conf(){
 }
 
 read_conf(){
-    if [ -f $scribe_conf ]
-    then # assumes if $scribe_conf exists, it is correctly formatted
-        syslog_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
+    if [ -f $script_conf ]
+    then # assumes if $script_conf exists, it is correctly formatted
+        syslog_loc="$(grep "SYSLOG_LOC" "$script_conf" | cut -f2 -d"=")"
     else # scribe started with no config file
         create_conf
     fi
@@ -285,7 +299,7 @@ logo(){
     printf "     \\__, \\( (___ | |   | || |_) )(  ___/ \n"
     printf "     (____/\`\\____)(_)   (_)(_,__/'\`\\____) \n"
     printf "     %s and %s installation $std\n" "$sng" "$lr"
-    printf "    $green %-17s $blue Coded by cmkelley $std\n\n" "$scribe_long"
+    printf "    $green %-17s $blue Coded by cmkelley $std\n\n" "$script_long"
 }
 
 warning_sign(){
@@ -299,16 +313,16 @@ get_zip(){
     if ! $got_zip
     then
         dlt "$unzip_dir"
-        dlt "$TMP/$scribe_name.zip"
-        printf "\n$white fetching %s from GitHub %s branch ...$std\n" "$scribe_name" "$scribe_branch"
-        if curl -fL https://github.com/$scribe_author/$scribe_name/archive/$scribe_branch.zip -o "$TMP/$scribe_name.zip"
+        dlt "$TMP/$script_name.zip"
+        printf "\n$white fetching %s from GitHub %s branch ...$std\n" "$script_name" "$script_branch"
+        if curl -fL https://github.com/$script_author/$script_name/archive/$script_branch.zip -o "$TMP/$script_name.zip"
         then
-            printf "\n$white unzipping %s ...$std\n" "$scribe_name"
-            unzip "$TMP/$scribe_name.zip" -d "$TMP"
+            printf "\n$white unzipping %s ...$std\n" "$script_name"
+            unzip "$TMP/$script_name.zip" -d "$TMP"
             /opt/bin/opkg update
             got_zip=true
         else
-            printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$scribe_name"
+            printf "\n$white %s GitHub repository$red is unavailable! $std -- Aborting.\n" "$script_name"
             exit 1
         fi
     fi
@@ -347,12 +361,12 @@ check_sng(){
         if sld_rng
         then
             printf "$green is running. $std\n\n"
-            printf "$yellow    Type$red %s restart$yellow at shell prompt or select$red rs$yellow\n" "$scribe_name"
-            printf "    from %s main menu to start %s.\n" "$scribe_name" "$sng"
+            printf "$yellow    Type$red %s restart$yellow at shell prompt or select$red rs$yellow\n" "$script_name"
+            printf "    from %s main menu to start %s.\n" "$script_name" "$sng"
         else
             printf "$red is not running! $std\n\n"
             printf "$white    Type$red %s -Fevd$white at shell prompt or select$red sd$white\n" "$sng"
-            printf "    from %s utilities menu ($red%s$white) to view %s\n" "$scribe_name" "su" "$sng" 
+            printf "    from %s utilities menu ($red%s$white) to view %s\n" "$script_name" "su" "$sng" 
             printf "    debugging data.\n"
         fi
     fi
@@ -362,7 +376,7 @@ sed_sng(){
     printf "$white %34s" "checking $( strip_path $S01sng_init ) ..."
     if ! grep -q $rcfunc_sng $S01sng_init
     then
-        sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by scribe\n" $S01sng_init
+        sed -i "\~/opt/etc/init.d/rc.func~i . $rcfunc_loc # added by $script_name\n" $S01sng_init
         updated
     else
         present
@@ -384,12 +398,12 @@ syslogd_check(){
         printf "$green %s $std\n" "$syslog_loc"
     fi
     printf "$white %34s" "... & agrees with config file ..."
-    checksys_loc="$(grep "SYSLOG_LOC" "$scribe_conf" | cut -f2 -d"=")"
-    if [ ! -f $scribe_conf ]
+    checksys_loc="$(grep "SYSLOG_LOC" "$script_conf" | cut -f2 -d"=")"
+    if [ ! -f $script_conf ]
     then # scribe started with no config file
         printf "$red NO CONFIG FILE!\n"
         rd_warn
-    # assumes if $scribe_conf exists, it is correctly formatted
+    # assumes if $script_conf exists, it is correctly formatted
     elif [ "$syslog_loc" = "$checksys_loc" ]
     then
         printf "$green okay! $std\n"
@@ -405,11 +419,11 @@ sed_srvc(){
     if [ -f $srvc_event ]
     then
         [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh -\n\n~" $srvc_event
-        if grep -q "kill_logger" $srvc_event; then sed -i "s/$scribe_name kill_logger/$scribe_name kill-logger/g" $srvc_event; fi
+        if grep -q "kill_logger" $srvc_event; then sed -i "s/$script_name kill_logger/$script_name kill-logger/g" $srvc_event; fi
         if grep -q "nologo \"\$2\"" $srvc_event; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
-        if ! grep -q "$scribe_name kill-logger" $srvc_event
+        if ! grep -q "$script_name kill-logger" $srvc_event
         then
-            echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe" >> $srvc_event
+            echo "$script_loc kill-logger nologo \"\$1\" \"\$2\" & # added by $script_name" >> $srvc_event
             updated
         else
             present
@@ -418,7 +432,7 @@ sed_srvc(){
         {
             echo "#!/bin/sh -"
             echo ""
-            echo "$scribe_script kill-logger nologo \"\$1\" \"\$2\" & # added by scribe"
+            echo "$script_loc kill-logger nologo \"\$1\" \"\$2\" & # added by $script_name"
         } > $srvc_event
         printf "$green created. $std\n"
     fi
@@ -436,7 +450,7 @@ lr_post(){
     fi
     if ! grep -q $lr $postmount
     then
-        echo "cru a $lr \"5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1\" # added by scribe" >> $postmount
+        echo "cru a $lr \"5 0 * * * $lr_loc $lr_conf >> $lr_daily 2>&1\" # added by $script_name" >> $postmount
         updated
     else
         present
@@ -448,9 +462,9 @@ sed_umnt(){
     if [ -f $unmount ]
     then
         [ "$( grep -c "#!/bin/sh" $unmount )" -ne 1 ] && sed -i "1s~^~#!/bin/sh -\n\n~" $unmount
-        if ! grep -q "$scribe_name stop" $unmount
+        if ! grep -q "$script_name stop" $unmount
         then
-            echo "[ \"\$(find \$1/entware*/bin/$scribe_name 2> /dev/null)\" ] && $scribe_name stop nologo # added by $scribe_name" >> $unmount
+            echo "[ \"\$(find \$1/entware*/bin/$script_name 2> /dev/null)\" ] && $script_name stop nologo # added by $script_name" >> $unmount
             updated
         else
             present
@@ -459,7 +473,7 @@ sed_umnt(){
         {
             echo "#!/bin/sh"
             echo ""
-            echo "[ \"\$(find \$1/entware*/bin/$scribe_name 2> /dev/null)\" ] && $scribe_name stop nologo # added by $scribe_name"
+            echo "[ \"\$(find \$1/entware*/bin/$script_name 2> /dev/null)\" ] && $script_name stop nologo # added by $script_name"
         } > $unmount
         printf "$green created. $std\n"
     fi
@@ -510,7 +524,7 @@ sync_conf(){
         hup_uisc
         printf "$white %34s" "$( strip_path $sng_conf ) version ..."
         printf "$yellow updated! (%s) $std\n" "$sng_vers"
-        logger -t "$scribe_name" "$( strip_path $sng_conf ) version number updated ($sng_vers)!"
+        logger -t "$script_name" "$( strip_path $sng_conf ) version number updated ($sng_vers)!"
     else
         printf "$green in sync. (%s) $std\n" "$sng_vers"
     fi
@@ -523,37 +537,37 @@ sng_syntax(){
 
 get_vers(){
     # only get scribe from github once 
-    scribe_md5="$( md5_file "$scribe_script")"
-    dlt "$scribe_tmp"
-    curl -fsL --retry 3 "$scribe_repo" -o "$scribe_tmp"
-    [ ! -e "$scribe_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$scribe_name" && exit 1
-    github_ver="$( grep -m1 "scribe_ver=" "$scribe_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
-    github_branch="$( grep -m1 "scribe_branch=" "$scribe_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
+    script_md5="$( md5_file "$script_loc")"
+    dlt "$script_tmp"
+    curl -fsL --retry 3 "$script_repo" -o "$script_tmp"
+    [ ! -e "$script_tmp" ] && printf "\n\n$white %s GitHub repository is unavailable! -- $red ABORTING! $std\n\n" "$script_name" && exit 1
+    github_ver="$( grep -m1 "scribe_ver=" "$script_tmp" | grep -oE 'v?[0-9]{1,2}([.][0-9]{1,2})([_.][0-9]{1,2})' | sed 's/\./_/2' )"
+    github_branch="$( grep -m1 "scribe_branch=" "$script_tmp" | awk -F\" '{ printf ( $2 ); }'; )" 
     github_long="$github_ver ($github_branch)"
-    github_md5="$( md5_file "$scribe_tmp")"
+    github_md5="$( md5_file "$script_tmp")"
     new_vers="none"
-    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$scribe_ver" )" ]; then new_vers="older"
-    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$scribe_ver" )" ]; then new_vers="major"
-    elif [ "$scribe_md5" != "$github_md5" ]; then new_vers="minor"
+    if [ "$( ver_num "$github_ver" )" -lt "$( ver_num "$script_ver" )" ]; then new_vers="older"
+    elif [ "$( ver_num "$github_ver" )" -gt "$( ver_num "$script_ver" )" ]; then new_vers="major"
+    elif [ "$script_md5" != "$github_md5" ]; then new_vers="minor"
     fi
-    dlt "$scribe_tmp"
+    dlt "$script_tmp"
 }
 
 prt_vers(){
-    printf "\n$white %34s$green %s \n" "$scribe_name installed version:" "$scribe_long"
-    printf "$white %34s$green %s $std\n" "$scribe_name GitHub version:" "$github_long"
+    printf "\n$white %34s$green %s \n" "$script_name installed version:" "$script_long"
+    printf "$white %34s$green %s $std\n" "$script_name GitHub version:" "$github_long"
     case "$new_vers" in
         older)
-            printf "$red      Local %s version greater than GitHub version!" "$scribe_name"
+            printf "$red      Local %s version greater than GitHub version!" "$script_name"
             ;;
         major)
-            printf "$yellow %45s" "New $scribe_name version available"
+            printf "$yellow %45s" "New $script_name version available"
             ;;
         minor)
-            printf "$blue %45s" "Minor $scribe_name update available"
+            printf "$blue %45s" "Minor $script_name update available"
             ;;
         none)
-            printf "$green %40s" "$scribe_name is up to date!"
+            printf "$green %40s" "$script_name is up to date!"
             ;;
     esac
     printf "$std\n\n"
@@ -618,7 +632,7 @@ setup_exmpls(){
 
 force_install(){
     printf "\n$blue %s$white already installed!\n" "$1"
-    [ "$1" != "$scribe_name" ] && printf "$yellow Forcing installation$red WILL OVERWRITE$yellow any modified configuration files!\n"
+    [ "$1" != "$script_name" ] && printf "$yellow Forcing installation$red WILL OVERWRITE$yellow any modified configuration files!\n"
     printf "$white Do you want to force re-installation of %s [y|n]? $std" "$1"
     yes_no
     return $?
@@ -660,7 +674,7 @@ run_logrotate(){
 menu_status(){
     check_sng
     syslogd_check
-    printf "\n$magenta checking system for necessary %s hooks ...\n\n" "$scribe_name"
+    printf "\n$magenta checking system for necessary %s hooks ...\n\n" "$script_name"
     sed_sng
     if sng_rng; then sed_srvc; fi
     lr_post
@@ -678,7 +692,7 @@ sng_ver_chk(){
     if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
     then
         printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
-        printf "Please update your Entware packages and run %s install again.$cyan\n\n" "$scribe_name"
+        printf "Please update your Entware packages and run %s install again.$cyan\n\n" "$script_name"
         /opt/bin/opkg remove "$sng"
         printf "$std\n\n"
         exit 1
@@ -720,10 +734,10 @@ install(){
 }
 
 setup_scribe(){
-    printf "\n$white setting up %s ..." "$scribe_name"
-    cp -pf "$unzip_dir/$scribe_name" "$scribe_script"
-    chmod 0755 "$scribe_script"
-    [ ! -e "/opt/bin/$scribe_name" ] && ln -s "$scribe_script" /opt/bin
+    printf "\n$white setting up %s ..." "$script_name"
+    cp -pf "$unzip_dir/$script_name" "$script_loc"
+    chmod 0755 "$script_loc"
+    [ ! -e "/opt/bin/$script_name" ] && ln -s "$script_loc" /opt/bin
     # install correct firewall or skynet file, these are mutually exclusive
     if $skynet_inst
     then
@@ -807,14 +821,14 @@ pre_install(){
     else
         printf "$white\n\n Skynet is$red NOT$white installed on this system!\n\n"
         printf " If you plan to install Skynet, it is recommended\n"
-        printf " to stop %s installation now and install Skynet\n" "$scribe_name"
+        printf " to stop %s installation now and install Skynet\n" "$script_name"
         printf " using amtm (https://github.com/decoderman/amtm).\n\n"
-        printf " If Skynet is installed after %s, run \"%s install\"\n" "$scribe_name" "$scribe_name"
-        printf " and force installation to configure %s and Skynet\n" "$scribe_name"
+        printf " If Skynet is installed after %s, run \"%s install\"\n" "$script_name" "$script_name"
+        printf " and force installation to configure %s and Skynet\n" "$script_name"
         printf " to work together.\n\n"
         if $okay
         then
-            printf " Do you want to continue installation of %s [y|n]? $std" "$scribe_name"
+            printf " Do you want to continue installation of %s [y|n]? $std" "$script_name"
             if ! yes_no
             then
                 okay=false
@@ -825,8 +839,8 @@ pre_install(){
     # exit if requiements not met
     if ! $okay
     then
-        printf "\n\n$magenta exiting %s installation. $std\n\n" "$scribe_name"
-        dlt "$scribe_script"
+        printf "\n\n$magenta exiting %s installation. $std\n\n" "$script_name"
+        dlt "$script_loc"
         exit 1
     fi
 }
@@ -855,13 +869,13 @@ menu_install(){
         if ! $is_inst
         then
             setup_scribe "ALL"
-        elif force_install "$scribe_name script"
+        elif force_install "$script_name script"
         then
             setup_scribe "ALL"
         fi
 
         rld_sngconf
-        printf "\n$white %s setup complete!  " "$scribe_name"
+        printf "\n$white %s setup complete!  " "$script_name"
         enter_to "continue"
         if ! $uisc_inst; then setup_uisc; fi
 }
@@ -889,8 +903,8 @@ stop_sng(){
     start_syslogd
     if ! $banner; then return; fi
     printf "\n$white %s will be started at next reboot; you\n" "$sng"
-    printf " may type '%s restart' at shell prompt, or\n" "$scribe_name"
-    printf " select rs from %s menu to restart %s $std\n\n" "$scribe_name" "$sng"
+    printf " may type '%s restart' at shell prompt, or\n" "$script_name"
+    printf " select rs from %s menu to restart %s $std\n\n" "$script_name" "$sng"
 }
 
 stop_lr(){ if cru l | grep -q $lr; then cru d $lr; fi; }
@@ -915,8 +929,8 @@ uninstall(){
     if [ -e $sng_loc ]
     then
         if sng_rng; then stop_sng; fi
-        sed -i "/$scribe_name kill-logger/d" $srvc_event
-        sed -i "/$scribe_name stop/d" $unmount
+        sed -i "/$script_name kill-logger/d" $srvc_event
+        sed -i "/$script_name stop/d" $unmount
         dlt "$S01sng_init"
         dlt "$rcfunc_loc"
         printf "\n$cyan"
@@ -948,14 +962,14 @@ uninstall(){
         not_installed "$lr"
     fi
 
-    dlt "$TMP/$scribe_name.zip"
-    dlt "$TMP/$scribe_name-$scribe_branch"
-    dlt "/opt/bin/$scribe_name"
-    dlt "$scribe_script"
+    dlt "$TMP/$script_name.zip"
+    dlt "$TMP/$script_name-$script_branch"
+    dlt "/opt/bin/$script_name"
+    dlt "$script_loc"
     is_inst=false
     if ! $reinst
     then
-        printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$scribe_name"
+        printf "\n$white %s, %s, and %s have been removed from the system.\n" "$sng" "$lr" "$script_name"
         printf " It is recommended to reboot the router at this time.  If you do not\n"
         printf " wish to reboot the router, press ctrl-c now to exit.\n\n\n"
         enter_to "reboot"
@@ -977,7 +991,7 @@ menu_uninstall(){
     printf "    All configuration files in$yellow %s$white,$yellow %s$white,\n" "$sngd_d" "$lrd_d"
     printf "   $yellow %s$white, and$yellow %s$white will be deleted!\n" "$sng_share" "$lr_share"
     warning_sign
-    printf "    Type YES to$magenta %s$yellow %s$white: $std" "$andre" "$scribe_name"
+    printf "    Type YES to$magenta %s$yellow %s$white: $std" "$andre" "$script_name"
     read -r wipeit
     case "$wipeit" in
         YES)
@@ -1065,19 +1079,19 @@ menu_update(){
         printf "\n$white    No new version available. (GitHub version"
         [ "$new_vers" = "none" ] && printf " equal to " || printf "$red LESS THAN $white"
         printf "local version)\n"
-        printf "    Do you wish to force re-installation of %s script? [y|n] $std" "$scribe_name"
+        printf "    Do you wish to force re-installation of %s script? [y|n] $std" "$script_name"
     fi
     if yes_no
     then
         get_zip
         setup_scribe "NEWER"
         copy_rcfunc
-        printf "\n$white %s updated!$std\n" "$scribe_name"
-        sh "$scribe_script" filters gotzip nologo
-        sh "$scribe_script" status nologo
+        printf "\n$white %s updated!$std\n" "$script_name"
+        sh "$script_loc" filters gotzip nologo
+        sh "$script_loc" status nologo
         run_scribe=true
     else
-        printf "\n$white        *** %s$red not$white updated! *** $std\n\n" "$scribe_name"
+        printf "\n$white        *** %s$red not$white updated! *** $std\n\n" "$script_name"
     fi
 }
 
@@ -1107,17 +1121,17 @@ menu_forgrnd(){
 }
 
 gather_debug(){
-    dlt "$scribe_debug"
+    dlt "$script_debug"
     printf "\n$white gathering debugging information ..."
     get_vers
 
-    # everything between { } goes to $scribe_debug
+    # everything between { } goes to $script_debug
     {
         printf "%s\n" "$debug_sep"
-        printf "### %s Version: %s\n" "$scribe_name" "$scribe_long"
-        printf "###  Local %s md5: %s\n" "$scribe_name" "$scribe_md5"
+        printf "### %s Version: %s\n" "$script_name" "$script_long"
+        printf "###  Local %s md5: %s\n" "$script_name" "$script_md5"
         printf "### GitHub Version: %s\n" "$github_long"
-        printf "### GitHub %s md5: %s\n" "$scribe_name" "$github_md5"
+        printf "### GitHub %s md5: %s\n" "$script_name" "$github_md5"
         printf "### Router: %s (%s)\n" "$model" "$arch"
         printf "### Firmware Version: %s %s\n" "$fwname" "$fwvers"
         printf "\n%s\n### check running log processes:\n" "$debug_sep"
@@ -1128,6 +1142,7 @@ gather_debug(){
         ls -ld /tmp/syslog*
         ls -ld /jffs/syslog*
         ls -ld $optmsg
+        ls -ld $script_conf
         printf "\n%s\n### top output:\n" "$debug_sep"
         top -b -n1 | head
         printf "\n%s\n### *log references in top:\n" "$debug_sep"
@@ -1141,44 +1156,44 @@ gather_debug(){
         printf "\n%s\n### installed packages:\n" "$debug_sep"
         /opt/bin/opkg list-installed
         printf "\n%s\n### %s running configuration:\n" "$debug_sep" "$sng"
-    } >> "$scribe_debug"
+    } >> "$script_debug"
     if sng_rng
     then
-        $sngctl_loc config --preprocessed >> "$scribe_debug"
+        $sngctl_loc config --preprocessed >> "$script_debug"
     else
         printf "#### %s not running! ####\n%s\n" "$sng" "$debug_sep"
     fi
-    printf "\n%s\n### %s on-disk syntax check:\n" "$debug_sep" "$sng" >> "$scribe_debug"
+    printf "\n%s\n### %s on-disk syntax check:\n" "$debug_sep" "$sng" >> "$script_debug"
     dlt "$sngconf_merged"
     dlt "$sngconf_error"
     $sng_loc --preprocess-into="$sngconf_merged" 2> "$sngconf_error"
-    cat "$sngconf_merged" >> "$scribe_debug"
+    cat "$sngconf_merged" >> "$script_debug"
     if [ -s "$sngconf_error" ]
     then
         {
             printf "#### SYSLOG-NG SYNTAX ON-DISK CHECK FAILED! SEE BELOW ####\n"
             cat "$sngconf_error"
             printf "###### END SYSLOG-NG ON-DISK SYNTAX FAILURE OUTPUT ######\n"
-        } >> "$scribe_debug"
+        } >> "$script_debug"
     else
-        printf "#### syslog-ng on-disk syntax check okay! ####\n" >> "$scribe_debug"
+        printf "#### syslog-ng on-disk syntax check okay! ####\n" >> "$script_debug"
     fi
-    printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> "$scribe_debug"
-    $lr_loc -d "$lr_conf" >> "$scribe_debug" 2>&1
+    printf "\n%s\n### logrotate debug output:\n" "$debug_sep" >> "$script_debug"
+    $lr_loc -d "$lr_conf" >> "$script_debug" 2>&1
     printf "\n%s\n### Skynet log locations:\n" "$debug_sep"
     if $skynet_inst
     then
         skynetloc="$( grep -ow "skynetloc=.* # Skynet" $fire_start 2>/dev/null | grep -vE "^#" | awk '{print $1}' | cut -c 11- )"
         skynetcfg="${skynetloc}/skynet.cfg"
-        grep "syslog" "$skynetcfg" >> "$scribe_debug"
+        grep "syslog" "$skynetcfg" >> "$script_debug"
     else
-        printf "#### Skynet not installed! ####\n%s\n" "$debug_sep" >> "$scribe_debug"
+        printf "#### Skynet not installed! ####\n%s\n" "$debug_sep" >> "$script_debug"
     fi
-    printf "\n%s\n### end of output ###\n" "$debug_sep" >> "$scribe_debug"
+    printf "\n%s\n### end of output ###\n" "$debug_sep" >> "$script_debug"
 
     printf " redacting username and USB drive names ..."
     redact="$( echo "$USER" | awk  '{ print substr($0, 1, 8); }' )"
-    sed -i "s/$redact/redacted/g" "$scribe_debug"
+    sed -i "s/$redact/redacted/g" "$script_debug"
     mntnum=0
     for usbmnt in /tmp/mnt/*
     do
@@ -1186,7 +1201,7 @@ gather_debug(){
         # note that if the usb drive name has a comma in it, then sed will fail
         if [ "X$( echo "$usbmnt" | grep ',' )" = "X" ]
         then
-            sed -i "s,$usbdrv,usb#$mntnum,g" "$scribe_debug"
+            sed -i "s,$usbdrv,usb#$mntnum,g" "$script_debug"
         else
             printf "\n\n    USB drive $cyan%s$white has a comma in the drive name,$red unable to redact!$white\n\n" "$usbdrv"
         fi
@@ -1194,40 +1209,40 @@ gather_debug(){
     done
 
     printf " taring the output ..."
-    tar -zcvf "$scribe_debug.tar.gz" -C "$TMP" "$scribe_debug_name" > /dev/null 2>&1
+    tar -zcvf "$script_debug.tar.gz" -C "$TMP" "$script_debug_name" > /dev/null 2>&1
     finis
-    printf "\n$std Debug output stored in $cyan%s$std, please review this file\n" "$scribe_debug"
+    printf "\n$std Debug output stored in $cyan%s$std, please review this file\n" "$script_debug"
     printf " to ensure you understand what information is being disclosed.\n\n"
-    printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$scribe_debug"
+    printf " Tarball of debug output is $cyan%s.tar.gz $std\n" "$script_debug"
 }
 
 menu_backup(){
     printf "\n$white Backing up %s and %s Configurations ... \n" "$sng" "$lr"
-    date_stamp "$scribe_bakname"
-    tar -zcvf "$scribe_bakname" "$sng_conf" "$sngd_d" "$lr_conf" "$lrd_d" "$conf_d"
-    printf "\n$std Backup data is stored in $cyan%s$std.\n\n" "$scribe_bakname"
+    date_stamp "$script_bakname"
+    tar -zcvf "$script_bakname" "$sng_conf" "$sngd_d" "$lr_conf" "$lrd_d" "$conf_d"
+    printf "\n$std Backup data is stored in $cyan%s$std.\n\n" "$script_bakname"
 }
 
 menu_restore(){
     warning_sign
     printf " This will overwrite $yellow%s$white and $yellow%s$white,\n" "$sng_conf" "$lr_conf"
     printf " and replace all files in $yellow%s$white and $yellow%s$white!!\n" "$sngd_d" "$lrd_d"
-    printf " The file must be named $cyan%s$white.\n\n" "$scribe_bakname"
-    if [ ! -e "$scribe_bakname" ]
+    printf " The file must be named $cyan%s$white.\n\n" "$script_bakname"
+    if [ ! -e "$script_bakname" ]
     then
-        printf "   Backup file $magenta%s$white missing!!\n\n" "$scribe_bakname"
+        printf "   Backup file $magenta%s$white missing!!\n\n" "$script_bakname"
     else
-        printf " Are you SURE you want to restore from $cyan%s$white (type YES to restore)? $std" "$scribe_bakname"
+        printf " Are you SURE you want to restore from $cyan%s$white (type YES to restore)? $std" "$script_bakname"
         read -r rstit
         case "$rstit" in
             YES)
                 printf "\n$white Restoring %s and %s Configurations ... \n" "$sng" "$lr"
                 dlt "$sngd_d"
                 dlt "$lrd_d"
-                tar -zxvf "$scribe_bakname" -C /
+                tar -zxvf "$script_bakname" -C /
                 chmod 600 "$sngd_d"/*
                 chmod 600 "$lrd_d"/*
-                printf "\n$std Backup data has been restored from $cyan%s$std.\n" "$scribe_bakname"
+                printf "\n$std Backup data has been restored from $cyan%s$std.\n" "$script_bakname"
                 menu_restart
                 menu_status
                 ;;
@@ -1238,8 +1253,46 @@ menu_restore(){
     fi
 }
 
+menu_about(){
+    cat <<EOF
+About
+   $script_name replaces the firmware system logging service with
+   syslog-ng (https://github.com/syslog-ng/syslog-ng/releases),
+   which facilitates breaking the monolithic logfile provided by
+   syslog into individualized log files based on user criteria.
+
+License
+  $script_name is free to use under the GNU General Public License
+  version 3 (GPL-3.0) https://opensource.org/licenses/GPL-3.0
+
+Help & Support
+  https://www.snbforums.com/forums/asuswrt-merlin-addons.60/?prefix_id=7
+
+Source code
+  https://github.com/cynicastic/scribe
+EOF
+    printf "$std\n"
+}
+
+menu_help(){
+    cat <<EOF
+Available commands:
+  $script_name about                explains functionality
+  $script_name install              installs script
+  $script_name remove / uninstall   uninstalls script
+  $script_name update               checks for updates
+  $script_name [show-]config        checks on-disk syslog-ng configuration
+  $script_name status               displays current scribe status    
+  $script_name reload               reload syslog-ng configuration file
+  $script_name restatrt / start     restarts (or starts if not running) syslog-ng
+  $script_name debug                creates debug file
+  $script_name help                 displays this help
+EOF
+    printf "$std\n"
+}
+
 ut_menu(){
-    printf "$magenta           %s Utilities $white\n\n" "$scribe_name"
+    printf "$magenta           %s Utilities $white\n\n" "$script_name"
     printf "     bu.   Backup configuration files\n"
     printf "     rt.   Restore configuration files\n\n"
     printf "     d.    Generate debug file\n"
@@ -1269,7 +1322,7 @@ main_menu(){
     fi
     if $is_inst
     then
-        printf "     s.    Show %s status\n" "$scribe_name"
+        printf "     s.    Show %s status\n" "$script_name"
         if sng_rng
         then
             printf "     rl.   Reload %s.conf\n" "$sng"
@@ -1287,11 +1340,11 @@ main_menu(){
             printf "\n     u.    Update scribe\n"
             printf "     uf.   Update filters\n"
         fi
-        printf "     su.   %s utilities\n" "$scribe_name"
+        printf "     su.   %s utilities\n" "$script_name"
     fi
-    printf "     e.    Exit %s\n\n" "$scribe_name"
-    printf "     is.   %snstall %s\n" "$ins" "$scribe_name" 
-    printf "     zs.   Remove %s\n" "$scribe_name"
+    printf "     e.    Exit %s\n\n" "$script_name"
+    printf "     is.   %snstall %s\n" "$ins" "$script_name" 
+    printf "     zs.   Remove %s\n" "$script_name"
 }
 
 scribe_menu(){
@@ -1373,7 +1426,7 @@ scribe_menu(){
                 d)
                     gather_debug
                     printf "\n$white Would you like to review the debug data (opens in less)? [y|n] $std"
-                    if yes_no; then pause=false; less "$scribe_debug"; fi
+                    if yes_no; then pause=false; less "$script_debug"; fi
                     ;;
                 c)
                     show_config
@@ -1433,7 +1486,7 @@ scribe_menu(){
                         pre_install
                         get_zip
                         menu_install
-                        sh "$scribe_script" status nologo
+                        sh "$script_loc" status nologo
                         run_scribe=true
                     fi
                     ;;
@@ -1450,7 +1503,7 @@ scribe_menu(){
         fi
         if $not_recog; then printf "\n$red Unrecognized command \"%s\". " "$choice"; fi
         if $pause; then enter_to "continue"; fi
-        if $run_scribe; then sh "$scribe_script"; exit 0; fi
+        if $run_scribe; then sh "$script_loc"; exit 0; fi
     done
 }
 
@@ -1480,17 +1533,23 @@ fi
 case "$action" in
 
 # install syslog-ng, logrotate, & scribe script
+    about)
+        menu_about
+        ;;
+    help)
+        menu_help
+        ;;
     install)
         if $is_inst
         then
-            printf "\n$white     *** %s already installed! *** \n\n" "$scribe_name"
+            printf "\n$white     *** %s already installed! *** \n\n" "$script_name"
             printf " Please use menu command 'is' to reinstall. $std\n\n"
             exit 1
         fi
         pre_install
         get_zip
         menu_install
-        sh "$scribe_script" status nologo
+        sh "$script_loc" status nologo
         exit 0
         ;;
 
@@ -1567,14 +1626,15 @@ case "$action" in
         
 # unrecognized command
     *)
-        printf "\n$white Usage: $0 ( uninstall | update | [show-]config | status | reload | [re]start | debug )$std\n\n"
+        printf "\n$white Usage: $script_name ( about | uninstall | update | config | status | reload | restart | debug )\n"
+        printf " For a brief description of commands, run: $script_name help $std\n\n"
         exit 1
         ;;
 esac
 
 if ! $is_inst
 then
-    printf "\n$yellow %s $white not installed, command \"%s\" not valid!$std\n\n" "$scribe_name" "$action"
+    printf "\n$yellow %s $white not installed, command \"%s\" not valid!$std\n\n" "$script_name" "$action"
 elif ! sng_rng && [ "$action" != "stop" ]
 then
     printf "\n$yellow %s $white not running, command \"%s\" not valid!$std\n\n" "$sng" "$action"
