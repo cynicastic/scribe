@@ -25,14 +25,7 @@ This software was written by someone who very likely didn't know what they were 
 
 ## ToDo:
 
-- [x] Expand this README (version 0.x)
-- [x] Alpha and Beta testing (version 0.x)
-- [x] Add md5 checksum when checking for new versions (version 1.x)
-- [x] Provide and ask to install a simplified syslog-ng.conf file (version 1.x)
-- [x] Add a menu (version 2.x)
-- [ ] ...
-- [ ] ?????
-- [ ] Profit!
+- [ ] Try to keep up with the seemingly ever-changing syslog-ng
 
 ## Built With
 
@@ -58,6 +51,7 @@ This isn't high school, it's all open book and copying from your neighbor is enc
 * RMerlin, for enduring an endless stream of people who will not read the release notes (out of his control), yet is still dedicated to producing the awesomeness that is AsusWRT-Merlin in what used to be known as his "free time".
 * The great coders of SNB Forums, in alphabetical order, for lack of a better system:
     * Adamm
+    * dave14305
     * Jack Yaz
     * kvic
     * Martineau
