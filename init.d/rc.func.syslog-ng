@@ -87,8 +87,7 @@ kill_logger(){
     [ ! -f "/var/lib/logrotate.status" ] && touch "/var/lib/logrotate.status"
 
     # export timezone if not already set
-    TZ="$( /bin/cat "/etc/TZ" )"
-    [ -z "$TZ" ] && export TZ
+    [ -z "$TZ" ] && export export TZ="$( /bin/cat "/etc/TZ" )"
 }
 
 PRECMD="kill_logger"
