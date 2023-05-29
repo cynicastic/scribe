@@ -37,13 +37,13 @@ kill_logger(){
     [ "$syslog_loc" = "$jffslog" ] && isjffs=true
 
     # kill any/all running klogd and/or syslogd
-    [ -n "$( /bin/pidof klogd )" ] && killall klogd
-    [ -n "$( /bin/pidof syslogd )" ] && killall syslogd
     count=30
     klgk=false
     sldk=false
     while [ $count -gt 0 ]
     do
+        [ -n "$( /bin/pidof klogd )" ] && killall klogd
+        [ -n "$( /bin/pidof syslogd )" ] && killall syslogd
         sleep 1 # give them a moment to shut down
         [ -z "$( /bin/pidof klogd )" ] && klgk=true
         [ -z "$( /bin/pidof syslogd )" ] && sldk=true
