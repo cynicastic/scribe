@@ -62,7 +62,7 @@ done
 readonly script_name="scribe"
 scribe_branch="gamma"
 readonly script_branch="$scribe_branch"
-scribe_ver="v3.1.3" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.2.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 script_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly script_ver
 readonly script_long="$script_ver ($script_branch)"
