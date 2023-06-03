@@ -47,6 +47,10 @@ The files in this directory are:
     blankmsg    Drops any blank messages.  Automatically placed
                 in /opt/etc/syslog-ng.d/ on installation.
 
+    bsd         Filters out "bsd" messages, which have nothing to do with
+                the Berkley [ Software | Standard ] Distribution flavor
+                of unix.  These messages are related to smartconnect.
+
     crash       Filters out most lines from the dcd_tainted crash messages
                 as well as most lines of other crash messages.  dcd_tainted
                 crash occurs when users enable pixelserv-tls or exclude
