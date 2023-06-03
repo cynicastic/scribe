@@ -1620,7 +1620,7 @@ case "$action" in
 # kill syslogd & klogd - only available via cli
     service_event)
 # ******************************
-        printf "args: $1 $2 $3 $4 \n" >> "/opt/tmp/service-event-args.log"
+printf "$( date ) args: $1 $2 $3 $4 \tklogd PID: %s\tsyslogd PID: %s\n" "$( /bin/pidof klogd  )" "$( /bin/  pidof syslogd  )" >> "/opt/tmp/service-event-args.log"
 # ******************************
         if ! sng_rng || [ "$2" = "stop" ]; then exit 0; fi
         # load kill_logger() function to reset system path links/hacks
