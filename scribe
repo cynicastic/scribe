@@ -1622,7 +1622,7 @@ case "$action" in
 # ******************************
         printf "args: $1 $2 $3 $4 \n" >> "/opt/tmp/service-event-args.log"
 # ******************************
-        if ! sng_rng || [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; }; then exit 0; fi
+        if ! sng_rng || [ "$2" = "stop" ]; then exit 0; fi
         # load kill_logger() function to reset system path links/hacks
         # keep shellcheck from barfing on sourcing $rcfunc_loc
         # shellcheck disable=SC1091
