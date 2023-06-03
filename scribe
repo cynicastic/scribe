@@ -1289,7 +1289,7 @@ Available commands:
   $script_name [show-]config        checks on-disk syslog-ng configuration
   $script_name status               displays current scribe status    
   $script_name reload               reload syslog-ng configuration file
-  $script_name restatrt / start     restarts (or starts if not running) syslog-ng
+  $script_name restart / start      restarts (or starts if not running) syslog-ng
   $script_name debug                creates debug file
   $script_name help                 displays this help
 EOF
