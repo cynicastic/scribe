@@ -45,11 +45,6 @@ do
             banner=false
             shift
             ;;
-        service_event)
-            banner=false
-            action="$1"
-            break
-            ;;
         *)
             action="$1"
             shift
@@ -424,11 +419,11 @@ sed_srvc(){
     if [ -f $srvc_event ]
     then
         [ "$( grep -c "#!/bin/sh" $srvc_event )" -ne 1 ] && sed -i "1s~^~#!/bin/sh -\n\n~" $srvc_event
-        if grep -q "$script_name kill-logger" $srvc_event; then sed -i "/$script_name kill-logger/d" $srvc_event; fi
-        if grep -q "$script_name kill_logger" $srvc_event; then sed -i "/$script_name kill_logger/d" $srvc_event; fi
-        if ! grep -q "$script_name service_event" $srvc_event
+        if grep -q "kill_logger" $srvc_event; then sed -i "s/$script_name kill_logger/$script_name kill-logger/g" $srvc_event; fi
+        if grep -q "nologo \"\$2\"" $srvc_event; then sed -i "s/nologo \"\$2\"/nologo \"\$1\" \"\$2\"/g" $srvc_event; fi
+        if ! grep -q "$script_name kill-logger" $srvc_event
         then
-            echo "$script_loc service_event \"\$@\" & # added by $script_name" >> $srvc_event
+            echo "$script_loc kill-logger nologo \"\$1\" \"\$2\" & # added by $script_name" >> $srvc_event
             updated
         else
             present
@@ -437,7 +432,7 @@ sed_srvc(){
         {
             echo "#!/bin/sh -"
             echo ""
-            echo "$script_loc service_event \"\$@\" & # added by $script_name"
+            echo "$script_loc kill-logger nologo \"\$1\" \"\$2\" & # added by $script_name"
         } > $srvc_event
         printf "$green created. $std\n"
     fi
@@ -936,7 +931,7 @@ uninstall(){
     if [ -e $sng_loc ]
     then
         if sng_rng; then stop_sng; fi
-        sed -i "/$script_name service_event/d" $srvc_event
+        sed -i "/$script_name kill-logger/d" $srvc_event
         sed -i "/$script_name stop/d" $unmount
         dlt "$S01sng_init"
         dlt "$rcfunc_loc"
