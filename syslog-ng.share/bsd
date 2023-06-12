@@ -1,0 +1,18 @@
+# log bsd messages to /opt/var/log/bsd
+
+destination d_bsdbsd {
+    file("/opt/var/log/bsd.log");
+};
+
+filter f_bsdbsd {
+    program("bsd");
+};
+
+log {
+    source(src);
+    filter(f_bsdbsd);
+    destination(d_bsdbsd);
+    flags(final);
+};
+
+#eof

@@ -6,7 +6,7 @@
 #
 # Release notes: https://github.com/syslog-ng/syslog-ng/releases 
 
-@version: 3.38
+@version: 4.1
 #@include "scl.conf" # uncomment this line to for additional functionality, see syslog-ng documentation
 @include "/opt/etc/syslog-ng.d/" # Put any customization files in this directory
 
@@ -16,7 +16,7 @@ options {
     keep_hostname(yes); # Enable or disable hostname rewriting.
     log_fifo_size(256); # The number of messages that the output queue can store.
     log_msg_size(16384); # Maximum length of a message in bytes.
-    stats_freq(21600); # The period between two STATS messages sent by syslog-ng, containing statistics about dropped logs in seconds; 0 disables. (21,600 seconds = 6 hours)
+    stats(freq(21600)); # The period between two STATS messages sent by syslog-ng, containing statistics about dropped logs in seconds; 0 disables. (21,600 seconds = 6 hours)
     flush_lines(0); # How many lines are flushed to a destination at a time.
     use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
 };

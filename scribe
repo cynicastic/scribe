@@ -57,7 +57,7 @@ done
 readonly script_name="scribe"
 scribe_branch="master"
 readonly script_branch="$scribe_branch"
-scribe_ver="v3.1.2" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.2.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 script_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly script_ver
 readonly script_long="$script_ver ($script_branch)"
@@ -511,7 +511,7 @@ sync_conf(){
     printf "$white %34s" "$( strip_path $sng_conf ) version check ..."
     sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
     sng_conf_vers="$( grep -m1 '@version:' $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ]
+    if [ "$sng_vers" != "$sng_conf_vers" ] || grep -q 'stats_freq(' $sng_conf
     then
         printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
         printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path $sng_conf )" "$sng"
@@ -519,6 +519,8 @@ sync_conf(){
         old_doc="doc/syslog-ng-open"
         new_doc="list/syslog-ng-open-source-edition"
         sed -i "s/$old_doc.*/$new_doc/" $sng_conf
+        stats_freq="$( grep -m1 'stats_freq(' $sng_conf | cut -d ';' -f 1 | grep -oE '[0-9]*' )"
+        [ -n $stats_freq ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" $sng_conf
         sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
         $S01sng_init start
         hup_uisc
@@ -1284,7 +1286,7 @@ Available commands:
   $script_name [show-]config        checks on-disk syslog-ng configuration
   $script_name status               displays current scribe status    
   $script_name reload               reload syslog-ng configuration file
-  $script_name restatrt / start     restarts (or starts if not running) syslog-ng
+  $script_name restart / start      restarts (or starts if not running) syslog-ng
   $script_name debug                creates debug file
   $script_name help                 displays this help
 EOF
@@ -1613,8 +1615,8 @@ case "$action" in
 
 
 # kill syslogd & klogd - only available via cli
-    kill-logger)
-        if ! sng_rng || [ "$2" = "stop" ] || { [ "$3" != "logger" ] && [ "$3" != "time" ]; }; then exit 0; fi
+    service_event)
+        if ! sng_rng || [ "$2" = "stop" ]; then exit 0; fi
         # load kill_logger() function to reset system path links/hacks
         # keep shellcheck from barfing on sourcing $rcfunc_loc
         # shellcheck disable=SC1091

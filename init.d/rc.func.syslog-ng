@@ -44,7 +44,7 @@ kill_logger(){
     do
         [ -n "$( /bin/pidof klogd )" ] && killall klogd
         [ -n "$( /bin/pidof syslogd )" ] && killall syslogd
-        sleep 1 # give them a moment to shut down
+        sleep 1 # give them a moment to shut down / unknown process to restart them
         [ -z "$( /bin/pidof klogd )" ] && klgk=true
         [ -z "$( /bin/pidof syslogd )" ] && sldk=true
         if $klgk && $sldk; then count=-1; fi
