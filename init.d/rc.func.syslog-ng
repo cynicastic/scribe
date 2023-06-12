@@ -42,9 +42,6 @@ kill_logger(){
     sldk=false
     while [ $count -gt 0 ]
     do
-# ********************
-printf "$( date ) count: %s \t klogd PID: %s \t syslogd PID: $s \n" "$count" "$( /bin/pidof klogd  )" "$( /bin/pidof syslogd  )" >> "/opt/tmp/service-event-args.log"
-# ********************
         [ -n "$( /bin/pidof klogd )" ] && killall klogd
         [ -n "$( /bin/pidof syslogd )" ] && killall syslogd
         sleep 1 # give them a moment to shut down / unknown process to restart them
