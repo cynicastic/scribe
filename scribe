@@ -86,8 +86,11 @@ export tmplog
 # router details
 readonly merlin="ASUSWRT-Merlin"
 readonly fwreqd="380.68"
+readonly fwmajreq="3.0.0.4"
 fwname="$( uname -o )"
 readonly fwname
+fwmajver="$( nvram get firmver )"
+readonly fwmajver
 fwvers="$( nvram get buildno )"
 readonly fwvers
 model="$( nvram get odmpid )"
@@ -788,8 +791,8 @@ pre_install(){
     # check for required components
     okay=true
 
-    # check if Entware & ASUSWRT-Merlin are installed and Merlin version number
-    if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]
+    # check if Entware & ASUSWRT-Merlin are installed and Merlin version number, considering the major release
+    if [ ! -x "/opt/bin/opkg" ] || [ "$fwname" != "$merlin" ] || [[ "$( ver_num "$fwmajver" )" -lt "$( ver_num "$fwmajreq" )" ] || [ "$( ver_num "$fwvers" )" -lt "$( ver_num "$fwreqd" )" ]]
     then
         printf "\n\n$red %s version %s or later with Entware is required! $std\n" "$merlin" "$fwreqd"
         okay=false
