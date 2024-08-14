@@ -62,7 +62,7 @@ done
 readonly script_name="scribe"
 scribe_branch="master"
 readonly script_branch="$scribe_branch"
-scribe_ver="v3.2.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.2.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 script_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly script_ver
 readonly script_long="$script_ver ($script_branch)"
@@ -512,28 +512,38 @@ dir_links(){
     fi
 }
 
-sync_conf(){
+##----------------------------------------##
+## Modified by Martinski W. [2024-Aug-13] ##
+##----------------------------------------##
+sync_conf()
+{
     printf "$white %34s" "$( strip_path $sng_conf ) version check ..."
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    sng_conf_vers="$( grep -m1 '@version:' $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ] || grep -q 'stats_freq(' $sng_conf
+    sng_conf_vtag1="@version:"
+    sng_conf_vtag2="${sng_conf_vtag1}[[:blank:]]*"
+    sng_version_str="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
+    sng_conf_verstr="$( grep -Em1 "$sng_conf_vtag2" "$sng_conf" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
+
+    if [ "$sng_version_str" != "$sng_conf_verstr" ] || grep -q 'stats_freq(' "$sng_conf"
     then
-        printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
+        printf "$red out of sync! (%s) $std\n" "$sng_conf_verstr"
         printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path $sng_conf )" "$sng"
         $S01sng_init stop
-        old_doc="doc/syslog-ng-open"
-        new_doc="list/syslog-ng-open-source-edition"
+        old_doc="doc\/syslog-ng-open"
+        new_doc="list\/syslog-ng-open-source-edition"
         sed -i "s/$old_doc.*/$new_doc/" $sng_conf
         stats_freq="$( grep -m1 'stats_freq(' $sng_conf | cut -d ';' -f 1 | grep -oE '[0-9]*' )"
-        [ -n $stats_freq ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" $sng_conf
-        sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
+        [ -n "$stats_freq" ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" "$sng_conf"
+        if [ -n "$sng_version_str" ] && [ -n "$sng_conf_verstr" ]
+        then
+            sed -i "s/^${sng_conf_vtag2}${sng_conf_verstr}.*/$sng_conf_vtag1 $sng_version_str/" "$sng_conf"
+        fi
         $S01sng_init start
         hup_uisc
         printf "$white %34s" "$( strip_path $sng_conf ) version ..."
-        printf "$yellow updated! (%s) $std\n" "$sng_vers"
-        logger -t "$script_name" "$( strip_path $sng_conf ) version number updated ($sng_vers)!"
+        printf "$yellow updated! (%s) $std\n" "$sng_version_str"
+        logger -t "$script_name" "$( strip_path $sng_conf ) version number updated ($sng_version_str)!"
     else
-        printf "$green in sync. (%s) $std\n" "$sng_vers"
+        printf "$green in sync. (%s) $std\n" "$sng_version_str"
     fi
 }
 
@@ -694,8 +704,9 @@ menu_status(){
     prt_vers
 }
 
-sng_ver_chk(){
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+sng_ver_chk()
+{
+    sng_vers="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
     if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
     then
         printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
