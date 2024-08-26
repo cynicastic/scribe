@@ -513,24 +513,24 @@ dir_links(){
 }
 
 ##----------------------------------------##
-## Modified by Martinski W. [2024-Aug-13] ##
+## Modified by Martinski W. [2024-Aug-25] ##
 ##----------------------------------------##
 sync_conf()
 {
-    printf "$white %34s" "$( strip_path $sng_conf ) version check ..."
+    printf "$white %34s" "$( strip_path "$sng_conf" ) version check ..."
     sng_conf_vtag1="@version:"
     sng_conf_vtag2="${sng_conf_vtag1}[[:blank:]]*"
-    sng_version_str="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
-    sng_conf_verstr="$( grep -Em1 "$sng_conf_vtag2" "$sng_conf" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
+    sng_version_str="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_verstr="$( grep -Em1 "$sng_conf_vtag2" "$sng_conf" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
 
     if [ "$sng_version_str" != "$sng_conf_verstr" ] || grep -q 'stats_freq(' "$sng_conf"
     then
         printf "$red out of sync! (%s) $std\n" "$sng_conf_verstr"
-        printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path $sng_conf )" "$sng"
+        printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path "$sng_conf" )" "$sng"
         $S01sng_init stop
         old_doc="doc\/syslog-ng-open"
         new_doc="list\/syslog-ng-open-source-edition"
-        sed -i "s/$old_doc.*/$new_doc/" $sng_conf
+        sed -i "s/$old_doc.*/$new_doc/" "$sng_conf"
         stats_freq="$( grep -m1 'stats_freq(' $sng_conf | cut -d ';' -f 1 | grep -oE '[0-9]*' )"
         [ -n "$stats_freq" ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" "$sng_conf"
         if [ -n "$sng_version_str" ] && [ -n "$sng_conf_verstr" ]
@@ -539,16 +539,16 @@ sync_conf()
         fi
         $S01sng_init start
         hup_uisc
-        printf "$white %34s" "$( strip_path $sng_conf ) version ..."
+        printf "$white %34s" "$( strip_path "$sng_conf" ) version ..."
         printf "$yellow updated! (%s) $std\n" "$sng_version_str"
-        logger -t "$script_name" "$( strip_path $sng_conf ) version number updated ($sng_version_str)!"
+        logger -t "$script_name" "$( strip_path "$sng_conf" ) version number updated ($sng_version_str)!"
     else
         printf "$green in sync. (%s) $std\n" "$sng_version_str"
     fi
 }
 
 sng_syntax(){
-    printf "$white %34s" "$( strip_path $sng_conf ) syntax check ..."
+    printf "$white %34s" "$( strip_path "$sng_conf" ) syntax check ..."
     if $sng_loc -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
