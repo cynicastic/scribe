@@ -21,7 +21,9 @@
 # SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt (exists in Entware procps-ng)
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
-#
+##################################################################
+# Last Modified: 2024-Aug-25
+#-----------------------------------------------------------------
 
 # ensure firmware binaries are used, not Entware
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
