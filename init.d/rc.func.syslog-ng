@@ -1,8 +1,6 @@
 #!/bin/sh -
 #
-# NB: PRECMD only runs on "start"
-#  => kill_logger only runs if (re)starting syslog-ng, or if
-#     syslogd is detected to be running when it shouldn't
+# NB: rc.func only runs PRECMD on "start"
 
 kill_logger(){
     # these will be set if coming from scribe; on bootup, these will not be set
@@ -83,7 +81,7 @@ kill_logger(){
     # not needed for older versions of syslog-ng, but doesn't hurt anything
     [ ! -d "/opt/var/run/syslog-ng" ] && mkdir "/opt/var/run/syslog-ng"
 
-    # touch logroatat.status if it doesn't exist so syslog-ng doesn't whine
+    # touch logroatate.status if it doesn't exist so syslog-ng doesn't whine
     [ ! -f "/var/lib/logrotate.status" ] && touch "/var/lib/logrotate.status"
 
     # export timezone if not already set
