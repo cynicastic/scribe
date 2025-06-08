@@ -8,7 +8,7 @@
 # (____/`\____)(_)   (_)(_,__/'`\____)
 # syslog-ng and logrotate installer for Asuswrt-Merlin
 #
-# Coded by cmkelley (nee cynicastic)
+# Coded by cmkelley
 #
 # Original interest in syslog-ng on Asuswrt-Merlin inspired by tomsk & kvic
 # Good ideas and code borrowed heavily from Adamm, dave14305, Jack Yaz, thelonelycoder, & Xentrx
