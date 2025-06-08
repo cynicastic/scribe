@@ -21,7 +21,9 @@
 # SC2009 = Consider uing pgrep ~ Note that pgrep doesn't exist in asuswrt (exists in Entware procps-ng)
 # shellcheck disable=SC2059
 # SC2059 = Don't use variables in the printf format string. Use printf "..%s.." "$foo" ~ I (try to) only embed the ansi color escapes in printf strings
-#
+##################################################################
+# Last Modified: 2024-Aug-25
+#-----------------------------------------------------------------
 
 # ensure firmware binaries are used, not Entware
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin:$PATH"
@@ -62,7 +64,7 @@ done
 readonly script_name="scribe"
 scribe_branch="master"
 readonly script_branch="$scribe_branch"
-scribe_ver="v3.2.0" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
+scribe_ver="v3.2.1" # version number for amtm compatibility, but keep vX.Y_Z otherwise because I'm stubborn
 script_ver="$( echo $scribe_ver | sed 's/\./_/2' )"
 readonly script_ver
 readonly script_long="$script_ver ($script_branch)"
@@ -83,12 +85,15 @@ export optmsg
 export jffslog
 export tmplog
 
+##----------------------------------------##
+## Modified by Martinski W. [2024-Aug-25] ##
+##----------------------------------------##
 # router details
 readonly merlin="ASUSWRT-Merlin"
-readonly fwreqd="380.68"
+readonly fwreqd="3004.380.68"
 fwname="$( uname -o )"
 readonly fwname
-fwvers="$( nvram get buildno )"
+fwvers="$(nvram get firmver | sed 's/\.//g').$( nvram get buildno )"
 readonly fwvers
 model="$( nvram get odmpid )"
 [ -z "$model" ] && model="$( nvram get productid )"
@@ -177,7 +182,7 @@ not_installed(){ printf "\n$blue %s$red NOT$white installed! $std\n" "$1"; }
 
 enter_to(){ printf "$white Press [Enter] to %s: $std" "$1"; read -r; echo; }
 
-ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%02d%02d\n", $1, $2, $3); }'; }
+ver_num(){ echo "$1" | sed 's/v//; s/_/./' | awk -F. '{ printf("%d%03d%02d\n", $1, $2, $3); }'; }
 
 md5_file(){ md5sum "$1" | awk '{ printf( $1 ); }'; } # get md5sum of file
 
@@ -512,33 +517,43 @@ dir_links(){
     fi
 }
 
-sync_conf(){
-    printf "$white %34s" "$( strip_path $sng_conf ) version check ..."
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    sng_conf_vers="$( grep -m1 '@version:' $sng_conf | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
-    if [ "$sng_vers" != "$sng_conf_vers" ] || grep -q 'stats_freq(' $sng_conf
+##----------------------------------------##
+## Modified by Martinski W. [2024-Aug-25] ##
+##----------------------------------------##
+sync_conf()
+{
+    printf "$white %34s" "$( strip_path "$sng_conf" ) version check ..."
+    sng_conf_vtag1="@version:"
+    sng_conf_vtag2="${sng_conf_vtag1}[[:blank:]]*"
+    sng_version_str="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+    sng_conf_verstr="$( grep -Em1 "$sng_conf_vtag2" "$sng_conf" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+
+    if [ "$sng_version_str" != "$sng_conf_verstr" ] || grep -q 'stats_freq(' "$sng_conf"
     then
-        printf "$red out of sync! (%s) $std\n" "$sng_conf_vers"
-        printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path $sng_conf )" "$sng"
+        printf "$red out of sync! (%s) $std\n" "$sng_conf_verstr"
+        printf "$cyan *** Updating %s and restarting %s *** $std\n" "$( strip_path "$sng_conf" )" "$sng"
         $S01sng_init stop
-        old_doc="doc/syslog-ng-open"
-        new_doc="list/syslog-ng-open-source-edition"
-        sed -i "s/$old_doc.*/$new_doc/" $sng_conf
+        old_doc="doc\/syslog-ng-open"
+        new_doc="list\/syslog-ng-open-source-edition"
+        sed -i "s/$old_doc.*/$new_doc/" "$sng_conf"
         stats_freq="$( grep -m1 'stats_freq(' $sng_conf | cut -d ';' -f 1 | grep -oE '[0-9]*' )"
-        [ -n $stats_freq ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" $sng_conf
-        sed -i "s/$sng_conf_vers.*/$sng_vers/" $sng_conf
+        [ -n "$stats_freq" ] && sed -i "s/stats_freq($stats_freq)/stats(freq($stats_freq))/g" "$sng_conf"
+        if [ -n "$sng_version_str" ] && [ -n "$sng_conf_verstr" ]
+        then
+            sed -i "s/^${sng_conf_vtag2}${sng_conf_verstr}.*/$sng_conf_vtag1 $sng_version_str/" "$sng_conf"
+        fi
         $S01sng_init start
         hup_uisc
-        printf "$white %34s" "$( strip_path $sng_conf ) version ..."
-        printf "$yellow updated! (%s) $std\n" "$sng_vers"
-        logger -t "$script_name" "$( strip_path $sng_conf ) version number updated ($sng_vers)!"
+        printf "$white %34s" "$( strip_path "$sng_conf" ) version ..."
+        printf "$yellow updated! (%s) $std\n" "$sng_version_str"
+        logger -t "$script_name" "$( strip_path "$sng_conf" ) version number updated ($sng_version_str)!"
     else
-        printf "$green in sync. (%s) $std\n" "$sng_vers"
+        printf "$green in sync. (%s) $std\n" "$sng_version_str"
     fi
 }
 
 sng_syntax(){
-    printf "$white %34s" "$( strip_path $sng_conf ) syntax check ..."
+    printf "$white %34s" "$( strip_path "$sng_conf" ) syntax check ..."
     if $sng_loc -s >> /dev/null 2>&1; then printf "$green okay! $std\n"; else printf "$red FAILED! $std\n\n"; fi
 }
 
@@ -694,8 +709,9 @@ menu_status(){
     prt_vers
 }
 
-sng_ver_chk(){
-    sng_vers="$( $sng --version | grep -m1 $sng | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})' )"
+sng_ver_chk()
+{
+    sng_vers="$( $sng --version | grep -m1 "$sng" | grep -oE '[0-9]{1,2}([_.][0-9]{1,2})([_.][0-9]{1,2})?' )"
     if [ "$( ver_num "$sng_vers" )" -lt "$( ver_num "$sng_reqd" )" ]
     then
         printf "\n$red %s version %s or higher required!\n" "$sng" "$sng_reqd"
