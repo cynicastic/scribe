@@ -1,8 +1,11 @@
 # ~ scribe ~ Entware syslog-ng and logrotate installer for Asuswrt-Merlin
 
+## THIS VERSION IS OBSOLETE AND HAS BEEN REPLACED!!!!
+## PLEASE USE THE VERSION AT: https://github.com/AMTM-OSR/scribe
+
 **scribe** is a **syslog-ng** and **logrotate** installer for ASUS routers running **Asuswrt-Merlin**
 
-## v3.2.1
+## v3.2.1 (OBSOLETE!)
 ### Updated on 2024-Aug-25
 
 ## Getting Started
@@ -17,10 +20,7 @@
 
 ### Installing
 
-SSH into the router and run:
-```bash
-/usr/sbin/curl --retry 3 "https://raw.githubusercontent.com/cynicastic/scribe/master/scribe" -o "/jffs/scripts/scribe" && chmod 0755 /jffs/scripts/scribe && /jffs/scripts/scribe install
-```
+Please install from the latest version of AMTM!
 
 ## *WARNING*
 
